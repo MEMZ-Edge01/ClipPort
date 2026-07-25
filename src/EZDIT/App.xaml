@@ -1,0 +1,25 @@
+<Application
+    x:Class="EZDIT.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <Color x:Key="AppBackgroundColor">#111315</Color>
+            <Color x:Key="SidebarColor">#090A0C</Color>
+            <Color x:Key="PanelColor">#202226</Color>
+            <Color x:Key="PanelRaisedColor">#292C32</Color>
+            <Color x:Key="AccentColor">#7567F8</Color>
+            <Color x:Key="MutedTextColor">#9097A8</Color>
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}" />
+            <SolidColorBrush x:Key="SidebarBrush" Color="{StaticResource SidebarColor}" />
+            <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
+            <SolidColorBrush x:Key="PanelRaisedBrush" Color="{StaticResource PanelRaisedColor}" />
+            <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+            <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedTextColor}" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

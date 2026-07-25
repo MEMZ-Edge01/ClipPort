@@ -1,0 +1,19 @@
+﻿# Build outputs
+bin/
+obj/
+artifacts/
+
+# IDE
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+**/packages/*
+
+# OS
+.DS_Store
+Thumbs.db
