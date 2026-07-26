@@ -47,6 +47,7 @@ public sealed partial class MainWindow
             DestinationPath = _destinationPath,
             StartedAt = DateTimeOffset.Now,
             Status = JobStatus.Queued,
+            CopyEnabled = !_copyOptions.SkipCopy,
             VerificationEnabled = _copyOptions.VerifyFiles,
             UseFastCopyAlgorithm = _copyOptions.UseFastCopyAlgorithm,
             IsPriority = isPriority,
@@ -261,10 +262,13 @@ public sealed partial class MainWindow
                 runtime.Job.VerifySeconds = info.Elapsed.TotalSeconds;
                 break;
             case CopyPhase.Completed:
-                runtime.CopiedBytes = info.TotalBytes;
-                runtime.CopiedFiles = info.TotalFiles;
-                runtime.Job.CopiedBytes = info.TotalBytes;
-                runtime.Job.CopiedFiles = info.TotalFiles;
+                if (!runtime.Options.SkipCopy)
+                {
+                    runtime.CopiedBytes = info.TotalBytes;
+                    runtime.CopiedFiles = info.TotalFiles;
+                    runtime.Job.CopiedBytes = info.TotalBytes;
+                    runtime.Job.CopiedFiles = info.TotalFiles;
+                }
                 if (runtime.Options.VerifyFiles)
                 {
                     runtime.VerifiedBytes = info.TotalBytes;
@@ -344,8 +348,12 @@ public sealed partial class MainWindow
         job.FinishedAt = DateTimeOffset.Now;
         job.TotalBytes = result?.TotalBytes ?? runtime.LastProgress?.TotalBytes ?? job.TotalBytes;
         job.FileCount = result?.FileCount ?? runtime.LastProgress?.TotalFiles ?? job.FileCount;
-        job.CopiedBytes = result is not null ? result.TotalBytes : runtime.CopiedBytes;
-        job.CopiedFiles = result is not null ? result.FileCount : runtime.CopiedFiles;
+        job.CopiedBytes = result is not null && !runtime.Options.SkipCopy
+            ? result.TotalBytes
+            : runtime.CopiedBytes;
+        job.CopiedFiles = result is not null && !runtime.Options.SkipCopy
+            ? result.FileCount
+            : runtime.CopiedFiles;
         job.VerifiedFiles = result?.VerifiedFiles.Count ?? runtime.VerifiedFiles;
         job.CopySeconds = result?.CopyDuration.TotalSeconds ?? runtime.CopyElapsed.TotalSeconds;
         job.VerifySeconds = result?.VerifyDuration.TotalSeconds ?? runtime.VerifyElapsed.TotalSeconds;
@@ -388,6 +396,14 @@ public sealed partial class MainWindow
 
     private void ConcurrentHistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_isMultiSelectMode)
+        {
+            if (!_isChangingMultiSelectMode)
+            {
+                UpdateBatchSelectionUi();
+            }
+            return;
+        }
         if (HistoryList.SelectedItem is not JobHistoryItem item)
         {
             return;
@@ -426,7 +442,9 @@ public sealed partial class MainWindow
         double verifyPercent = runtime.Options.VerifyFiles
             ? GetJobPercent(totalBytes, totalFiles, runtime.VerifiedBytes, runtime.VerifiedFiles)
             : 100;
-        double overall = runtime.Options.VerifyFiles
+        double overall = runtime.Options.SkipCopy
+            ? verifyPercent
+            : runtime.Options.VerifyFiles
             ? copyPercent * 0.8 + verifyPercent * 0.2
             : copyPercent;
 
@@ -438,12 +456,13 @@ public sealed partial class MainWindow
         VerifySpeedText.Text = info?.Phase == CopyPhase.Verifying ? $"{FormatBytes(info.BytesPerSecond)}/s" : "--";
         CopyTimeText.Text = FormatDuration(runtime.CopyElapsed);
         VerifyTimeText.Text = FormatDuration(runtime.VerifyElapsed);
-        CopyCountText.Text = $"{runtime.CopiedFiles}/{totalFiles}";
+        CopyCountText.Text = runtime.Options.SkipCopy ? "--" : $"{runtime.CopiedFiles}/{totalFiles}";
         VerifyCountText.Text = $"{runtime.VerifiedFiles}/{totalFiles}";
-        bool copyDone = totalFiles > 0 && runtime.CopiedFiles >= totalFiles;
+        bool copyDone = runtime.Options.SkipCopy || totalFiles > 0 && runtime.CopiedFiles >= totalFiles;
         bool verifyDone = runtime.Options.VerifyFiles && totalFiles > 0 && runtime.VerifiedFiles >= totalFiles;
         CopyProgress.Visibility = copyDone ? Visibility.Collapsed : Visibility.Visible;
         CopyCompletedBadge.Visibility = copyDone ? Visibility.Visible : Visibility.Collapsed;
+        CopyCompletedText.Text = runtime.Options.SkipCopy ? "未启用" : "已完成";
         VerifyProgress.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Collapsed : Visibility.Visible;
         VerifyCompletedBadge.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Visible : Visibility.Collapsed;
         VerifyCompletedText.Text = runtime.Options.VerifyFiles ? "已完成" : "未启用";
@@ -460,12 +479,11 @@ public sealed partial class MainWindow
         CancelButton.IsEnabled = true;
         PauseText.Text = runtime.IsPaused ? "继续" : "暂停";
         PauseIcon.Glyph = runtime.IsPaused ? "\uE768" : "\uE769";
-        NewJobButton.IsEnabled = true;
+        NewJobButton.IsEnabled = !_isMultiSelectMode;
         SourcePickerButton.IsEnabled = false;
         DestinationPickerButton.IsEnabled = false;
         HistoryList.IsEnabled = true;
         NewJobsList.IsEnabled = true;
-        ReportButton.IsEnabled = false;
 
         if (runtime.IsRetryingFailures)
         {
@@ -745,10 +763,15 @@ public sealed partial class MainWindow
         {
             return;
         }
+        if (!IsBatchDeletable(_selectedJob))
+        {
+            await ShowMessageAsync("无法删除任务", "只能删除已经完成处理的任务记录。");
+            return;
+        }
         var dialog = new ContentDialog
         {
             Title = "删除历史记录？",
-            Content = "仅删除这条历史记录及其本地报告，不会删除源文件或已经拷贝的素材。",
+            Content = "只会从 EZ DIT 中移除这条已完成任务记录，不会删除任何文件。",
             PrimaryButtonText = "删除记录",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
@@ -761,7 +784,6 @@ public sealed partial class MainWindow
         JobHistoryItem deleting = _selectedJob;
         _history.Remove(deleting);
         RemoveTaskFromSections(deleting);
-        await _historyService.DeleteReportAsync(deleting.ReportFileName);
         await SaveHistorySafeAsync();
         UpdateHistoryEmptyState();
         _selectedJob = null;
@@ -774,7 +796,7 @@ public sealed partial class MainWindow
         PauseButton.Visibility = Visibility.Collapsed;
         CancelButton.Visibility = Visibility.Collapsed;
         DeleteJobButton.Visibility = Visibility.Collapsed;
-        NewJobButton.IsEnabled = true;
+        NewJobButton.IsEnabled = !_isMultiSelectMode;
         SourcePickerButton.IsEnabled = true;
         DestinationPickerButton.IsEnabled = true;
         HistoryList.IsEnabled = true;

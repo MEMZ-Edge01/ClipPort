@@ -31,6 +31,21 @@
 
             <Grid Grid.Column="0" Background="{StaticResource SidebarBrush}">
                 <Grid.Resources>
+                    <SolidColorBrush x:Key="ListViewItemCheckBrush" Color="White" />
+                    <SolidColorBrush x:Key="ListViewItemCheckPressedBrush" Color="White" />
+                    <SolidColorBrush x:Key="ListViewItemCheckDisabledBrush" Color="#8F8AAB" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxBrush" Color="#25282E" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBrush" Color="#343740" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBrush" Color="#3B3F49" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBrush" Color="#25282E" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedBrush" Color="#7567F8" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPointerOverBrush" Color="#897DFF" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPressedBrush" Color="#6558DD" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedDisabledBrush" Color="#514A83" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxBorderBrush" Color="#D7D3FF" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBorderBrush" Color="White" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBorderBrush" Color="#B9B2FF" />
+                    <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBorderBrush" Color="#625E73" />
                     <Style x:Key="JobListItemStyle" TargetType="ListViewItem">
                         <Setter Property="Padding" Value="0" />
                         <Setter Property="Margin" Value="0,0,0,10" />
@@ -60,21 +75,45 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <StackPanel Orientation="Horizontal" Margin="20,30,16,24" Spacing="12">
-                    <Button x:Name="NewJobButton" Click="ConcurrentNewJobButton_Click" Height="46" Padding="16,0"
-                            Background="{StaticResource AccentBrush}" CornerRadius="23">
-                        <StackPanel Orientation="Horizontal" Spacing="9">
-                            <FontIcon Glyph="&#xE710;" FontSize="15" />
-                            <TextBlock Text="创建任务" VerticalAlignment="Center" FontWeight="SemiBold" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="ReportButton" Click="ReportButton_Click" Height="46" Padding="14,0"
-                            Background="#292C32" CornerRadius="23" IsEnabled="False">
+                <StackPanel Margin="20,30,16,20" Spacing="10">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button x:Name="NewJobButton" Click="ConcurrentNewJobButton_Click" Height="46" Padding="16,0"
+                                Background="{StaticResource AccentBrush}" CornerRadius="23">
+                            <StackPanel Orientation="Horizontal" Spacing="9">
+                                <FontIcon Glyph="&#xE710;" FontSize="15" />
+                                <TextBlock Text="创建任务" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="MultiSelectButton" Click="MultiSelectButton_Click" Height="46" Padding="14,0"
+                                Background="#292C32" CornerRadius="23">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE762;" FontSize="15" />
+                                <TextBlock x:Name="MultiSelectButtonText" Text="多选" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel x:Name="BatchActionPanel" Visibility="Collapsed" Spacing="8">
+                        <TextBlock x:Name="BatchSelectionText" Text="已选择 0 个任务"
+                                   FontSize="12" Foreground="{StaticResource MutedTextBrush}" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE8A5;" FontSize="15" />
-                            <TextBlock Text="创建报告" VerticalAlignment="Center" />
+                            <Button x:Name="BatchDeleteButton" Click="BatchDeleteButton_Click"
+                                    Height="38" Padding="12,0" IsEnabled="False"
+                                    Background="#4A2D31" CornerRadius="7">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <FontIcon Glyph="&#xE74D;" FontSize="13" />
+                                    <TextBlock Text="批量删除" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BatchReportButton" Click="BatchReportButton_Click"
+                                    Height="38" Padding="12,0" IsEnabled="False"
+                                    Background="#292C32" CornerRadius="7">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <FontIcon Glyph="&#xE8A5;" FontSize="13" />
+                                    <TextBlock Text="批量创建报告" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
-                    </Button>
+                    </StackPanel>
                 </StackPanel>
 
                 <Grid Grid.Row="1" Margin="0,0,0,6">
@@ -587,15 +626,17 @@
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             </Grid>
                        </Button>
-                        <StackPanel Spacing="6" Margin="0,6,0,0">
+                    </StackPanel>
+                    <StackPanel Spacing="9">
+                        <ToggleSwitch x:Name="EnableCopyToggle" Header="拷贝文件" IsOn="True" HorizontalAlignment="Stretch" />
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="拷贝目的地文件夹名" Foreground="White" />
                             <TextBox x:Name="DialogDestinationSubfolderName"
-                                     PlaceholderText="自动填入源文件夹名+时间"
+                                     PlaceholderText=""
                                      HorizontalAlignment="Stretch" />
                             <TextBlock Text="留空即不创建子文件夹" FontSize="11"
                                        Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
-                    </StackPanel>
-                    <StackPanel Spacing="9">
                         <TextBlock Text="重复项处理" FontWeight="SemiBold" />
                         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left">
                             <RadioButton x:Name="AskExistingRadio" Content="询问" IsChecked="True"

@@ -69,6 +69,10 @@ public sealed partial class MainWindow
 
     private void SelectInitialTask()
     {
+        if (_isMultiSelectMode)
+        {
+            return;
+        }
         if (_newJobs.Count > 0)
         {
             NewJobsList.SelectedIndex = 0;
@@ -85,6 +89,14 @@ public sealed partial class MainWindow
 
     private void NewJobsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_isMultiSelectMode)
+        {
+            if (!_isChangingMultiSelectMode)
+            {
+                UpdateBatchSelectionUi();
+            }
+            return;
+        }
         if (NewJobsList.SelectedItem is not JobHistoryItem item)
         {
             return;
@@ -104,6 +116,10 @@ public sealed partial class MainWindow
 
     private async void NewJobsList_ItemClick(object sender, ItemClickEventArgs e)
     {
+        if (_isMultiSelectMode)
+        {
+            return;
+        }
         if (e.ClickedItem is not JobHistoryItem item || !item.NeedsAttention)
         {
             return;

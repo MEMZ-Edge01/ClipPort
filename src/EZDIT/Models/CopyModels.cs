@@ -28,7 +28,8 @@ public enum FileOperationStage
 public sealed record CopyOptions(
     ExistingFilePolicy ExistingFilePolicy = ExistingFilePolicy.Overwrite,
     bool VerifyFiles = true,
-    bool UseFastCopyAlgorithm = false);
+    bool UseFastCopyAlgorithm = false,
+    bool SkipCopy = false);
 
 public sealed record DuplicateFileConflict(
     string RelativePath,

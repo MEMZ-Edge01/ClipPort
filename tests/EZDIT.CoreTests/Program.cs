@@ -9,6 +9,7 @@ internal static class Program
         var tests = new (string Name, Func<Task> Run)[]
         {
             ("copy and SHA-256 verification", TestCopyAndVerifyAsync),
+            ("verification-only mode never copies", TestVerificationOnlyAsync),
             ("FastCopy pipeline copy and verification", TestFastCopyAlgorithmAsync),
             ("pause and resume", TestPauseAndResumeAsync),
             ("cancellation preserves existing destination", TestCancellationSafetyAsync),
@@ -109,6 +110,46 @@ internal static class Program
             }
             Assert(!Directory.EnumerateFiles(destination, "*.ezdit-partial", SearchOption.AllDirectories).Any(),
                 "The FastCopy pipeline must not leave partial files after success.");
+        });
+    }
+
+    private static async Task TestVerificationOnlyAsync()
+    {
+        await WithTempFoldersAsync(async (source, destination) =>
+        {
+            await File.WriteAllTextAsync(Path.Combine(source, "same.txt"), "same");
+            await File.WriteAllTextAsync(Path.Combine(destination, "same.txt"), "same");
+            await File.WriteAllTextAsync(Path.Combine(source, "different.txt"), "new source content");
+            await File.WriteAllTextAsync(Path.Combine(destination, "different.txt"), "keep destination content");
+            await File.WriteAllTextAsync(Path.Combine(source, "missing.txt"), "must not be copied");
+            Directory.CreateDirectory(Path.Combine(source, "empty-source-folder"));
+
+            var events = new List<CopyProgressInfo>();
+            CopyResult result = await new FileCopyService().CopyAndVerifyAsync(
+                source,
+                destination,
+                new CopyOptions(
+                    ExistingFilePolicy: ExistingFilePolicy.Overwrite,
+                    VerifyFiles: true,
+                    SkipCopy: true),
+                new InlineProgress<CopyProgressInfo>(events.Add),
+                _ => Task.CompletedTask,
+                CancellationToken.None);
+
+            Assert(!result.Success, "Mismatched and missing destination files must fail verification.");
+            Assert(result.VerificationPerformed, "Verification-only mode must always perform verification.");
+            Assert(!events.Any(item => item.Phase == CopyPhase.Copying),
+                "Verification-only mode must never enter the copying phase.");
+            Assert(events.Any(item => item.Phase == CopyPhase.Verifying),
+                "Verification-only mode must report verification progress.");
+            Assert(await File.ReadAllTextAsync(Path.Combine(destination, "different.txt")) == "keep destination content",
+                "Verification-only mode must not overwrite destination files.");
+            Assert(!File.Exists(Path.Combine(destination, "missing.txt")),
+                "Verification-only mode must not copy missing destination files.");
+            Assert(!Directory.Exists(Path.Combine(destination, "empty-source-folder")),
+                "Verification-only mode must not create destination directories.");
+            Assert(result.FailedFiles.All(item => item.Stage == FileOperationStage.Verifying),
+                "Verification-only failures must be reported as verification failures.");
         });
     }
 
@@ -402,13 +443,14 @@ internal static class Program
                 FinishedAt = new DateTimeOffset(2026, 7, 21, 10, 45, 0, TimeSpan.FromHours(8)),
                 TotalBytes = 123456789,
                 FileCount = 42,
-                CopiedBytes = 123456789,
-                CopiedFiles = 42,
+                CopiedBytes = 0,
+                CopiedFiles = 0,
                 VerifiedFiles = 42,
-                CopySeconds = 600,
+                CopySeconds = 0,
                 VerifySeconds = 300,
                 Status = JobStatus.Completed,
-                VerificationEnabled = false,
+                CopyEnabled = false,
+                VerificationEnabled = true,
                 UseFastCopyAlgorithm = true,
                 IsPriority = true,
                 PreventSleep = false,
@@ -427,8 +469,26 @@ internal static class Program
                 "Persisted history details should round-trip.");
             Assert(loaded[0].Status == JobStatus.Completed,
                 "The job status should round-trip as an enum value.");
-            Assert(!loaded[0].VerificationEnabled,
+            Assert(loaded[0].VerificationEnabled,
                 "The verification setting should round-trip.");
+            Assert(!loaded[0].CopyEnabled,
+                "The copy setting should round-trip.");
+            Assert(loaded[0].StatusText == "校验完成",
+                "A verification-only job should be labeled as verification completed.");
+            Assert(new JobHistoryItem
+                {
+                    Status = JobStatus.Completed,
+                    CopyEnabled = true,
+                    VerificationEnabled = false
+                }.StatusText == "拷贝完成",
+                "A copy-only job should be labeled as copy completed.");
+            Assert(new JobHistoryItem
+                {
+                    Status = JobStatus.Completed,
+                    CopyEnabled = true,
+                    VerificationEnabled = true
+                }.StatusText == "任务完成",
+                "A copy-and-verification job should be labeled as task completed.");
             Assert(loaded[0].UseFastCopyAlgorithm,
                 "The FastCopy algorithm setting should round-trip.");
             Assert(loaded[0].IsPriority,

@@ -34,6 +34,8 @@ public sealed partial class MainWindow : Window
     private CopyOptions _copyOptions = new();
     private bool _isRunning;
     private bool _historyLoaded;
+    private bool _isMultiSelectMode;
+    private bool _isChangingMultiSelectMode;
     private bool _updatingDuplicateSelection;
     private volatile bool _isPaused;
     private DateTimeOffset? _startedAt;
@@ -191,7 +193,15 @@ public sealed partial class MainWindow : Window
 
         _dialogSourcePath = path;
         DialogSourcePathText.Text = path;
+
+        if (EnableCopyToggle.IsOn)
+        {
+            // 自动填入子文件夹名：源目录名 + 时间戳
+            string dirName = new DirectoryInfo(path).Name;
+            DialogDestinationSubfolderName.Text = dirName + DateTime.Now.ToString("yyyyMMddHHmmss");
+        }
     }
+
 
     private async void DialogDestinationButton_Click(object sender, RoutedEventArgs e)
     {
@@ -223,8 +233,17 @@ public sealed partial class MainWindow : Window
             DialogDestinationSubfolderName.Text = "";
         }
 
+        EnableCopyToggle.Toggled += OnEnableCopyToggled;
+        OnEnableCopyToggled(EnableCopyToggle, null!);
+
         while (await NewTaskDialog.ShowAsync() == ContentDialogResult.Primary)
         {
+            bool copyEnabled = EnableCopyToggle.IsOn;
+            AskExistingRadio.IsEnabled = copyEnabled;
+            OverwriteExistingRadio.IsEnabled = copyEnabled;
+            SkipExistingRadio.IsEnabled = copyEnabled;
+            CreateCopyRadio.IsEnabled = copyEnabled;
+
             if (_dialogSourcePath is null || _dialogDestinationParentPath is null)
             {
                 await ShowMessageAsync("目录尚未设置", "请选择数据源和拷贝目的地。");
@@ -253,22 +272,25 @@ public sealed partial class MainWindow : Window
                     : SkipExistingRadio.IsChecked == true
                         ? ExistingFilePolicy.Skip
                         : ExistingFilePolicy.CreateCopy;
+            bool verifyOnly = !EnableCopyToggle.IsOn;
             _copyOptions = new CopyOptions(
-                duplicatePolicy,
-                VerifyFilesToggle.IsOn,
-                false);
+                ExistingFilePolicy: duplicatePolicy,
+                VerifyFiles: verifyOnly || VerifyFilesToggle.IsOn,
+                UseFastCopyAlgorithm: false,
+                SkipCopy: verifyOnly);
             SourcePathText.Text = _sourcePath;
             DestinationPathText.Text = _destinationPath;
             HeroNameText.Text = GetDisplayName(_sourcePath);
             CurrentFileText.Text = "任务设置完成，准备扫描文件";
             LogText.Text = $"源目录：{_sourcePath}\n目标目录：{_destinationPath}";
             UpdateStartButton();
+            EnableCopyToggle.Toggled -= OnEnableCopyToggled;
             return true;
         }
 
+        EnableCopyToggle.Toggled -= OnEnableCopyToggled;
         return false;
     }
-
     private async Task StartCopyAsync()
     {
         if (_isRunning)
@@ -312,6 +334,7 @@ public sealed partial class MainWindow : Window
             DestinationPath = _destinationPath,
             StartedAt = _startedAt.Value,
             Status = JobStatus.Running,
+            CopyEnabled = !_copyOptions.SkipCopy,
             VerificationEnabled = _copyOptions.VerifyFiles,
             UseFastCopyAlgorithm = _copyOptions.UseFastCopyAlgorithm
         };
@@ -381,8 +404,8 @@ public sealed partial class MainWindow : Window
         job.FinishedAt = _finishedAt ?? DateTimeOffset.Now;
         job.TotalBytes = result?.TotalBytes ?? _lastProgress?.TotalBytes ?? job.TotalBytes;
         job.FileCount = result?.FileCount ?? _lastProgress?.TotalFiles ?? job.FileCount;
-        job.CopiedBytes = result is not null ? result.TotalBytes : _copiedBytes;
-        job.CopiedFiles = result is not null ? result.FileCount : _copiedFiles;
+        job.CopiedBytes = result is not null && !_copyOptions.SkipCopy ? result.TotalBytes : _copiedBytes;
+        job.CopiedFiles = result is not null && !_copyOptions.SkipCopy ? result.FileCount : _copiedFiles;
         job.VerifiedFiles = result?.VerifiedFiles.Count ?? _verifiedFiles;
         job.CopySeconds = result?.CopyDuration.TotalSeconds ?? _copyElapsed.TotalSeconds;
         job.VerifySeconds = result?.VerifyDuration.TotalSeconds ?? _verifyElapsed.TotalSeconds;
@@ -707,7 +730,9 @@ public sealed partial class MainWindow : Window
         {
             double copyPercent = GetPercent(_copiedBytes, _copiedFiles);
             double verifyPercent = _copyOptions.VerifyFiles ? GetPercent(_verifiedBytes, _verifiedFiles) : 100;
-            double overall = _copyOptions.VerifyFiles
+            double overall = _copyOptions.SkipCopy
+                ? verifyPercent
+                : _copyOptions.VerifyFiles
                 ? copyPercent * 0.8 + verifyPercent * 0.2
                 : copyPercent;
             OverallProgress.Value = overall;
@@ -765,8 +790,11 @@ public sealed partial class MainWindow : Window
                 break;
 
             case CopyPhase.Completed:
-                _copiedBytes = info.TotalBytes;
-                _copiedFiles = info.TotalFiles;
+                if (!_copyOptions.SkipCopy)
+                {
+                    _copiedBytes = info.TotalBytes;
+                    _copiedFiles = info.TotalFiles;
+                }
                 if (_copyOptions.VerifyFiles)
                 {
                     _verifiedFiles = info.TotalFiles;
@@ -774,7 +802,7 @@ public sealed partial class MainWindow : Window
                 }
                 CopyProgress.Visibility = Visibility.Collapsed;
                 CopyCompletedBadge.Visibility = Visibility.Visible;
-                CopyCompletedText.Text = "已完成";
+                CopyCompletedText.Text = _copyOptions.SkipCopy ? "未启用" : "已完成";
                 VerifyProgress.Visibility = Visibility.Collapsed;
                 VerifyCompletedBadge.Visibility = Visibility.Visible;
                 VerifyCompletedText.Text = _copyOptions.VerifyFiles ? "已完成" : "未启用";
@@ -829,6 +857,10 @@ public sealed partial class MainWindow : Window
 
     private void PrepareNewJobView()
     {
+        if (_isMultiSelectMode)
+        {
+            ExitMultiSelectMode(false);
+        }
         HistoryList.SelectedItem = null;
         _selectedJob = null;
         NewJobsList.SelectedItem = null;
@@ -846,13 +878,20 @@ public sealed partial class MainWindow : Window
         CurrentFileText.Text = "请选择源目录和目标目录";
         LogText.Text = "就绪。选择目录后即可开始。";
         ResetProgress();
-        ReportButton.IsEnabled = false;
         StartButton.Visibility = Visibility.Visible;
         UpdateStartButton();
     }
 
     private void HistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_isMultiSelectMode)
+        {
+            if (!_isChangingMultiSelectMode)
+            {
+                UpdateBatchSelectionUi();
+            }
+            return;
+        }
         if (_isRunning || HistoryList.SelectedItem is not JobHistoryItem item)
         {
             return;
@@ -876,10 +915,12 @@ public sealed partial class MainWindow : Window
         ShowFailedFileHistory(job);
 
         bool taskFinished = job.Status is JobStatus.Completed or JobStatus.CompletedWithErrors or JobStatus.VerificationFailed;
-        bool copyFinished = taskFinished ||
+        bool copyFinished = !job.CopyEnabled || taskFinished ||
             (job.FileCount > 0 && job.CopiedFiles >= job.FileCount && job.CopiedBytes >= job.TotalBytes);
         bool verificationFinished = job.VerificationEnabled && taskFinished;
-        double copyPercent = job.TotalBytes <= 0
+        double copyPercent = !job.CopyEnabled
+            ? 0
+            : job.TotalBytes <= 0
             ? (copyFinished ? 100 : 0)
             : Math.Clamp(job.CopiedBytes * 100d / job.TotalBytes, 0, 100);
         double verifyPercent = job.FileCount <= 0
@@ -887,7 +928,7 @@ public sealed partial class MainWindow : Window
             : Math.Clamp(job.VerifiedFiles * 100d / job.FileCount, 0, 100);
         if (taskFinished)
         {
-            copyPercent = 100;
+            copyPercent = job.CopyEnabled ? 100 : 0;
             verifyPercent = job.VerificationEnabled ? 100 : 0;
         }
 
@@ -895,7 +936,7 @@ public sealed partial class MainWindow : Window
         VerifyProgress.Value = verifyPercent;
         CopyProgress.Visibility = copyFinished ? Visibility.Collapsed : Visibility.Visible;
         CopyCompletedBadge.Visibility = copyFinished ? Visibility.Visible : Visibility.Collapsed;
-        CopyCompletedText.Text = "已完成";
+        CopyCompletedText.Text = job.CopyEnabled ? "已完成" : "未启用";
         VerifyProgress.Visibility = verificationFinished || !job.VerificationEnabled
             ? Visibility.Collapsed
             : Visibility.Visible;
@@ -911,12 +952,20 @@ public sealed partial class MainWindow : Window
                 : job.VerificationEnabled
                     ? ColorHelper.FromArgb(255, 41, 74, 66)
                     : ColorHelper.FromArgb(255, 52, 55, 64));
-        OverallProgress.Value = taskFinished ? 100 : copyPercent * 0.8 + verifyPercent * 0.2;
-        CopySpeedText.Text = job.CopySeconds > 0 ? $"{FormatBytes(job.TotalBytes / job.CopySeconds)}/s" : "--";
+        OverallProgress.Value = taskFinished
+            ? 100
+            : !job.CopyEnabled
+                ? verifyPercent
+                : !job.VerificationEnabled
+                    ? copyPercent
+                    : copyPercent * 0.8 + verifyPercent * 0.2;
+        CopySpeedText.Text = job.CopyEnabled && job.CopySeconds > 0
+            ? $"{FormatBytes(job.TotalBytes / job.CopySeconds)}/s"
+            : "--";
         VerifySpeedText.Text = job.VerifySeconds > 0 ? $"{FormatBytes(job.TotalBytes / job.VerifySeconds)}/s" : "--";
-        CopyTimeText.Text = FormatDuration(TimeSpan.FromSeconds(job.CopySeconds));
+        CopyTimeText.Text = job.CopyEnabled ? FormatDuration(TimeSpan.FromSeconds(job.CopySeconds)) : "--";
         VerifyTimeText.Text = FormatDuration(TimeSpan.FromSeconds(job.VerifySeconds));
-        CopyCountText.Text = $"{job.CopiedFiles}/{job.FileCount}";
+        CopyCountText.Text = job.CopyEnabled ? $"{job.CopiedFiles}/{job.FileCount}" : "--";
         VerifyCountText.Text = $"{job.VerifiedFiles}/{job.FileCount}";
 
         CompletionIcon.Visibility = Visibility.Visible;
@@ -926,10 +975,11 @@ public sealed partial class MainWindow : Window
         StatusText.Text = job.StatusText;
         PauseButton.Visibility = Visibility.Collapsed;
         CancelButton.Visibility = Visibility.Collapsed;
-        DeleteJobButton.Visibility = Visibility.Visible;
+        DeleteJobButton.Visibility = IsBatchDeletable(job)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         StartButton.IsEnabled = false;
         StartButton.Visibility = Visibility.Collapsed;
-        ReportButton.IsEnabled = !string.IsNullOrWhiteSpace(job.ReportFileName);
 
         bool succeeded = job.Status == JobStatus.Completed;
         SolidColorBrush stateBrush = new(succeeded
@@ -940,9 +990,17 @@ public sealed partial class MainWindow : Window
 
         PhaseText.Text = job.Status switch
         {
-            JobStatus.CompletedWithErrors => "\u590D\u5236\u5DF2\u5B8C\u6210\uFF0C\u5931\u8D25\u6587\u4EF6\u5DF2\u8DF3\u8FC7",
-            JobStatus.Completed => job.VerificationEnabled ? "复制与 SHA-256 校验全部通过" : "复制完成（未启用校验）",
-            JobStatus.VerificationFailed => "复制完成，但完整性校验未通过",
+            JobStatus.CompletedWithErrors => job.CopyEnabled
+                ? "拷贝已完成，失败文件已跳过"
+                : "校验已完成，失败文件已跳过",
+            JobStatus.Completed => job.CopyEnabled && job.VerificationEnabled
+                ? "拷贝和 SHA-256 校验均已完成"
+                : job.CopyEnabled
+                    ? "拷贝已完成"
+                    : "SHA-256 校验已完成",
+            JobStatus.VerificationFailed => job.CopyEnabled
+                ? "拷贝完成，但完整性校验未通过"
+                : "SHA-256 校验未通过",
             JobStatus.Cancelled => "任务已取消；已完成文件保留",
             JobStatus.Interrupted => "应用在任务完成前退出",
             JobStatus.Failed => "任务执行失败",
@@ -951,9 +1009,11 @@ public sealed partial class MainWindow : Window
         LogText.Text = job.Status switch
         {
             JobStatus.CompletedWithErrors => $"\u4EFB\u52A1\u90E8\u5206\u5B8C\u6210\uFF1A\u5DF2\u8DF3\u8FC7 {job.FailedFiles.Count:N0} \u4E2A\u5931\u8D25\u6587\u4EF6\u3002",
-            JobStatus.Completed => job.VerificationEnabled
-                ? $"任务完成：{job.FileCount:N0} 个文件均通过 SHA-256 校验。"
-                : $"任务完成：已复制 {job.FileCount:N0} 个文件，未启用校验。",
+            JobStatus.Completed => job.CopyEnabled && job.VerificationEnabled
+                ? $"任务完成：已拷贝并校验 {job.FileCount:N0} 个文件。"
+                : job.CopyEnabled
+                    ? $"拷贝完成：已拷贝 {job.FileCount:N0} 个文件。"
+                    : $"校验完成：{job.FileCount:N0} 个文件均通过 SHA-256 校验。",
             JobStatus.VerificationFailed => job.ErrorMessage ?? "校验发现不一致文件。",
             JobStatus.Cancelled => "任务已取消，已完成文件予以保留。",
             JobStatus.Interrupted => "应用上次在任务结束前退出，此记录已标记为中断。",
@@ -967,11 +1027,16 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
+        if (!IsBatchDeletable(_selectedJob))
+        {
+            await ShowMessageAsync("无法删除任务", "只能删除已经完成处理的任务记录。");
+            return;
+        }
 
         var dialog = new ContentDialog
         {
             Title = "删除历史记录？",
-            Content = "仅删除这条历史记录及其本地报告，不会删除源文件或已经拷贝的素材。",
+            Content = "只会从 EZ DIT 中移除这条已完成任务记录，不会删除任何文件。",
             PrimaryButtonText = "删除记录",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
@@ -984,7 +1049,6 @@ public sealed partial class MainWindow : Window
 
         JobHistoryItem deleting = _selectedJob;
         _history.Remove(deleting);
-        await _historyService.DeleteReportAsync(deleting.ReportFileName);
         await SaveHistorySafeAsync();
         UpdateHistoryEmptyState();
         _selectedJob = null;
@@ -1003,34 +1067,218 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void ReportButton_Click(object sender, RoutedEventArgs e)
+    private void MultiSelectButton_Click(object sender, RoutedEventArgs e)
     {
-        string? report = _selectedJob is not null
-            ? await _historyService.ReadReportAsync(_selectedJob.ReportFileName)
-            : null;
-        if (string.IsNullOrEmpty(report))
+        if (_isMultiSelectMode)
         {
-            report = _lastReport;
+            ExitMultiSelectMode(true);
         }
-        if (string.IsNullOrEmpty(report))
+        else
         {
-            await ShowMessageAsync("报告不可用", "该历史任务没有可导出的报告。");
+            EnterMultiSelectMode();
+        }
+    }
+
+    private void EnterMultiSelectMode()
+    {
+        _isMultiSelectMode = true;
+        _isChangingMultiSelectMode = true;
+        try
+        {
+            NewJobsList.SelectedItem = null;
+            HistoryList.SelectedItem = null;
+            NewJobsList.SelectionMode = ListViewSelectionMode.Multiple;
+            HistoryList.SelectionMode = ListViewSelectionMode.Multiple;
+        }
+        finally
+        {
+            _isChangingMultiSelectMode = false;
+        }
+        NewJobButton.IsEnabled = false;
+        DeleteJobButton.Visibility = Visibility.Collapsed;
+        BatchActionPanel.Visibility = Visibility.Visible;
+        MultiSelectButtonText.Text = "完成";
+        UpdateBatchSelectionUi();
+    }
+
+    private void ExitMultiSelectMode(bool selectInitialTask)
+    {
+        _isChangingMultiSelectMode = true;
+        try
+        {
+            NewJobsList.SelectedItems.Clear();
+            HistoryList.SelectedItems.Clear();
+            NewJobsList.SelectionMode = ListViewSelectionMode.Single;
+            HistoryList.SelectionMode = ListViewSelectionMode.Single;
+        }
+        finally
+        {
+            _isChangingMultiSelectMode = false;
+        }
+        _isMultiSelectMode = false;
+        BatchActionPanel.Visibility = Visibility.Collapsed;
+        MultiSelectButtonText.Text = "多选";
+        NewJobButton.IsEnabled = true;
+        BatchDeleteButton.IsEnabled = false;
+        BatchReportButton.IsEnabled = false;
+        if (selectInitialTask)
+        {
+            SelectInitialTask();
+        }
+    }
+
+    private List<JobHistoryItem> GetBatchSelectedJobs()
+    {
+        if (!_isMultiSelectMode ||
+            NewJobsList.SelectionMode != ListViewSelectionMode.Multiple ||
+            HistoryList.SelectionMode != ListViewSelectionMode.Multiple)
+        {
+            return [];
+        }
+
+        return NewJobsList.SelectedItems
+            .OfType<JobHistoryItem>()
+            .Concat(HistoryList.SelectedItems.OfType<JobHistoryItem>())
+            .GroupBy(item => item.Id, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private static bool IsBatchDeletable(JobHistoryItem job) =>
+        job.Status == JobStatus.Completed;
+
+    private static bool IsReportable(JobHistoryItem job) =>
+        job.Status is not JobStatus.Queued and not JobStatus.Running;
+
+    private void UpdateBatchSelectionUi()
+    {
+        if (!_isMultiSelectMode ||
+            _isChangingMultiSelectMode ||
+            NewJobsList.SelectionMode != ListViewSelectionMode.Multiple ||
+            HistoryList.SelectionMode != ListViewSelectionMode.Multiple)
+        {
             return;
         }
 
-        var picker = new FileSavePicker
+        List<JobHistoryItem> selected = GetBatchSelectedJobs();
+        BatchSelectionText.Text = selected.Count == 0
+            ? "请选择任务"
+            : $"已选择 {selected.Count:N0} 个任务，仅已完成任务可删除";
+        BatchDeleteButton.IsEnabled = selected.Count > 0 && selected.All(IsBatchDeletable);
+        BatchReportButton.IsEnabled = selected.Count > 0 && selected.All(IsReportable);
+    }
+
+    private async void BatchDeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        List<JobHistoryItem> selected = GetBatchSelectedJobs();
+        if (selected.Count == 0)
         {
-            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-            SuggestedFileName = $"EZDIT_Report_{(_selectedJob?.StartedAt ?? DateTimeOffset.Now):yyyyMMdd_HHmmss}"
-        };
-        picker.FileTypeChoices.Add("文本报告", new List<string> { ".txt" });
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
-        StorageFile? file = await picker.PickSaveFileAsync();
-        if (file is not null)
-        {
-            await FileIO.WriteTextAsync(file, report);
-            LogText.Text = $"报告已保存：{file.Path}";
+            return;
         }
+        if (selected.Any(job => !IsBatchDeletable(job)))
+        {
+            await ShowMessageAsync("无法批量删除", "只能删除已经完成处理的任务记录，请取消选择其他状态的任务。");
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = $"删除 {selected.Count:N0} 条任务记录？",
+            Content = "只会从 EZ DIT 中移除已完成的任务记录，不会删除源文件、目的地文件或已经导出的报告。",
+            PrimaryButtonText = "批量删除",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = Content.XamlRoot
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        foreach (JobHistoryItem job in selected)
+        {
+            _history.Remove(job);
+            RemoveTaskFromSections(job);
+            if (_selectedJob?.Id == job.Id)
+            {
+                _selectedJob = null;
+            }
+            if (_activeJob?.Id == job.Id)
+            {
+                _activeJob = null;
+            }
+        }
+
+        await SaveHistorySafeAsync();
+        UpdateHistoryEmptyState();
+        ExitMultiSelectMode(true);
+        LogText.Text = $"已删除 {selected.Count:N0} 条任务记录，所有文件均已保留。";
+    }
+
+    private async void BatchReportButton_Click(object sender, RoutedEventArgs e)
+    {
+        List<JobHistoryItem> selected = GetBatchSelectedJobs();
+        if (selected.Count == 0)
+        {
+            return;
+        }
+        if (selected.Any(job => !IsReportable(job)))
+        {
+            await ShowMessageAsync("报告尚不可用", "运行中或排队中的任务暂时不能创建报告。");
+            return;
+        }
+
+        var picker = new FolderPicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary
+        };
+        picker.FileTypeFilter.Add("*");
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        StorageFolder? folder = await picker.PickSingleFolderAsync();
+        if (folder is null)
+        {
+            return;
+        }
+
+        BatchReportButton.IsEnabled = false;
+        int created = 0;
+        try
+        {
+            foreach (JobHistoryItem job in selected)
+            {
+                string? report = await _historyService.ReadReportAsync(job.ReportFileName);
+                report ??= BuildIncompleteReport(job);
+                string displayName = SanitizeReportFileName(job.DisplayName);
+                string fileName = $"EZDIT_Report_{job.StartedAt:yyyyMMdd_HHmmss}_{displayName}.txt";
+                StorageFile file = await folder.CreateFileAsync(
+                    fileName, CreationCollisionOption.GenerateUniqueName);
+                await FileIO.WriteTextAsync(file, report);
+                created++;
+            }
+            LogText.Text = $"已在 {folder.Path} 创建 {created:N0} 份任务报告。";
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync("批量创建报告失败", $"已创建 {created:N0} 份报告，随后发生错误：{ex.Message}");
+        }
+        finally
+        {
+            UpdateBatchSelectionUi();
+        }
+    }
+
+    private static string SanitizeReportFileName(string value)
+    {
+        char[] invalidCharacters = Path.GetInvalidFileNameChars();
+        string safeName = new(value
+            .Select(character => invalidCharacters.Contains(character) ? '_' : character)
+            .ToArray());
+        safeName = safeName.Trim();
+        if (string.IsNullOrWhiteSpace(safeName))
+        {
+            safeName = "Task";
+        }
+        return safeName.Length <= 60 ? safeName : safeName[..60];
     }
 
     private void SetRunningUi(bool running)
@@ -1048,10 +1296,10 @@ public sealed partial class MainWindow : Window
             StartButton.Visibility = Visibility.Collapsed;
         }
         NewJobButton.IsEnabled = !running;
+        MultiSelectButton.IsEnabled = !running;
         SourcePickerButton.IsEnabled = !running;
         DestinationPickerButton.IsEnabled = !running;
         HistoryList.IsEnabled = !running;
-        ReportButton.IsEnabled = !running && _selectedJob?.ReportFileName is not null;
     }
 
     private void UpdateStartButton()
@@ -1153,7 +1401,7 @@ public sealed partial class MainWindow : Window
     private string BuildReport(CopyResult result, JobHistoryItem job)
     {
         var report = new StringBuilder();
-        report.AppendLine("EZ DIT 拷卡校验报告");
+        report.AppendLine("EZ DIT 任务报告");
         report.AppendLine(new string('=', 42));
         report.AppendLine($"任务名称：{job.DisplayName}");
         report.AppendLine($"源目录：{job.SourcePath}");
@@ -1162,9 +1410,14 @@ public sealed partial class MainWindow : Window
         report.AppendLine($"结束时间：{job.FinishedAt:yyyy-MM-dd HH:mm:ss}");
         report.AppendLine($"文件数量：{result.FileCount:N0}");
         report.AppendLine($"数据大小：{FormatBytes(result.TotalBytes)}");
-        report.AppendLine($"复制用时：{FormatDuration(result.CopyDuration)}");
+        report.AppendLine(job.CopyEnabled
+            ? $"拷贝用时：{FormatDuration(result.CopyDuration)}"
+            : "拷贝：未启用");
         report.AppendLine($"校验用时：{FormatDuration(result.VerifyDuration)}");
-        report.AppendLine($"复制算法：{(job.UseFastCopyAlgorithm ? "FastCopy 流水线" : "标准顺序复制")}");
+        if (job.CopyEnabled)
+        {
+            report.AppendLine($"拷贝算法：{(job.UseFastCopyAlgorithm ? "FastCopy 流水线" : "标准顺序复制")}");
+        }
         report.AppendLine($"校验算法：{(result.VerificationPerformed ? "SHA-256" : "未启用")}");
         report.AppendLine($"最终结果：{(result.Success ? "通过" : "失败")}");
         report.AppendLine();
@@ -1195,8 +1448,15 @@ public sealed partial class MainWindow : Window
         report.AppendLine($"开始时间：{job.StartedAt:yyyy-MM-dd HH:mm:ss}");
         report.AppendLine($"结束时间：{job.FinishedAt:yyyy-MM-dd HH:mm:ss}");
         report.AppendLine($"任务状态：{job.StatusText}");
-        report.AppendLine($"复制算法：{(job.UseFastCopyAlgorithm ? "FastCopy 流水线" : "标准顺序复制")}");
-        report.AppendLine($"已复制：{job.CopiedFiles}/{job.FileCount} 个文件，{FormatBytes(job.CopiedBytes)}");
+        if (job.CopyEnabled)
+        {
+            report.AppendLine($"拷贝算法：{(job.UseFastCopyAlgorithm ? "FastCopy 流水线" : "标准顺序复制")}");
+            report.AppendLine($"已拷贝：{job.CopiedFiles}/{job.FileCount} 个文件，{FormatBytes(job.CopiedBytes)}");
+        }
+        else
+        {
+            report.AppendLine("拷贝：未启用");
+        }
         report.AppendLine(job.VerificationEnabled
             ? $"已校验：{job.VerifiedFiles}/{job.FileCount} 个文件"
             : "文件校验：未启用");
@@ -1296,4 +1556,20 @@ public sealed partial class MainWindow : Window
     }
 
     private void MainWindow_Closed(object sender, WindowEventArgs args) => _cancellation?.Cancel();
+
+    private void OnEnableCopyToggled(object sender, RoutedEventArgs e)
+    {
+        bool enabled = EnableCopyToggle.IsOn;
+        DialogDestinationSubfolderName.IsEnabled = enabled;
+        VerifyFilesToggle.IsEnabled = enabled;
+        if (!enabled)
+        {
+            DialogDestinationSubfolderName.Text = "";
+            VerifyFilesToggle.IsOn = true;
+        }
+        AskExistingRadio.IsEnabled = enabled;
+        OverwriteExistingRadio.IsEnabled = enabled;
+        SkipExistingRadio.IsEnabled = enabled;
+        CreateCopyRadio.IsEnabled = enabled;
+    }
 }

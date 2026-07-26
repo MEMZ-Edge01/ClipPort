@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading.Channels;
@@ -56,6 +56,11 @@ public sealed class FileCopyService
         Func<CancellationToken, Task> waitWhilePaused,
         CancellationToken cancellationToken)
     {
+        if (options.SkipCopy)
+        {
+            options = options with { VerifyFiles = true };
+        }
+
         progress.Report(new CopyProgressInfo(CopyPhase.Scanning, 0, 0, 0, 0, string.Empty, 0, TimeSpan.Zero));
 
         var enumerationOptions = new EnumerationOptions
@@ -78,11 +83,14 @@ public sealed class FileCopyService
 
         List<SourceFile> files = scan.Files;
         long totalBytes = files.Sum(file => file.Length);
-        Directory.CreateDirectory(destinationRoot);
-        EnsureDestinationCapacity(destinationRoot, totalBytes);
-        foreach (string relativeDirectory in scan.Directories)
+        if (!options.SkipCopy)
         {
-            Directory.CreateDirectory(Path.Combine(destinationRoot, relativeDirectory));
+            Directory.CreateDirectory(destinationRoot);
+            EnsureDestinationCapacity(destinationRoot, totalBytes);
+            foreach (string relativeDirectory in scan.Directories)
+            {
+                Directory.CreateDirectory(Path.Combine(destinationRoot, relativeDirectory));
+            }
         }
 
         var immediateFiles = new List<SourceFile>(files.Count);
@@ -90,6 +98,12 @@ public sealed class FileCopyService
         var detectedConflicts = new List<DuplicateFileConflict>();
         foreach (SourceFile file in files)
         {
+            if (options.SkipCopy)
+            {
+                immediateFiles.Add(file);
+                continue;
+            }
+
             string destinationPath = Path.Combine(destinationRoot, file.RelativePath);
             if (File.Exists(destinationPath))
             {
@@ -274,35 +288,46 @@ public sealed class FileCopyService
             verifyWatch.Stop();
         }
 
-        ExistingFilePolicy initialPolicy = options.ExistingFilePolicy == ExistingFilePolicy.Ask
-            ? ExistingFilePolicy.Overwrite
-            : options.ExistingFilePolicy;
-        await CopyGroupAsync(immediateFiles, initialPolicy);
-        await VerifyGroupAsync(immediateFiles);
-
-        if (duplicateFiles.Count > 0)
+        if (options.SkipCopy)
         {
-            progress.Report(new CopyProgressInfo(
-                CopyPhase.WaitingForDuplicateDecision, totalBytes, copiedBytes, files.Count, copiedFiles,
-                string.Empty, 0, copyWatch.Elapsed + verifyWatch.Elapsed));
-            IReadOnlyList<DuplicateFileConflict> conflicts = duplicateFiles
-                .Select(file => new DuplicateFileConflict(
-                    file.RelativePath, file.FullPath,
-                    Path.Combine(destinationRoot, file.RelativePath), file.Length))
-                .ToList();
-            IReadOnlyDictionary<string, ExistingFilePolicy> decisions =
-                await resolveDuplicates(conflicts, cancellationToken);
-            foreach (SourceFile duplicate in duplicateFiles)
+            foreach (SourceFile file in files)
             {
-                ExistingFilePolicy decision = decisions.TryGetValue(duplicate.RelativePath, out ExistingFilePolicy selected)
-                    ? selected
-                    : ExistingFilePolicy.Skip;
-                if (decision == ExistingFilePolicy.Ask)
+                destinationPaths[file.RelativePath] = Path.Combine(destinationRoot, file.RelativePath);
+            }
+            await VerifyGroupAsync(files);
+        }
+        else
+        {
+            ExistingFilePolicy initialPolicy = options.ExistingFilePolicy == ExistingFilePolicy.Ask
+                ? ExistingFilePolicy.Overwrite
+                : options.ExistingFilePolicy;
+            await CopyGroupAsync(immediateFiles, initialPolicy);
+            await VerifyGroupAsync(immediateFiles);
+
+            if (duplicateFiles.Count > 0)
+            {
+                progress.Report(new CopyProgressInfo(
+                    CopyPhase.WaitingForDuplicateDecision, totalBytes, copiedBytes, files.Count, copiedFiles,
+                    string.Empty, 0, copyWatch.Elapsed + verifyWatch.Elapsed));
+                IReadOnlyList<DuplicateFileConflict> conflicts = duplicateFiles
+                    .Select(file => new DuplicateFileConflict(
+                        file.RelativePath, file.FullPath,
+                        Path.Combine(destinationRoot, file.RelativePath), file.Length))
+                    .ToList();
+                IReadOnlyDictionary<string, ExistingFilePolicy> decisions =
+                    await resolveDuplicates(conflicts, cancellationToken);
+                foreach (SourceFile duplicate in duplicateFiles)
                 {
-                    decision = ExistingFilePolicy.Skip;
+                    ExistingFilePolicy decision = decisions.TryGetValue(duplicate.RelativePath, out ExistingFilePolicy selected)
+                        ? selected
+                        : ExistingFilePolicy.Skip;
+                    if (decision == ExistingFilePolicy.Ask)
+                    {
+                        decision = ExistingFilePolicy.Skip;
+                    }
+                    await CopyGroupAsync([duplicate], decision);
+                    await VerifyGroupAsync([duplicate]);
                 }
-                await CopyGroupAsync([duplicate], decision);
-                await VerifyGroupAsync([duplicate]);
             }
         }
 
@@ -327,6 +352,44 @@ public sealed class FileCopyService
         long totalBytes = failures.Sum(item => item.Length);
         long processedBytes = 0;
         int processedFiles = 0;
+
+        if (options.SkipCopy)
+        {
+            var verifyWatch = Stopwatch.StartNew();
+            foreach (FileOperationFailure failure in failures)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await waitWhilePaused(cancellationToken);
+                try
+                {
+                    byte[] sourceHash = await ComputeHashAsync(
+                        failure.SourcePath, waitWhilePaused, cancellationToken);
+                    byte[] destinationHash = await ComputeHashAsync(
+                        failure.DestinationPath, waitWhilePaused, cancellationToken);
+                    if (!CryptographicOperations.FixedTimeEquals(sourceHash, destinationHash))
+                    {
+                        string error = $"\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF1A{failure.RelativePath}";
+                        remaining.Add(failure with { Stage = FileOperationStage.Verifying, Error = error });
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    string error = $"\u65E0\u6CD5\u6821\u9A8C {failure.RelativePath}\uFF1A{ex.Message}";
+                    remaining.Add(failure with { Stage = FileOperationStage.Verifying, Error = error });
+                }
+
+                processedBytes += failure.Length;
+                processedFiles++;
+                progress.Report(new CopyProgressInfo(
+                    CopyPhase.Verifying, totalBytes, processedBytes, failures.Count, processedFiles,
+                    failure.RelativePath,
+                    processedBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001),
+                    verifyWatch.Elapsed));
+            }
+            verifyWatch.Stop();
+            return new FileRetryResult(remaining, TimeSpan.Zero, verifyWatch.Elapsed);
+        }
+
         var copyWatch = Stopwatch.StartNew();
 
         foreach (FileOperationFailure failure in failures)
