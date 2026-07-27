@@ -470,7 +470,7 @@ public sealed partial class MainWindow
         CompletionIcon.Visibility = Visibility.Collapsed;
         PercentText.Visibility = Visibility.Visible;
         StatusText.FontSize = 15;
-        StatusText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 174, 180, 197));
+        StatusText.Foreground = (SolidColorBrush)Application.Current.Resources["MutedTextBrush"];
         StartButton.Visibility = Visibility.Collapsed;
         DeleteJobButton.Visibility = Visibility.Collapsed;
         PauseButton.Visibility = Visibility.Visible;

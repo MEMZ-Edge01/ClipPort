@@ -9,7 +9,7 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
-        RequestedTheme = ApplicationTheme.Dark;
+        RequestedTheme = ApplicationTheme.Light;
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

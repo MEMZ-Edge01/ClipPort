@@ -2,6 +2,7 @@
 bin/
 obj/
 artifacts/
+/build-and-run.cmd
 
 # IDE
 .vs/

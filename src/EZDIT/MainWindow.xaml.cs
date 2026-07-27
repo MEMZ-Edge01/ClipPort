@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -347,7 +347,7 @@ public sealed partial class MainWindow : Window
 
         StartTimeText.Text = _startedAt.Value.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
         StatusText.Text = "正在扫描";
-        StatusText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 174, 180, 197));
+        StatusText.Foreground = (SolidColorBrush)Application.Current.Resources["MutedTextBrush"];
         PhaseText.Text = "正在统计文件…";
         LogText.Text = "正在扫描源目录并计算任务大小。";
         SetRunningUi(true);
@@ -948,10 +948,10 @@ public sealed partial class MainWindow : Window
             : job.Status == JobStatus.VerificationFailed ? "校验失败" : "已完成";
         VerifyCompletedBadge.Background = new SolidColorBrush(
             job.Status == JobStatus.VerificationFailed
-                ? ColorHelper.FromArgb(255, 92, 48, 48)
+                ? ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A) // Error surface
                 : job.VerificationEnabled
-                    ? ColorHelper.FromArgb(255, 41, 74, 66)
-                    : ColorHelper.FromArgb(255, 52, 55, 64));
+                    ? ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77) // Success surface
+                    : ColorHelper.FromArgb(255, 0xE5, 0xE5, 0xE5));
         OverallProgress.Value = taskFinished
             ? 100
             : !job.CopyEnabled
@@ -983,8 +983,8 @@ public sealed partial class MainWindow : Window
 
         bool succeeded = job.Status == JobStatus.Completed;
         SolidColorBrush stateBrush = new(succeeded
-            ? ColorHelper.FromArgb(255, 0, 191, 165)
-            : ColorHelper.FromArgb(255, 255, 112, 88));
+            ? ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77) // Success
+            : ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A)); // Error
         CompletionIcon.Foreground = stateBrush;
         StatusText.Foreground = stateBrush;
 
@@ -1334,7 +1334,7 @@ public sealed partial class MainWindow : Window
         VerifyCompletedBadge.Visibility = Visibility.Collapsed;
         CopyCompletedText.Text = "已完成";
         VerifyCompletedText.Text = "已完成";
-        VerifyCompletedBadge.Background = new SolidColorBrush(ColorHelper.FromArgb(255, 41, 74, 66));
+        VerifyCompletedBadge.Background = new SolidColorBrush(ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77));
         PercentText.Text = "0.00%";
         PercentText.Visibility = Visibility.Visible;
         CompletionIcon.Visibility = Visibility.Collapsed;
@@ -1343,7 +1343,7 @@ public sealed partial class MainWindow : Window
         CancelButton.Visibility = Visibility.Visible;
         StatusText.Text = "等待设置";
         StatusText.FontSize = 15;
-        StatusText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 174, 180, 197));
+        StatusText.Foreground = (SolidColorBrush)Application.Current.Resources["MutedTextBrush"];
         PhaseText.Text = "等待开始";
         TotalSizeText.Text = "--";
         TotalCountText.Text = "--";

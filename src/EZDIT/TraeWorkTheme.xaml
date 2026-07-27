@@ -1,0 +1,291 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:system="using:System">
+
+    <!-- ============================================================
+         TraeWork Design Language resource dictionary
+         Source: TRAE Work Design Library (Light mode)
+         Accent: Windows system accent color
+         ============================================================ -->
+
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <!-- Keep light-mode scrollbars visible without a near-black rail. -->
+            <SolidColorBrush x:Key="ScrollBarThumbFill" Color="#5C737373" />
+            <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#737373" />
+            <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#525252" />
+            <SolidColorBrush x:Key="ScrollBarThumbFillDisabled" Color="#2E737373" />
+            <SolidColorBrush x:Key="ScrollBarThumbBackground" Color="#5C737373" />
+            <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="#5C737373" />
+            <SolidColorBrush x:Key="ScrollBarTrackFill" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackFillPointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackFillDisabled" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackStroke" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackStrokePointerOver" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackStrokeDisabled" Color="Transparent" />
+
+            <!-- ListView multi-select checkboxes follow the Windows accent palette. -->
+            <SolidColorBrush x:Key="ListViewItemCheckBrush" Color="#737373" />
+            <SolidColorBrush x:Key="ListViewItemCheckPressedBrush" Color="#E6FFFFFF" />
+            <SolidColorBrush x:Key="ListViewItemCheckDisabledBrush" Color="#99FFFFFF" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBrush" Color="#F5F5F5" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBrush"
+                             Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.36" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBrush" Color="#F5F5F5" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedBrush"
+                             Color="{ThemeResource SystemAccentColor}" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPointerOverBrush"
+                             Color="{ThemeResource SystemAccentColorLight1}" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPressedBrush"
+                             Color="{ThemeResource SystemAccentColorDark1}" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedDisabledBrush"
+                             Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxBorderBrush" Color="#737373" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBorderBrush"
+                             Color="{ThemeResource SystemAccentColor}" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBorderBrush"
+                             Color="{ThemeResource SystemAccentColorDark1}" />
+            <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBorderBrush" Color="#A1A1A1" />
+            <SolidColorBrush x:Key="ListViewItemCheckHintThemeBrush"
+                             Color="{ThemeResource SystemAccentColor}" />
+            <SolidColorBrush x:Key="ListViewItemCheckSelectingThemeBrush"
+                             Color="{ThemeResource SystemAccentColor}" />
+            <SolidColorBrush x:Key="ListViewItemCheckThemeBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="ListViewItemBackgroundSelected"
+                             Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.36" />
+            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver"
+                             Color="{ThemeResource SystemAccentColorLight2}" Opacity="0.42" />
+            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed"
+                             Color="{ThemeResource SystemAccentColorLight1}" Opacity="0.48" />
+            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedDisabled"
+                             Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
+            <SolidColorBrush x:Key="ListViewItemForegroundSelected"
+                             Color="{ThemeResource SystemAccentColorDark1}" />
+            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver"
+                             Color="{ThemeResource SystemAccentColorDark2}" />
+            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed"
+                             Color="{ThemeResource SystemAccentColorDark2}" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+    <!-- ── Surface Colors ── -->
+    <Color x:Key="TraeWorkBgBaseDefault">#FFFFFF</Color>
+    <Color x:Key="TraeWorkBgBaseSecondary">#F5F5F5</Color>
+    <Color x:Key="TraeWorkBgBaseTertiary">#E5E5E5</Color>
+    <Color x:Key="TraeWorkBgOverlayL1">#13737373</Color>   <!-- #737373 @ 8% -->
+    <Color x:Key="TraeWorkBgOverlayL2">#1F737373</Color>   <!-- #737373 @ 12% -->
+    <Color x:Key="TraeWorkBgOverlayL3">#29737373</Color>   <!-- #737373 @ 16% -->
+    <Color x:Key="TraeWorkBgOverlayL4">#33737373</Color>   <!-- #737373 @ 20% -->
+    <Color x:Key="TraeWorkBgWhite">#FFFFFF</Color>
+    <Color x:Key="TraeWorkBgMenu">#FFFFFF</Color>
+    <Color x:Key="TraeWorkBgTooltip">#FFFFFF</Color>
+
+    <!-- ── Text Colors ── -->
+    <Color x:Key="TraeWorkTextDefault">#171717</Color>
+    <Color x:Key="TraeWorkTextSecondary">#404040</Color>
+    <Color x:Key="TraeWorkTextTertiary">#737373</Color>
+    <Color x:Key="TraeWorkTextDisabled">#A1A1A1</Color>
+    <Color x:Key="TraeWorkTextOnBrand">#FFFFFF</Color>
+
+    <!-- ── Icon Colors ── -->
+    <Color x:Key="TraeWorkIconDefault">#262626</Color>
+    <Color x:Key="TraeWorkIconSecondary">#404040</Color>
+    <Color x:Key="TraeWorkIconTertiary">#737373</Color>
+    <Color x:Key="TraeWorkIconDisabled">#A1A1A1</Color>
+    <Color x:Key="TraeWorkIconOnBrand">#FFFFFF</Color>
+
+    <!-- ── Border Colors ── -->
+    <Color x:Key="TraeWorkBorderL1">#1F737373</Color>      <!-- #737373 @ 12% -->
+    <Color x:Key="TraeWorkBorderL2">#2E737373</Color>      <!-- #737373 @ 18% -->
+    <Color x:Key="TraeWorkBorderL3">#5C737373</Color>      <!-- #737373 @ 36% -->
+    <Color x:Key="TraeWorkBorderContrast">#000000</Color>
+
+    <!-- ── Status Colors ── -->
+    <!-- Success -->
+    <Color x:Key="TraeWorkSuccessDefault">#15A877</Color>
+    <Color x:Key="TraeWorkSuccessHover">#2FB287</Color>
+    <Color x:Key="TraeWorkSuccessSurfaceL1">#1F40B08B</Color>  <!-- #40B08B @ 12% -->
+    <Color x:Key="TraeWorkSuccessSurfaceL2">#2E40B08B</Color>  <!-- #40B08B @ 18% -->
+    <!-- Error -->
+    <Color x:Key="TraeWorkErrorDefault">#E8463A</Color>
+    <Color x:Key="TraeWorkErrorHover">#EA574C</Color>
+    <Color x:Key="TraeWorkErrorSurfaceL1">#1FE8463A</Color>    <!-- #E8463A @ 12% -->
+    <Color x:Key="TraeWorkErrorSurfaceL2">#29E8463A</Color>    <!-- #E8463A @ 16% -->
+    <!-- Alert / Warning -->
+    <Color x:Key="TraeWorkAlertDefault">#FEA900</Color>
+    <Color x:Key="TraeWorkAlertSurfaceL1">#24FEA900</Color>    <!-- #FEA900 @ 14% -->
+    <Color x:Key="TraeWorkWarningDefault">#E27900</Color>
+
+    <!-- ── Radius Tokens (px values as double for CornerRadius) ── -->
+    <system:Double x:Key="TraeWorkRadius0">0</system:Double>
+    <system:Double x:Key="TraeWorkRadius2">2</system:Double>
+    <system:Double x:Key="TraeWorkRadius4">4</system:Double>
+    <system:Double x:Key="TraeWorkRadius6">6</system:Double>
+    <system:Double x:Key="TraeWorkRadius8">8</system:Double>
+    <system:Double x:Key="TraeWorkRadius10">10</system:Double>
+    <system:Double x:Key="TraeWorkRadius12">12</system:Double>
+    <system:Double x:Key="TraeWorkRadius16">16</system:Double>
+    <system:Double x:Key="TraeWorkRadius20">20</system:Double>
+    <system:Double x:Key="TraeWorkRadius24">24</system:Double>
+    <system:Double x:Key="TraeWorkRadius32">32</system:Double>
+    <system:Double x:Key="TraeWorkRadiusFull">999</system:Double>
+
+    <!-- ── Spacing Tokens ── -->
+    <system:Double x:Key="TraeWorkSpacer4">4</system:Double>
+    <system:Double x:Key="TraeWorkSpacer6">6</system:Double>
+    <system:Double x:Key="TraeWorkSpacer8">8</system:Double>
+    <system:Double x:Key="TraeWorkSpacer10">10</system:Double>
+    <system:Double x:Key="TraeWorkSpacer12">12</system:Double>
+    <system:Double x:Key="TraeWorkSpacer16">16</system:Double>
+    <system:Double x:Key="TraeWorkSpacer20">20</system:Double>
+    <system:Double x:Key="TraeWorkSpacer24">24</system:Double>
+    <system:Double x:Key="TraeWorkSpacer32">32</system:Double>
+    <system:Double x:Key="TraeWorkSpacer40">40</system:Double>
+    <system:Double x:Key="TraeWorkSpacer48">48</system:Double>
+
+    <!-- ── Icon Size Tokens ── -->
+    <system:Double x:Key="TraeWorkIconSize12">12</system:Double>
+    <system:Double x:Key="TraeWorkIconSize14">14</system:Double>
+    <system:Double x:Key="TraeWorkIconSize16">16</system:Double>
+    <system:Double x:Key="TraeWorkIconSize20">20</system:Double>
+    <system:Double x:Key="TraeWorkIconSize24">24</system:Double>
+
+    <!-- ============================================================
+         Semantic Brushes — mapped to TraeWork tokens
+         ============================================================ -->
+
+    <!-- ── App-Level Surface Brushes ── -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource TraeWorkBgBaseDefault}" />
+    <SolidColorBrush x:Key="SidebarBrush" Color="{StaticResource TraeWorkBgBaseSecondary}" />
+    <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource TraeWorkBgBaseSecondary}" />
+    <SolidColorBrush x:Key="PanelRaisedBrush" Color="{StaticResource TraeWorkBgOverlayL1}" />
+    <SolidColorBrush x:Key="CardBrush" Color="{StaticResource TraeWorkBgBaseDefault}" />
+    <SolidColorBrush x:Key="CardOverlayBrush" Color="{StaticResource TraeWorkBgOverlayL1}" />
+
+    <!-- ── Windows Accent Brushes ── -->
+    <SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemAccentColor}" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{ThemeResource SystemAccentColorLight1}" />
+    <SolidColorBrush x:Key="AccentActiveBrush" Color="{ThemeResource SystemAccentColorDark1}" />
+    <SolidColorBrush x:Key="AccentDisabledBrush"
+                     Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
+    <SolidColorBrush x:Key="AccentSoftBrush"
+                     Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.36" />
+    <SolidColorBrush x:Key="AccentSelectionPaleBrush"
+                     Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.18" />
+    <SolidColorBrush x:Key="AccentSelectionPalePointerOverBrush"
+                     Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.25" />
+    <SolidColorBrush x:Key="AccentSelectionPalePressedBrush"
+                     Color="{ThemeResource SystemAccentColorLight2}" Opacity="0.30" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="{ThemeResource SystemAccentColorDark1}" />
+    <SolidColorBrush x:Key="Brand300Brush"
+                     Color="{ThemeResource SystemAccentColorLight1}" Opacity="0.48" />
+    <SolidColorBrush x:Key="Brand200Brush"
+                     Color="{ThemeResource SystemAccentColorLight2}" Opacity="0.42" />
+
+    <!-- ── Text Brushes ── -->
+    <SolidColorBrush x:Key="DefaultTextBrush" Color="{StaticResource TraeWorkTextDefault}" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource TraeWorkTextSecondary}" />
+    <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource TraeWorkTextTertiary}" />
+    <SolidColorBrush x:Key="DisabledTextBrush" Color="{StaticResource TraeWorkTextDisabled}" />
+    <SolidColorBrush x:Key="OnBrandTextBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
+    <SolidColorBrush x:Key="WhiteTextBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
+
+    <!-- ── Icon Brushes ── -->
+    <SolidColorBrush x:Key="IconDefaultBrush" Color="{StaticResource TraeWorkIconDefault}" />
+    <SolidColorBrush x:Key="IconSecondaryBrush" Color="{StaticResource TraeWorkIconSecondary}" />
+    <SolidColorBrush x:Key="IconTertiaryBrush" Color="{StaticResource TraeWorkIconTertiary}" />
+    <SolidColorBrush x:Key="IconDisabledBrush" Color="{StaticResource TraeWorkIconDisabled}" />
+    <SolidColorBrush x:Key="IconOnBrandBrush" Color="{StaticResource TraeWorkIconOnBrand}" />
+
+    <!-- ── Border Brushes ── -->
+    <SolidColorBrush x:Key="BorderNeutralL1Brush" Color="{StaticResource TraeWorkBorderL1}" />
+    <SolidColorBrush x:Key="BorderNeutralL2Brush" Color="{StaticResource TraeWorkBorderL2}" />
+    <SolidColorBrush x:Key="BorderBrandBrush" Color="{ThemeResource SystemAccentColor}" />
+
+    <!-- ── Status Brushes ── -->
+    <!-- Success -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource TraeWorkSuccessDefault}" />
+    <SolidColorBrush x:Key="SuccessHoverBrush" Color="{StaticResource TraeWorkSuccessHover}" />
+    <SolidColorBrush x:Key="SuccessSurfaceL1Brush" Color="{StaticResource TraeWorkSuccessSurfaceL1}" />
+    <SolidColorBrush x:Key="SuccessSurfaceL2Brush" Color="{StaticResource TraeWorkSuccessSurfaceL2}" />
+    <!-- Error -->
+    <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource TraeWorkErrorDefault}" />
+    <SolidColorBrush x:Key="ErrorHoverBrush" Color="{StaticResource TraeWorkErrorHover}" />
+    <SolidColorBrush x:Key="ErrorSurfaceL1Brush" Color="{StaticResource TraeWorkErrorSurfaceL1}" />
+    <SolidColorBrush x:Key="ErrorSurfaceL2Brush" Color="{StaticResource TraeWorkErrorSurfaceL2}" />
+    <!-- Alert -->
+    <SolidColorBrush x:Key="AlertBrush" Color="{StaticResource TraeWorkAlertDefault}" />
+    <SolidColorBrush x:Key="AlertSurfaceL1Brush" Color="{StaticResource TraeWorkAlertSurfaceL1}" />
+    <!-- Warning -->
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource TraeWorkWarningDefault}" />
+
+    <!-- ── Overlay Brushes (for buttons, hover states) ── -->
+    <SolidColorBrush x:Key="OverlayL1Brush" Color="{StaticResource TraeWorkBgOverlayL1}" />
+    <SolidColorBrush x:Key="OverlayL2Brush" Color="{StaticResource TraeWorkBgOverlayL2}" />
+    <SolidColorBrush x:Key="OverlayL3Brush" Color="{StaticResource TraeWorkBgOverlayL3}" />
+    <SolidColorBrush x:Key="OverlayL4Brush" Color="{StaticResource TraeWorkBgOverlayL4}" />
+
+    <!-- ── Title Bar Brush ── -->
+    <SolidColorBrush x:Key="TitleBarBrush" Color="{StaticResource TraeWorkBgBaseDefault}" />
+
+    <!-- ── Log Bar Brush ── -->
+    <SolidColorBrush x:Key="LogBarBrush" Color="{StaticResource TraeWorkBgBaseSecondary}" />
+
+    <!-- ── Progress Track (inactive) Brush ── -->
+    <SolidColorBrush x:Key="ProgressTrackBrush" Color="{StaticResource TraeWorkBgOverlayL2}" />
+
+    <!-- ── Dialog / ContentDialog Background ── -->
+    <SolidColorBrush x:Key="DialogBackgroundBrush" Color="{StaticResource TraeWorkBgBaseDefault}" />
+
+    <!-- ── Button / Control Secondary Background ── -->
+    <SolidColorBrush x:Key="ControlSecondaryBrush" Color="{StaticResource TraeWorkBgOverlayL1}" />
+    <SolidColorBrush x:Key="ControlSecondaryHoverBrush" Color="{StaticResource TraeWorkBgOverlayL2}" />
+
+    <!-- ============================================================
+         Typography Tokens (TraeWork body-base: 14px/20px, weight 400)
+         ============================================================ -->
+    <FontFamily x:Key="TraeWorkFontFamily">Segoe UI, system-ui, sans-serif</FontFamily>
+    <system:Double x:Key="TraeWorkFontSizeBodyBase">14</system:Double>
+    <system:Double x:Key="TraeWorkFontSizeBodySm">11</system:Double>
+    <system:Double x:Key="TraeWorkFontSizeBodyMd">12</system:Double>
+    <system:Double x:Key="TraeWorkFontSizeHeadingXs">13</system:Double>
+    <system:Double x:Key="TraeWorkFontSizeHeadingSm">16</system:Double>
+    <system:Double x:Key="TraeWorkFontSizeHeadingMd">20</system:Double>
+    <system:Double x:Key="TraeWorkFontSizeHeadingXl">24</system:Double>
+
+    <!-- ============================================================
+         WinUI CheckBox style overrides using the Windows accent color
+         ============================================================ -->
+    <SolidColorBrush x:Key="ListViewItemCheckBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
+    <SolidColorBrush x:Key="ListViewItemCheckPressedBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
+    <SolidColorBrush x:Key="ListViewItemCheckDisabledBrush" Color="{StaticResource TraeWorkTextDisabled}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxBrush" Color="{StaticResource TraeWorkBgBaseDefault}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBrush" Color="{StaticResource TraeWorkBgBaseSecondary}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBrush"
+                     Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.36" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBrush" Color="{StaticResource TraeWorkBgBaseSecondary}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedBrush"
+                     Color="{ThemeResource SystemAccentColor}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPointerOverBrush"
+                     Color="{ThemeResource SystemAccentColorLight1}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPressedBrush"
+                     Color="{ThemeResource SystemAccentColorDark1}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedDisabledBrush"
+                     Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxBorderBrush" Color="{StaticResource TraeWorkTextTertiary}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBorderBrush"
+                     Color="{ThemeResource SystemAccentColor}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBorderBrush"
+                     Color="{ThemeResource SystemAccentColorDark1}" />
+    <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBorderBrush" Color="{StaticResource TraeWorkTextDisabled}" />
+
+    <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+
+    <!-- Match every Button to the rounded rectangle used by StartButton. -->
+    <Style TargetType="Button">
+        <Setter Property="CornerRadius" Value="7" />
+    </Style>
+
+</ResourceDictionary>
