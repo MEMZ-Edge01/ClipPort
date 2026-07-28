@@ -6,6 +6,8 @@ artifacts/
 
 # IDE
 .vs/
+.codex/
+.reasonix/
 *.suo
 *.user
 *.userosscache
