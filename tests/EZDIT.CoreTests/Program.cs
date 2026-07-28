@@ -10,6 +10,7 @@ internal static class Program
         {
             ("copy and SHA-256 verification", TestCopyAndVerifyAsync),
             ("verification-only mode never copies", TestVerificationOnlyAsync),
+            ("verification mismatch can be overwritten", TestOverwriteVerificationMismatchAsync),
             ("FastCopy pipeline copy and verification", TestFastCopyAlgorithmAsync),
             ("pause and resume", TestPauseAndResumeAsync),
             ("cancellation preserves existing destination", TestCancellationSafetyAsync),
@@ -150,6 +151,49 @@ internal static class Program
                 "Verification-only mode must not create destination directories.");
             Assert(result.FailedFiles.All(item => item.Stage == FileOperationStage.Verifying),
                 "Verification-only failures must be reported as verification failures.");
+        });
+    }
+
+    private static async Task TestOverwriteVerificationMismatchAsync()
+    {
+        await WithTempFoldersAsync(async (source, destination) =>
+        {
+            string sourceFile = Path.Combine(source, "mismatch.txt");
+            string destinationFile = Path.Combine(destination, "mismatch.txt");
+            await File.WriteAllTextAsync(sourceFile, "authoritative source");
+            await File.WriteAllTextAsync(destinationFile, "stale destination");
+
+            var service = new FileCopyService();
+            CopyOptions options = new(
+                ExistingFilePolicy.Overwrite,
+                VerifyFiles: true,
+                SkipCopy: true);
+            CopyResult result = await service.CopyAndVerifyAsync(
+                source,
+                destination,
+                options,
+                new InlineProgress<CopyProgressInfo>(_ => { }),
+                _ => Task.CompletedTask,
+                CancellationToken.None);
+
+            Assert(result.FailedFiles.Count == 1 &&
+                   result.FailedFiles[0].IsVerificationMismatch,
+                "A hash mismatch should be eligible for overwrite.");
+
+            var overwriteEvents = new List<CopyProgressInfo>();
+            FileRetryResult overwrite = await service.OverwriteVerificationMismatchesAsync(
+                result.FailedFiles,
+                options,
+                new InlineProgress<CopyProgressInfo>(overwriteEvents.Add),
+                _ => Task.CompletedTask,
+                CancellationToken.None);
+
+            Assert(overwrite.FailedFiles.Count == 0,
+                "Overwrite should clear a verification mismatch after copying the source file.");
+            Assert(await File.ReadAllTextAsync(destinationFile) == "authoritative source",
+                "Overwrite should replace the destination with the source file.");
+            Assert(overwriteEvents.Any(item => item.Phase == CopyPhase.Copying),
+                "Overwrite should report copy progress even for a verification-only task.");
         });
     }
 
@@ -473,15 +517,20 @@ internal static class Program
                 "The verification setting should round-trip.");
             Assert(!loaded[0].CopyEnabled,
                 "The copy setting should round-trip.");
-            Assert(loaded[0].StatusText == "校验完成",
-                "A verification-only job should be labeled as verification completed.");
-            Assert(new JobHistoryItem
+            Assert(loaded[0].StatusText == "校验完成" &&
+                   !loaded[0].CanStartVerification &&
+                   loaded[0].CanExportReport,
+                "A verification-only job should not offer starting verification again.");
+            var copyOnly = new JobHistoryItem
                 {
                     Status = JobStatus.Completed,
                     CopyEnabled = true,
                     VerificationEnabled = false
-                }.StatusText == "拷贝完成",
-                "A copy-only job should be labeled as copy completed.");
+                };
+            Assert(copyOnly.StatusText == "拷贝完成" &&
+                   copyOnly.CanStartVerification &&
+                   copyOnly.CanExportReport,
+                "A copy-only job should offer starting verification.");
             Assert(new JobHistoryItem
                 {
                     Status = JobStatus.Completed,
@@ -489,6 +538,26 @@ internal static class Program
                     VerificationEnabled = true
                 }.StatusText == "任务完成",
                 "A copy-and-verification job should be labeled as task completed.");
+            Assert(!new JobHistoryItem
+                {
+                    Status = JobStatus.Running,
+                    CopyEnabled = true,
+                    VerificationEnabled = false
+                }.CanExportReport,
+                "A running job should not offer report export.");
+            JobStatus[] restartableStatuses =
+            [
+                JobStatus.CompletedWithErrors,
+                JobStatus.VerificationFailed,
+                JobStatus.Failed,
+                JobStatus.Cancelled,
+                JobStatus.Interrupted
+            ];
+            Assert(restartableStatuses.All(status => new JobHistoryItem { Status = status }.CanRestart),
+                "Every unsuccessful terminal state should offer restarting.");
+            Assert(!new JobHistoryItem { Status = JobStatus.Completed }.CanRestart &&
+                   !new JobHistoryItem { Status = JobStatus.Running }.CanRestart,
+                "Completed and running jobs should not offer restarting.");
             Assert(loaded[0].UseFastCopyAlgorithm,
                 "The FastCopy algorithm setting should round-trip.");
             Assert(loaded[0].IsPriority,

@@ -2,6 +2,8 @@
     x:Class="EZDIT.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:EZDIT.Converters"
+    xmlns:views="using:EZDIT.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -20,13 +22,13 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0" Spacing="10">
                 <Border Width="24" Height="24" CornerRadius="6" Background="{StaticResource AccentBrush}">
                     <TextBlock Text="D" HorizontalAlignment="Center" VerticalAlignment="Center"
-                               FontWeight="Bold" Foreground="{StaticResource WhiteTextBrush}" />
+                               FontWeight="Bold" Foreground="{StaticResource AccentButtonTextBrush}" />
                 </Border>
                 <TextBlock x:Name="AppTitleText" Text="EZ DIT-beta" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="1">
+        <Grid x:Name="TaskWorkspace" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="292" />
                 <ColumnDefinition Width="*" />
@@ -88,7 +90,8 @@
                                            FontSize="12" TextTrimming="CharacterEllipsis" />
                                 <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,10,0,0">
                                     <FontIcon Glyph="{Binding StatusGlyph}" Foreground="{StaticResource AccentBrush}" FontSize="14" />
-                                    <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding StatusText, Converter={StaticResource LocalizedTextConverter}}"
+                                               FontSize="12" FontWeight="SemiBold" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -102,23 +105,31 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Margin="20,30,16,20" Spacing="10">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
+                    <StackPanel x:Name="TopButtonRow" Orientation="Horizontal" Spacing="8">
                         <Button x:Name="NewJobButton" Click="ConcurrentNewJobButton_Click"
-                                Style="{StaticResource AccentButtonStyle}" Height="46" Padding="16,0"
+                                Style="{StaticResource AccentButtonStyle}" Height="36" Padding="10,0"
                                 Background="{StaticResource AccentBrush}"
-                                Foreground="{StaticResource OnBrandTextBrush}"
+                                Foreground="{StaticResource AccentButtonTextBrush}"
                                 CornerRadius="7">
-                            <StackPanel Orientation="Horizontal" Spacing="9">
-                                <FontIcon Glyph="&#xE710;" FontSize="15" />
-                                <TextBlock Text="创建任务" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE710;" FontSize="13" />
+                                <TextBlock x:Name="NewJobButtonText" Text="创建任务" VerticalAlignment="Center"
+                                           FontSize="12" FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
-                        <Button x:Name="MultiSelectButton" Click="MultiSelectButton_Click" Height="46" Padding="14,0"
+                        <Button x:Name="MultiSelectButton" Click="MultiSelectButton_Click" Height="36" Padding="10,0"
                                 Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE762;" FontSize="15" />
-                                <TextBlock x:Name="MultiSelectButtonText" Text="多选" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE762;" FontSize="13" />
+                                <TextBlock x:Name="MultiSelectButtonText" Text="多选" VerticalAlignment="Center"
+                                           FontSize="12" />
                             </StackPanel>
+                        </Button>
+                        <Button x:Name="SettingsButton" Click="SettingsButton_Click"
+                                Height="36" Padding="10,0"
+                                Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7"
+                                ToolTipService.ToolTip="设置">
+                            <FontIcon Glyph="&#xE713;" FontSize="13" />
                         </Button>
                     </StackPanel>
                     <StackPanel x:Name="BatchActionPanel" Visibility="Collapsed" Spacing="8">
@@ -132,7 +143,7 @@
                                     CornerRadius="7">
                                 <StackPanel Orientation="Horizontal" Spacing="7">
                                     <FontIcon Glyph="&#xE74D;" FontSize="13" />
-                                    <TextBlock Text="批量删除" />
+                                    <TextBlock x:Name="BatchDeleteButtonText" Text="批量删除" />
                                 </StackPanel>
                             </Button>
                             <Button x:Name="BatchReportButton" Click="BatchReportButton_Click"
@@ -140,7 +151,7 @@
                                     Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
                                 <StackPanel Orientation="Horizontal" Spacing="7">
                                     <FontIcon Glyph="&#xE8A5;" FontSize="13" />
-                                    <TextBlock Text="批量创建报告" />
+                                    <TextBlock x:Name="BatchReportButtonText" Text="批量创建报告" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -186,7 +197,8 @@
                                                    FontSize="12" TextTrimming="CharacterEllipsis" />
                                         <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,10,0,0">
                                             <FontIcon Glyph="{Binding StatusGlyph}" Foreground="{StaticResource AccentBrush}" FontSize="14" />
-                                            <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding StatusText, Converter={StaticResource LocalizedTextConverter}}"
+                                                       FontSize="12" FontWeight="SemiBold" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
@@ -231,6 +243,35 @@
                                 <TextBlock x:Name="PercentText" Text="0.00%" FontSize="32" FontWeight="Bold" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0" Spacing="10">
+                                <Button x:Name="StartVerificationButton" Click="ConcurrentStartVerificationButton_Click" Visibility="Collapsed" Height="40"
+                                        Padding="16,0" Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE73E;" FontSize="13" />
+                                        <TextBlock Text="开始校验" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="ExportReportButton" Click="ConcurrentExportReportButton_Click" Visibility="Collapsed" Height="40"
+                                        Padding="16,0" Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE74E;" FontSize="13" />
+                                        <TextBlock Text="导出报告" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="DeleteJobButton" Click="ConcurrentDeleteJobButton_Click" Visibility="Collapsed" Height="40"
+                                        Padding="16,0" Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE74D;" FontSize="13" />
+                                        <TextBlock Text="删除记录" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="RestartJobButton" Click="ConcurrentRestartJobButton_Click" Visibility="Collapsed" Height="40"
+                                        Padding="16,0" Background="{StaticResource AccentBrush}"
+                                        Foreground="{StaticResource AccentButtonTextBrush}" CornerRadius="7">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE72C;" FontSize="13" />
+                                        <TextBlock x:Name="RestartJobButtonText" Text="重新开始" />
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="PauseButton" Click="ConcurrentPauseButton_Click" IsEnabled="False" Height="40"
                                         Padding="16,0" Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -243,13 +284,6 @@
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <FontIcon Glyph="&#xE711;" FontSize="13" />
                                         <TextBlock Text="取消" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="DeleteJobButton" Click="ConcurrentDeleteJobButton_Click" Visibility="Collapsed" Height="40"
-                                        Padding="16,0" Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon Glyph="&#xE74D;" FontSize="13" />
-                                        <TextBlock Text="删除记录" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -342,7 +376,7 @@
                             <Button x:Name="StartButton" Click="ConcurrentStartButton_Click"
                                     Style="{StaticResource AccentButtonStyle}" Padding="22,10"
                                     Background="{StaticResource AccentBrush}"
-                                    Foreground="{StaticResource OnBrandTextBrush}"
+                                    Foreground="{StaticResource AccentButtonTextBrush}"
                                     CornerRadius="7" IsEnabled="False">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE768;" FontSize="13" />
@@ -370,50 +404,50 @@
                             <ProgressBar x:Name="OverallProgress" Height="4" Minimum="0" Maximum="100"
                                          Foreground="{StaticResource AccentBrush}" Background="{StaticResource ProgressTrackBrush}" />
 
-                            <Grid Padding="20,17" Background="{StaticResource CardOverlayBrush}">
+                            <Grid x:Name="CopyProgressRow" Padding="20,17" Background="{StaticResource CardOverlayBrush}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="105" />
+                                    <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="130" />
                                     <ColumnDefinition Width="130" />
                                     <ColumnDefinition Width="150" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="拷贝" Foreground="{StaticResource AccentTextBrush}" FontWeight="SemiBold" />
+                                <TextBlock Text="拷贝" Foreground="{StaticResource AccentTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <Grid Grid.Column="1" Margin="0,0,28,0">
                                     <ProgressBar x:Name="CopyProgress" Height="5" Minimum="0" Maximum="100" Foreground="{StaticResource AccentBrush}" />
                                     <Border x:Name="CopyCompletedBadge" Visibility="Collapsed" Background="{StaticResource AccentSoftBrush}" CornerRadius="5" Padding="12,5">
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="7">
                                             <FontIcon Glyph="&#xE73E;" FontSize="13" Foreground="{StaticResource AccentTextBrush}" />
-                                            <TextBlock x:Name="CopyCompletedText" Text="已完成" FontWeight="SemiBold" Foreground="{StaticResource AccentTextBrush}" />
+                                            <TextBlock x:Name="CopyCompletedText" Text="已完成" FontWeight="SemiBold" Foreground="{StaticResource AccentTextBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Border>
                                 </Grid>
-                                <TextBlock Grid.Column="2" x:Name="CopySpeedText" Text="0 B/s" HorizontalAlignment="Center" />
-                                <TextBlock Grid.Column="3" x:Name="CopyTimeText" Text="00:00:00" HorizontalAlignment="Center" />
-                                <TextBlock Grid.Column="4" x:Name="CopyCountText" Text="0/0" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Column="2" x:Name="CopySpeedText" Text="0 B/s" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" x:Name="CopyTimeText" Text="00:00:00" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" x:Name="CopyCountText" Text="0/0" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </Grid>
 
-                            <Grid Padding="20,17" Background="{StaticResource SuccessSurfaceL1Brush}">
+                            <Grid x:Name="VerifyProgressRow" Padding="20,17" Background="{StaticResource SuccessSurfaceL1Brush}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="105" />
+                                    <ColumnDefinition Width="160" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="130" />
                                     <ColumnDefinition Width="130" />
                                     <ColumnDefinition Width="150" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="SHA-256 校验" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" />
+                                <TextBlock Text="SHA-256 校验" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <Grid Grid.Column="1" Margin="0,0,28,0">
                                     <ProgressBar x:Name="VerifyProgress" Height="5" Minimum="0" Maximum="100" Foreground="{StaticResource SuccessBrush}" />
                                     <Border x:Name="VerifyCompletedBadge" Visibility="Collapsed" Background="{StaticResource SuccessBrush}" CornerRadius="5" Padding="12,5">
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="7">
                                             <FontIcon Glyph="&#xE73E;" FontSize="13" Foreground="{StaticResource OnBrandTextBrush}" />
-                                            <TextBlock x:Name="VerifyCompletedText" Text="已完成" FontWeight="SemiBold" Foreground="{StaticResource OnBrandTextBrush}" />
+                                            <TextBlock x:Name="VerifyCompletedText" Text="已完成" FontWeight="SemiBold" Foreground="{StaticResource OnBrandTextBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Border>
                                 </Grid>
-                                <TextBlock Grid.Column="2" x:Name="VerifySpeedText" Text="0 B/s" HorizontalAlignment="Center" />
-                                <TextBlock Grid.Column="3" x:Name="VerifyTimeText" Text="00:00:00" HorizontalAlignment="Center" />
-                                <TextBlock Grid.Column="4" x:Name="VerifyCountText" Text="0/0" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Column="2" x:Name="VerifySpeedText" Text="0 B/s" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" x:Name="VerifyTimeText" Text="00:00:00" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" x:Name="VerifyCountText" Text="0/0" HorizontalAlignment="Right" VerticalAlignment="Center" />
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -486,7 +520,7 @@
                                                         <TextBlock Text="{Binding SizeText}" FontSize="11"
                                                                    Foreground="{StaticResource MutedTextBrush}" />
                                                     </StackPanel>
-                                                    <TextBlock Grid.Column="2" Text="{Binding DecisionText}"
+                                                    <TextBlock Grid.Column="2" Text="{Binding DecisionText, Converter={StaticResource LocalizedTextConverter}}"
                                                                VerticalAlignment="Center" Foreground="{StaticResource AlertBrush}"
                                                                HorizontalAlignment="Center" />
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
@@ -530,7 +564,7 @@
                                 <Button x:Name="ApplyDuplicateChoicesButton" Content="应用选择并继续"
                                         Click="ApplyDuplicateChoicesButton_Click" IsEnabled="False"
                                         HorizontalAlignment="Right" Background="{StaticResource AccentBrush}"
-                                        Foreground="{StaticResource OnBrandTextBrush}" Padding="18,9" />
+                                        Foreground="{StaticResource AccentButtonTextBrush}" Padding="18,9" />
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -549,18 +583,22 @@
                                                Text="&#x5931;&#x8D25;&#x6587;&#x4EF6;" FontWeight="SemiBold" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="OverwriteFailedFilesButton"
+                                            Content="&#x8986;&#x76D6;&#x6240;&#x9009;"
+                                            Click="ConcurrentOverwriteFailedFiles_Click"
+                                            Visibility="Collapsed" Padding="14,7" />
                                     <Button x:Name="RetryFailedFilesButton"
                                             Content="&#x91CD;&#x8BD5;&#x6240;&#x9009;"
                                             Click="ConcurrentRetryFailedFiles_Click"
                                             Background="{StaticResource AccentBrush}"
-                                            Foreground="{StaticResource OnBrandTextBrush}" Padding="14,7" />
+                                            Foreground="{StaticResource AccentButtonTextBrush}" Padding="14,7" />
                                     <Button x:Name="SkipFailedFilesButton"
                                             Content="&#x8DF3;&#x8FC7;&#x6240;&#x9009;"
                                             Click="ConcurrentSkipFailedFiles_Click" Padding="14,7" />
                                 </StackPanel>
                             </Grid>
 
-                            <TextBlock Text="&#x52FE;&#x9009;&#x6587;&#x4EF6;&#x540E;&#x9009;&#x62E9;&#x91CD;&#x8BD5;&#x6216;&#x8DF3;&#x8FC7;&#xFF1B;&#x672A;&#x5904;&#x7406;&#x9879;&#x4F1A;&#x7EE7;&#x7EED;&#x4FDD;&#x7559;&#x3002;"
+                            <TextBlock Text="&#x52FE;&#x9009;&#x6587;&#x4EF6;&#x540E;&#x9009;&#x62E9;&#x8986;&#x76D6;&#x3001;&#x91CD;&#x8BD5;&#x6216;&#x8DF3;&#x8FC7;&#xFF1B;&#x8986;&#x76D6;&#x4EC5;&#x9002;&#x7528;&#x4E8E;&#x6821;&#x9A8C;&#x4E0D;&#x4E00;&#x81F4;&#x6587;&#x4EF6;&#x3002;"
                                        Margin="20,0,20,12" FontSize="11"
                                        Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" />
 
@@ -592,7 +630,8 @@
                                                                TextWrapping="Wrap" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2" HorizontalAlignment="Right">
-                                                    <TextBlock Text="{Binding StageText}" Foreground="{StaticResource ErrorHoverBrush}" />
+                                                    <TextBlock Text="{Binding StageText, Converter={StaticResource LocalizedTextConverter}}"
+                                                               Foreground="{StaticResource ErrorHoverBrush}" />
                                                     <TextBlock Text="{Binding SizeText}" FontSize="11"
                                                                Foreground="{StaticResource MutedTextBrush}" />
                                                 </StackPanel>
@@ -618,6 +657,7 @@
                 </Grid>
             </ScrollViewer>
         </Grid>
+        <views:SettingsView x:Name="SettingsPage" Grid.Row="1" Visibility="Collapsed" />
         <ContentDialog x:Name="NewTaskDialog" Grid.RowSpan="2" Title="新建拷卡任务"
                        PrimaryButtonText="开始任务" CloseButtonText="取消" DefaultButton="Primary">
             <ScrollViewer Width="500" MaxHeight="590" VerticalScrollBarVisibility="Auto">
@@ -625,7 +665,7 @@
                     <StackPanel Spacing="10">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <FontIcon Glyph="&#xE8B7;" FontSize="19" />
-                            <TextBlock Text="数据源" FontSize="20" FontWeight="SemiBold" />
+                            <TextBlock x:Name="DialogSourceLabel" Text="数据源" FontSize="20" FontWeight="SemiBold" />
                         </StackPanel>
                         <Button x:Name="DialogSourceButton" Click="DialogSourceButton_Click" Height="76"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
@@ -642,9 +682,9 @@
                     <StackPanel Spacing="10">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <FontIcon Glyph="&#xE8A5;" FontSize="19" />
-                            <TextBlock Text="拷贝" FontSize="20" FontWeight="SemiBold" />
+                            <TextBlock x:Name="DialogCopyLabel" Text="拷贝" FontSize="20" FontWeight="SemiBold" />
                         </StackPanel>
-                        <TextBlock Text="拷贝目的地" FontWeight="SemiBold" />
+                        <TextBlock x:Name="DialogCopyDestLabel" Text="拷贝目的地" FontWeight="SemiBold" />
                         <Button x:Name="DialogDestinationButton" Click="DialogDestinationButton_Click" Height="76"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                 Background="{StaticResource CardOverlayBrush}" CornerRadius="7" Padding="18,0">
@@ -658,16 +698,17 @@
                        </Button>
                     </StackPanel>
                     <StackPanel Spacing="9">
-                        <ToggleSwitch x:Name="EnableCopyToggle" Header="拷贝文件" IsOn="True" HorizontalAlignment="Stretch" />
+                        <ToggleSwitch x:Name="EnableCopyToggle" Header="拷贝文件" IsOn="True"
+                                      OnContent="开启" OffContent="关闭" HorizontalAlignment="Stretch" />
                         <StackPanel Spacing="6">
-                            <TextBlock Text="拷贝目的地文件夹名" Foreground="{StaticResource DefaultTextBrush}" />
+                            <TextBlock x:Name="DestinationSubfolderNameLabel" Text="拷贝目的地文件夹名" Foreground="{StaticResource DefaultTextBrush}" />
                             <TextBox x:Name="DialogDestinationSubfolderName"
                                      PlaceholderText=""
                                      HorizontalAlignment="Stretch" />
-                            <TextBlock Text="留空即不创建子文件夹" FontSize="11"
+                            <TextBlock x:Name="DestinationSubfolderHintText" Text="留空即不创建子文件夹" FontSize="11"
                                        Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
-                        <TextBlock Text="重复项处理" FontWeight="SemiBold" />
+                        <TextBlock x:Name="DuplicateHandlingLabel" Text="重复项处理" FontWeight="SemiBold" />
                         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left">
                             <RadioButton x:Name="AskExistingRadio" Content="询问" IsChecked="True"
                                          GroupName="DuplicatePolicy" MinWidth="0" Padding="8,6" />
@@ -678,7 +719,7 @@
                             <RadioButton x:Name="CreateCopyRadio" Content="创建副本"
                                          GroupName="DuplicatePolicy" MinWidth="0" Padding="8,6" />
                         </StackPanel>
-                        <TextBlock Text="询问模式会先继续处理其他文件，再逐个处理检测到的重复文件。"
+                        <TextBlock x:Name="DuplicateAskHintText" Text="询问模式会先继续处理其他文件，再逐个处理检测到的重复文件。"
                                    FontSize="11" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                     <StackPanel Spacing="5" Visibility="Collapsed">
@@ -694,9 +735,11 @@
                                    Foreground="{StaticResource MutedTextBrush}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
-                    <ToggleSwitch x:Name="VerifyFilesToggle" Header="文件校验（SHA-256）" IsOn="True" HorizontalAlignment="Stretch" />
+                    <ToggleSwitch x:Name="VerifyFilesToggle" Header="文件校验（SHA-256）" IsOn="True"
+                                  OnContent="开启" OffContent="关闭" HorizontalAlignment="Stretch" />
                     <ToggleSwitch x:Name="PreventSleepToggle"
                                   Header="&#x4EFB;&#x52A1;&#x671F;&#x95F4;&#x963B;&#x6B62;&#x7535;&#x8111;&#x4F11;&#x7720;"
+                                  OnContent="开启" OffContent="关闭"
                                   IsOn="True" HorizontalAlignment="Stretch" />
                     <StackPanel Spacing="5">
                         <ToggleSwitch x:Name="PriorityExecutionToggle"
@@ -704,7 +747,7 @@
                                       OffContent="&#x5173;&#x95ED;" OnContent="&#x5F00;&#x542F;"
                                       IsOn="False"
                                       HorizontalAlignment="Stretch" />
-                        <TextBlock Text="&#x4F18;&#x5148;&#x4EFB;&#x52A1;&#x4F1A;&#x5E76;&#x884C;&#x6267;&#x884C;&#xFF1B;&#x5176;&#x4ED6;&#x4EFB;&#x52A1;&#x5C06;&#x5728;&#x5B89;&#x5168;&#x68C0;&#x67E5;&#x70B9;&#x7B49;&#x5F85;&#xFF0C;&#x76F4;&#x5230;&#x5168;&#x90E8;&#x4F18;&#x5148;&#x4EFB;&#x52A1;&#x7ED3;&#x675F;&#x3002;"
+                        <TextBlock x:Name="PriorityHintText" Text="&#x4F18;&#x5148;&#x4EFB;&#x52A1;&#x4F1A;&#x5E76;&#x884C;&#x6267;&#x884C;&#xFF1B;&#x5176;&#x4ED6;&#x4EFB;&#x52A1;&#x5C06;&#x5728;&#x5B89;&#x5168;&#x68C0;&#x67E5;&#x70B9;&#x7B49;&#x5F85;&#xFF0C;&#x76F4;&#x5230;&#x5168;&#x90E8;&#x4F18;&#x5148;&#x4EFB;&#x52A1;&#x7ED3;&#x675F;&#x3002;"
                                    FontSize="11"
                                    Foreground="{StaticResource MutedTextBrush}"
                                    TextWrapping="Wrap" />

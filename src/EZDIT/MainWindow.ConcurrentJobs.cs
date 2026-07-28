@@ -6,6 +6,9 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace EZDIT;
 
@@ -38,23 +41,37 @@ public sealed partial class MainWindow
             return;
         }
 
-        bool isPriority = PriorityExecutionToggle.IsOn;
+        EnqueueJob(
+            _sourcePath,
+            _destinationPath,
+            _copyOptions,
+            PriorityExecutionToggle.IsOn,
+            PreventSleepToggle.IsOn);
+    }
+
+    private void EnqueueJob(
+        string sourcePath,
+        string destinationPath,
+        CopyOptions options,
+        bool isPriority,
+        bool preventSleep)
+    {
         var job = new JobHistoryItem
         {
             Id = Guid.NewGuid().ToString("N"),
-            DisplayName = GetDisplayName(_sourcePath),
-            SourcePath = _sourcePath,
-            DestinationPath = _destinationPath,
+            DisplayName = GetDisplayName(sourcePath),
+            SourcePath = sourcePath,
+            DestinationPath = destinationPath,
             StartedAt = DateTimeOffset.Now,
             Status = JobStatus.Queued,
-            CopyEnabled = !_copyOptions.SkipCopy,
-            VerificationEnabled = _copyOptions.VerifyFiles,
-            UseFastCopyAlgorithm = _copyOptions.UseFastCopyAlgorithm,
+            CopyEnabled = !options.SkipCopy,
+            VerificationEnabled = options.VerifyFiles,
+            UseFastCopyAlgorithm = options.UseFastCopyAlgorithm,
             IsPriority = isPriority,
-            PreventSleep = PreventSleepToggle.IsOn,
+            PreventSleep = preventSleep,
             IsAcknowledged = false,
         };
-        var runtime = new CopyJobRuntime(job, _copyOptions);
+        var runtime = new CopyJobRuntime(job, options);
         runtime.ScheduleRegistration = _jobScheduler.Register(isPriority);
         _jobRuntimes.Add(job.Id, runtime);
         UpdateSleepPreventionState();
@@ -109,7 +126,7 @@ public sealed partial class MainWindow
                 runtime,
                 JobStatus.Cancelled,
                 null,
-                "任务已由用户取消，已完成的文件予以保留。");
+                LocalizationService.Text("任务已由用户取消，已完成的文件予以保留。"));
         }
         catch (Exception ex)
         {
@@ -164,20 +181,28 @@ public sealed partial class MainWindow
                 .Where(choice => action.Failures.Contains(choice.Failure))
                 .ToList();
 
-            if (action.Retry)
+            if (action.Mode is FailureResolutionMode.Retry or FailureResolutionMode.Overwrite)
             {
                 runtime.IsRetryingFailures = true;
+                runtime.ActiveFailureAction = action.Mode;
                 var retryProgress = new Progress<CopyProgressInfo>(info =>
                 {
                     runtime.RetryProgress = info;
                     RefreshSelectedRuntime();
                 });
-                FileRetryResult retryResult = await _copyService.RetryFailedFilesAsync(
-                    action.Failures,
-                    runtime.Options,
-                    retryProgress,
-                    token => WaitForJobPermissionAsync(runtime, token),
-                    cancellationToken);
+                FileRetryResult retryResult = action.Mode == FailureResolutionMode.Overwrite
+                    ? await _copyService.OverwriteVerificationMismatchesAsync(
+                        action.Failures,
+                        runtime.Options,
+                        retryProgress,
+                        token => WaitForJobPermissionAsync(runtime, token),
+                        cancellationToken)
+                    : await _copyService.RetryFailedFilesAsync(
+                        action.Failures,
+                        runtime.Options,
+                        retryProgress,
+                        token => WaitForJobPermissionAsync(runtime, token),
+                        cancellationToken);
                 retryCopyDuration += retryResult.CopyDuration;
                 retryVerifyDuration += retryResult.VerifyDuration;
                 foreach (FailedFileChoice choice in actedChoices)
@@ -189,6 +214,7 @@ public sealed partial class MainWindow
                     runtime.FailedFileChoices.Add(new FailedFileChoice(remaining));
                 }
                 runtime.IsRetryingFailures = false;
+                runtime.ActiveFailureAction = null;
                 runtime.RetryProgress = null;
             }
             else
@@ -386,7 +412,7 @@ public sealed partial class MainWindow
         {
             if (ReferenceEquals(_selectedJob, job))
             {
-                LogText.Text = $"任务已结束，但报告保存失败：{ex.Message}";
+                LogText.Text = LocalizationService.Format("任务已结束，但报告保存失败：{0}", ex.Message);
             }
         }
 
@@ -424,7 +450,7 @@ public sealed partial class MainWindow
     {
         JobHistoryItem job = runtime.Job;
         CopyProgressInfo? info = runtime.LastProgress;
-        HeroNameText.Text = job.DisplayName + (job.IsPriority ? " · 优先" : string.Empty);
+        HeroNameText.Text = job.DisplayName + (job.IsPriority ? LocalizationService.Text("优先") : string.Empty);
         SourcePathText.Text = job.SourcePath;
         DestinationPathText.Text = job.DestinationPath;
         TotalSizeText.Text = info is null ? "--" : FormatBytes(info.TotalBytes);
@@ -451,6 +477,12 @@ public sealed partial class MainWindow
         CopyProgress.Value = copyPercent;
         VerifyProgress.Value = verifyPercent;
         OverallProgress.Value = overall;
+        CopyProgressRow.Visibility = runtime.Options.SkipCopy
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        VerifyProgressRow.Visibility = runtime.Options.VerifyFiles
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         PercentText.Text = $"{overall:F2}%";
         CopySpeedText.Text = info?.Phase == CopyPhase.Copying ? $"{FormatBytes(info.BytesPerSecond)}/s" : "--";
         VerifySpeedText.Text = info?.Phase == CopyPhase.Verifying ? $"{FormatBytes(info.BytesPerSecond)}/s" : "--";
@@ -462,10 +494,10 @@ public sealed partial class MainWindow
         bool verifyDone = runtime.Options.VerifyFiles && totalFiles > 0 && runtime.VerifiedFiles >= totalFiles;
         CopyProgress.Visibility = copyDone ? Visibility.Collapsed : Visibility.Visible;
         CopyCompletedBadge.Visibility = copyDone ? Visibility.Visible : Visibility.Collapsed;
-        CopyCompletedText.Text = runtime.Options.SkipCopy ? "未启用" : "已完成";
+        CopyCompletedText.Text = runtime.Options.SkipCopy ? LocalizationService.Text("未启用") : LocalizationService.Text("已完成");
         VerifyProgress.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Collapsed : Visibility.Visible;
         VerifyCompletedBadge.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Visible : Visibility.Collapsed;
-        VerifyCompletedText.Text = runtime.Options.VerifyFiles ? "已完成" : "未启用";
+        VerifyCompletedText.Text = runtime.Options.VerifyFiles ? LocalizationService.Text("已完成") : LocalizationService.Text("未启用");
 
         CompletionIcon.Visibility = Visibility.Collapsed;
         PercentText.Visibility = Visibility.Visible;
@@ -473,11 +505,14 @@ public sealed partial class MainWindow
         StatusText.Foreground = (SolidColorBrush)Application.Current.Resources["MutedTextBrush"];
         StartButton.Visibility = Visibility.Collapsed;
         DeleteJobButton.Visibility = Visibility.Collapsed;
+        StartVerificationButton.Visibility = Visibility.Collapsed;
+        ExportReportButton.Visibility = Visibility.Collapsed;
+        RestartJobButton.Visibility = Visibility.Collapsed;
         PauseButton.Visibility = Visibility.Visible;
         CancelButton.Visibility = Visibility.Visible;
         PauseButton.IsEnabled = true;
         CancelButton.IsEnabled = true;
-        PauseText.Text = runtime.IsPaused ? "继续" : "暂停";
+        PauseText.Text = runtime.IsPaused ? LocalizationService.Text("继续") : LocalizationService.Text("暂停");
         PauseIcon.Glyph = runtime.IsPaused ? "\uE768" : "\uE769";
         NewJobButton.IsEnabled = !_isMultiSelectMode;
         SourcePickerButton.IsEnabled = false;
@@ -487,54 +522,62 @@ public sealed partial class MainWindow
 
         if (runtime.IsRetryingFailures)
         {
-            StatusText.Text = "\u6B63\u5728\u91CD\u8BD5\u5931\u8D25\u6587\u4EF6";
-            PhaseText.Text = "\u4EC5\u5904\u7406\u5DF2\u9009\u5931\u8D25\u9879";
+            bool overwriting = runtime.ActiveFailureAction == FailureResolutionMode.Overwrite;
+            StatusText.Text = overwriting
+                ? LocalizationService.Text("正在覆盖校验不一致文件")
+                : LocalizationService.Text("正在重试失败文件");
+            PhaseText.Text = overwriting
+                ? LocalizationService.Text("覆盖后重新执行 SHA-256 校验")
+                : LocalizationService.Text("仅处理已选失败项");
             CurrentFileText.Text = runtime.RetryProgress?.CurrentFile ?? job.SourcePath;
-            LogText.Text = "\u91CD\u8BD5\u5B8C\u6210\u540E\uFF0C\u4ECD\u5931\u8D25\u7684\u6587\u4EF6\u4F1A\u7EE7\u7EED\u4FDD\u7559\u5728\u4E0B\u65B9\u3002";
+            LogText.Text = overwriting
+                ? LocalizationService.Text("正在用源文件覆盖目标文件，并重新校验完整性。")
+                : LocalizationService.Text("重试完成后，仍失败的文件会继续保留在下方。");
         }
         else if (runtime.IsAwaitingFailureDecision)
         {
-            StatusText.Text = "\u7B49\u5F85\u5904\u7406\u5931\u8D25\u6587\u4EF6";
-            PhaseText.Text = "\u8BF7\u5728\u4E0B\u65B9\u9009\u62E9\u91CD\u8BD5\u6216\u8DF3\u8FC7";
-            CurrentFileText.Text = $"{runtime.FailedFileChoices.Count:N0} \u4E2A\u6587\u4EF6\u5F85\u5904\u7406";
-            LogText.Text = "\u5176\u4ED6\u6587\u4EF6\u5DF2\u7EE7\u7EED\u5904\u7406\uFF0C\u4EFB\u52A1\u4E0D\u4F1A\u56E0\u5355\u4E2A\u6587\u4EF6\u9519\u8BEF\u76F4\u63A5\u5931\u8D25\u3002";
+            StatusText.Text = LocalizationService.Text("等待处理失败文件");
+            PhaseText.Text = LocalizationService.Text("请在下方选择重试或跳过");
+            CurrentFileText.Text = LocalizationService.Format("{0} 个文件待处理", runtime.FailedFileChoices.Count.ToString("N0"));
+            LogText.Text = LocalizationService.Text("其他文件已继续处理，任务不会因单个文件错误直接失败。");
         }
         else if (runtime.IsPaused)
         {
-            StatusText.Text = "已暂停";
-            PhaseText.Text = "等待用户继续";
-            LogText.Text = "任务已暂停。";
+            StatusText.Text = LocalizationService.Text("已暂停");
+            PhaseText.Text = LocalizationService.Text("等待用户继续");
+            LogText.Text = LocalizationService.Text("任务已暂停。");
         }
         else if (runtime.IsWaitingForPriority || job.Status == JobStatus.Queued)
         {
-            StatusText.Text = "等待优先任务";
-            PhaseText.Text = "优先任务结束后自动继续";
-            LogText.Text = "当前任务已安全暂停；全部优先任务结束后会自动继续。";
+            StatusText.Text = LocalizationService.Text("等待优先任务");
+            PhaseText.Text = LocalizationService.Text("优先任务结束后自动继续");
+            LogText.Text = LocalizationService.Text("当前任务已安全暂停；全部优先任务结束后会自动继续。");
         }
         else
         {
             StatusText.Text = info?.Phase switch
             {
-                CopyPhase.Scanning => "正在扫描",
-                CopyPhase.Copying => "正在拷贝",
-                CopyPhase.Verifying => "正在校验",
-                CopyPhase.WaitingForDuplicateDecision => "等待处理重复文件",
-                _ => "准备执行"
+                CopyPhase.Scanning => LocalizationService.Text("正在扫描"),
+                CopyPhase.Copying => LocalizationService.Text("正在拷贝"),
+                CopyPhase.Verifying => LocalizationService.Text("正在校验"),
+                CopyPhase.WaitingForDuplicateDecision => LocalizationService.Text("等待处理重复文件"),
+                _ => LocalizationService.Text("准备执行")
             };
             PhaseText.Text = info?.Phase switch
             {
-                CopyPhase.Scanning => "正在读取目录",
-                CopyPhase.Copying => "拷贝文件",
-                CopyPhase.Verifying => "SHA-256 完整性校验",
-                CopyPhase.WaitingForDuplicateDecision => "请在下方逐个选择处理方式",
-                _ => job.IsPriority ? "优先任务即将开始" : "任务即将开始"
+                CopyPhase.Scanning => LocalizationService.Text("正在读取目录"),
+                CopyPhase.Copying => LocalizationService.Text("拷贝文件"),
+                CopyPhase.Verifying => LocalizationService.Text("SHA-256 完整性校验"),
+                CopyPhase.WaitingForDuplicateDecision => LocalizationService.Text("请在下方逐个选择处理方式"),
+                _ => job.IsPriority ? LocalizationService.Text("优先任务即将开始") : LocalizationService.Text("任务即将开始")
             };
             LogText.Text = job.IsPriority
-                ? "优先任务正在执行；普通任务将在安全检查点等待。"
-                : "任务正在并行执行。";
+                ? LocalizationService.Text("优先任务正在执行；普通任务将在安全检查点等待。")
+                : LocalizationService.Text("任务正在并行执行。");
         }
         ShowRuntimeDuplicateChoices(runtime);
         ShowRuntimeFailedFiles(runtime);
+        LocalizeTaskUi();
     }
 
     private static double GetJobPercent(long totalBytes, int totalFiles, long bytes, int files)
@@ -560,8 +603,8 @@ public sealed partial class MainWindow
         int decided = _duplicateChoices.Count(item => item.IsDecided);
         int selectable = _duplicateChoices.Count(item => item.CanChoose);
         int selected = _duplicateChoices.Count(item => item.CanChoose && item.IsSelected);
-        DuplicateSummaryText.Text = $"发现 {_duplicateChoices.Count:N0} 个重复文件";
-        DuplicateSelectionHint.Text = $"已选择处理方式 {decided}/{_duplicateChoices.Count}，已勾选 {selected} 项";
+        DuplicateSummaryText.Text = LocalizationService.Format("发现 {0} 个重复文件", _duplicateChoices.Count.ToString("N0"));
+        DuplicateSelectionHint.Text = LocalizationService.Format("已选择处理方式 {0}/{1}，已勾选 {2} 项", decided.ToString(), _duplicateChoices.Count.ToString(), selected.ToString());
         _updatingDuplicateSelection = true;
         DuplicateSelectAllCheckBox.IsEnabled = selectable > 0;
         DuplicateSelectAllCheckBox.IsChecked = selectable == 0 || selected == 0
@@ -574,6 +617,7 @@ public sealed partial class MainWindow
         BatchCreateCopyButton.IsEnabled = canBatch;
         ApplyDuplicateChoicesButton.IsEnabled = runtime.DuplicateDecisionSource is not null &&
             _duplicateChoices.Count > 0 && decided == _duplicateChoices.Count;
+        LocalizeTaskUi();
     }
 
     private void ShowRuntimeFailedFiles(CopyJobRuntime runtime)
@@ -587,13 +631,22 @@ public sealed partial class MainWindow
         FailedFilesPanel.Visibility = _failedFileChoices.Count > 0
             ? Visibility.Visible
             : Visibility.Collapsed;
+        OverwriteFailedFilesButton.Visibility = _failedFileChoices.Any(item => item.CanOverwrite)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         RetryFailedFilesButton.Visibility = Visibility.Visible;
         SkipFailedFilesButton.Visibility = Visibility.Visible;
-        int selected = _failedFileChoices.Count(item => item.IsSelected);
+        FailedFileChoice[] selectedChoices = _failedFileChoices
+            .Where(item => item.IsSelected)
+            .ToArray();
+        int selected = selectedChoices.Length;
         bool canAct = runtime.FailureActionSource is not null && selected > 0;
+        OverwriteFailedFilesButton.IsEnabled =
+            canAct && selectedChoices.All(item => item.CanOverwrite);
         RetryFailedFilesButton.IsEnabled = canAct;
         SkipFailedFilesButton.IsEnabled = canAct;
-        FailedFilesSummaryText.Text = $"\u5931\u8D25\u6587\u4EF6\uFF1A{_failedFileChoices.Count:N0} \u4E2A\uFF0C\u5DF2\u9009 {selected:N0} \u4E2A";
+        FailedFilesSummaryText.Text = LocalizationService.Format("失败文件：{0} 个，已选 {1} 个", _failedFileChoices.Count.ToString("N0"), selected.ToString("N0"));
+        LocalizeTaskUi();
     }
 
     private void ShowFailedFileHistory(JobHistoryItem job)
@@ -608,9 +661,11 @@ public sealed partial class MainWindow
         FailedFilesPanel.Visibility = _failedFileChoices.Count > 0
             ? Visibility.Visible
             : Visibility.Collapsed;
+        OverwriteFailedFilesButton.Visibility = Visibility.Collapsed;
         RetryFailedFilesButton.Visibility = Visibility.Collapsed;
         SkipFailedFilesButton.Visibility = Visibility.Collapsed;
-        FailedFilesSummaryText.Text = $"\u5DF2\u8DF3\u8FC7\u7684\u5931\u8D25\u6587\u4EF6\uFF1A{_failedFileChoices.Count:N0} \u4E2A";
+        FailedFilesSummaryText.Text = LocalizationService.Format("已跳过的失败文件：{0}", _failedFileChoices.Count.ToString("N0"));
+        LocalizeTaskUi();
     }
 
     private void ConcurrentFailedFileSelection_Click(object sender, RoutedEventArgs e)
@@ -621,13 +676,16 @@ public sealed partial class MainWindow
         }
     }
 
+    private void ConcurrentOverwriteFailedFiles_Click(object sender, RoutedEventArgs e) =>
+        CompleteFailedFileAction(FailureResolutionMode.Overwrite);
+
     private void ConcurrentRetryFailedFiles_Click(object sender, RoutedEventArgs e) =>
-        CompleteFailedFileAction(true);
+        CompleteFailedFileAction(FailureResolutionMode.Retry);
 
     private void ConcurrentSkipFailedFiles_Click(object sender, RoutedEventArgs e) =>
-        CompleteFailedFileAction(false);
+        CompleteFailedFileAction(FailureResolutionMode.Skip);
 
-    private void CompleteFailedFileAction(bool retry)
+    private void CompleteFailedFileAction(FailureResolutionMode mode)
     {
         if (!TryGetSelectedRuntime(out CopyJobRuntime runtime) ||
             runtime.FailureActionSource is not TaskCompletionSource<FailureResolutionAction> source)
@@ -635,19 +693,24 @@ public sealed partial class MainWindow
             return;
         }
 
-        FileOperationFailure[] selected = runtime.FailedFileChoices
+        FailedFileChoice[] selectedChoices = runtime.FailedFileChoices
             .Where(item => item.IsSelected)
-            .Select(item => item.Failure)
             .ToArray();
-        if (selected.Length == 0)
+        if (selectedChoices.Length == 0 ||
+            mode == FailureResolutionMode.Overwrite &&
+            selectedChoices.Any(item => !item.CanOverwrite))
         {
             return;
         }
+        FileOperationFailure[] selected = selectedChoices
+            .Select(item => item.Failure)
+            .ToArray();
 
         runtime.FailureActionSource = null;
+        OverwriteFailedFilesButton.IsEnabled = false;
         RetryFailedFilesButton.IsEnabled = false;
         SkipFailedFilesButton.IsEnabled = false;
-        source.TrySetResult(new FailureResolutionAction(retry, selected));
+        source.TrySetResult(new FailureResolutionAction(mode, selected));
     }
 
     private void ConcurrentDuplicateOverwrite_Click(object sender, RoutedEventArgs e) =>
@@ -753,7 +816,7 @@ public sealed partial class MainWindow
             return;
         }
         CancelButton.IsEnabled = false;
-        StatusText.Text = "正在取消";
+        StatusText.Text = LocalizationService.Text("正在取消");
         runtime.Cancellation.Cancel();
     }
 
@@ -765,19 +828,19 @@ public sealed partial class MainWindow
         }
         if (!IsBatchDeletable(_selectedJob))
         {
-            await ShowMessageAsync("无法删除任务", "只能删除已经完成处理的任务记录。");
+            await ShowMessageAsync("无法删除任务", "只能删除已经结束处理的任务记录。");
             return;
         }
         var dialog = new ContentDialog
         {
-            Title = "删除历史记录？",
-            Content = "只会从 EZ DIT 中移除这条已完成任务记录，不会删除任何文件。",
-            PrimaryButtonText = "删除记录",
-            CloseButtonText = "取消",
+            Title = LocalizationService.Text("删除历史记录？"),
+            Content = LocalizationService.Text("只会从 EZ DIT 中移除这条已结束的任务记录，不会删除任何文件。"),
+            PrimaryButtonText = LocalizationService.Text("删除记录"),
+            CloseButtonText = LocalizationService.Text("取消"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = Content.XamlRoot
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
         {
             return;
         }
@@ -790,12 +853,146 @@ public sealed partial class MainWindow
         SelectInitialTask();
     }
 
+    private async void ConcurrentStartVerificationButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedJob is null || !CanStartVerification(_selectedJob))
+        {
+            return;
+        }
+
+        await EnqueueVerificationJobAsync(_selectedJob);
+    }
+
+    private async Task EnqueueVerificationJobAsync(JobHistoryItem originalJob)
+    {
+        if (_jobRuntimes.ContainsKey(originalJob.Id))
+        {
+            return;
+        }
+        if (!Directory.Exists(originalJob.SourcePath))
+        {
+            await ShowMessageAsync(LocalizationService.Text("无法开始校验"), LocalizationService.Format("源目录不存在或无法访问：\n{0}", originalJob.SourcePath));
+            return;
+        }
+        if (!Directory.Exists(originalJob.DestinationPath))
+        {
+            await ShowMessageAsync(LocalizationService.Text("无法开始校验"), LocalizationService.Format("目标目录不存在或无法访问：\n{0}", originalJob.DestinationPath));
+            return;
+        }
+        if (!ValidatePaths(originalJob.SourcePath, originalJob.DestinationPath, out string validationMessage))
+        {
+            await ShowMessageAsync("无法开始校验", validationMessage);
+            return;
+        }
+
+        var options = new CopyOptions(
+            ExistingFilePolicy: ExistingFilePolicy.Overwrite,
+            VerifyFiles: true,
+            UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
+            SkipCopy: true);
+        EnqueueJob(
+            originalJob.SourcePath,
+            originalJob.DestinationPath,
+            options,
+            originalJob.IsPriority,
+            originalJob.PreventSleep);
+    }
+
+    private async void ConcurrentExportReportButton_Click(object sender, RoutedEventArgs e)
+    {
+        JobHistoryItem? job = _selectedJob;
+        if (job is null || _jobRuntimes.ContainsKey(job.Id) || !IsReportable(job))
+        {
+            await ShowMessageAsync("报告尚不可用", "运行中或排队中的任务暂时不能导出报告。");
+            return;
+        }
+
+        var picker = new FileSavePicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedFileName = $"EZDIT_Report_{job.StartedAt:yyyyMMdd_HHmmss}_{SanitizeReportFileName(job.DisplayName)}"
+        };
+        picker.FileTypeChoices.Add(LocalizationService.Text("文本报告"), new List<string> { ".txt" });
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        StorageFile? file = await picker.PickSaveFileAsync();
+        if (file is null)
+        {
+            return;
+        }
+
+        ExportReportButton.IsEnabled = false;
+        try
+        {
+            string? report = await _historyService.ReadReportAsync(job.ReportFileName);
+            report ??= BuildIncompleteReport(job);
+            await FileIO.WriteTextAsync(file, report);
+            LogText.Text = LocalizationService.Format("任务报告已导出：{0}", file.Path);
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync("导出报告失败", ex.Message);
+        }
+        finally
+        {
+            ExportReportButton.IsEnabled = true;
+        }
+    }
+
+    private async void ConcurrentRestartJobButton_Click(object sender, RoutedEventArgs e)
+    {
+        JobHistoryItem? originalJob = _selectedJob;
+        if (originalJob is null ||
+            _jobRuntimes.ContainsKey(originalJob.Id) ||
+            !originalJob.CanRestart)
+        {
+            return;
+        }
+
+        if (!Directory.Exists(originalJob.SourcePath))
+        {
+            await ShowMessageAsync(LocalizationService.Text("无法重新开始"), LocalizationService.Format("源目录不存在或无法访问：\n{0}", originalJob.SourcePath));
+            return;
+        }
+        if (!Directory.Exists(originalJob.DestinationPath))
+        {
+            await ShowMessageAsync(LocalizationService.Text("无法重新开始"), LocalizationService.Format("目标目录不存在或无法访问：\n{0}", originalJob.DestinationPath));
+            return;
+        }
+        if (!ValidatePaths(originalJob.SourcePath, originalJob.DestinationPath, out string validationMessage))
+        {
+            await ShowMessageAsync("无法重新开始", validationMessage);
+            return;
+        }
+        if (!originalJob.CopyEnabled && !originalJob.VerificationEnabled)
+        {
+            await ShowMessageAsync("无法重新开始", "原任务没有启用拷贝或校验。");
+            return;
+        }
+
+        var options = new CopyOptions(
+            ExistingFilePolicy: originalJob.CopyEnabled
+                ? ExistingFilePolicy.Ask
+                : ExistingFilePolicy.Overwrite,
+            VerifyFiles: originalJob.VerificationEnabled,
+            UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
+            SkipCopy: !originalJob.CopyEnabled);
+        EnqueueJob(
+            originalJob.SourcePath,
+            originalJob.DestinationPath,
+            options,
+            originalJob.IsPriority,
+            originalJob.PreventSleep);
+    }
+
     private void PrepareConcurrentNewJobView()
     {
         PrepareNewJobView();
         PauseButton.Visibility = Visibility.Collapsed;
         CancelButton.Visibility = Visibility.Collapsed;
         DeleteJobButton.Visibility = Visibility.Collapsed;
+        StartVerificationButton.Visibility = Visibility.Collapsed;
+        ExportReportButton.Visibility = Visibility.Collapsed;
+        RestartJobButton.Visibility = Visibility.Collapsed;
         NewJobButton.IsEnabled = !_isMultiSelectMode;
         SourcePickerButton.IsEnabled = true;
         DestinationPickerButton.IsEnabled = true;
@@ -840,15 +1037,31 @@ public sealed partial class MainWindow
 
     private void ConcurrentMainWindow_Closed(object sender, WindowEventArgs args)
     {
+        _uiSettings.ColorValuesChanged -= SystemColorValuesChanged;
         foreach (CopyJobRuntime runtime in _jobRuntimes.Values.ToList())
         {
             runtime.Cancellation.Cancel();
         }
         ReleaseSleepPreventionForShutdown();
+        try
+        {
+            App.SettingsService.Save(_appSettings);
+        }
+        catch
+        {
+            // Best-effort save on exit; ignore failures
+        }
+    }
+
+    private enum FailureResolutionMode
+    {
+        Retry,
+        Overwrite,
+        Skip
     }
 
     private sealed record FailureResolutionAction(
-        bool Retry,
+        FailureResolutionMode Mode,
         IReadOnlyList<FileOperationFailure> Failures);
 
     private sealed class CopyJobRuntime
@@ -876,6 +1089,7 @@ public sealed partial class MainWindow
         public long CopiedBytes { get; set; }
         public bool IsAwaitingFailureDecision { get; set; }
         public bool IsRetryingFailures { get; set; }
+        public FailureResolutionMode? ActiveFailureAction { get; set; }
         public CopyProgressInfo? RetryProgress { get; set; }
 
         public int CopiedFiles { get; set; }

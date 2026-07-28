@@ -8,7 +8,8 @@ public sealed class JobHistoryService
 {
     private readonly string _dataDirectory;
     private readonly string _historyPath;
-    private readonly string _reportsDirectory;
+    private readonly string _defaultReportsDirectory;
+    private string _reportsDirectory;
     private readonly SemaphoreSlim _saveGate = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -17,13 +18,21 @@ public sealed class JobHistoryService
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public JobHistoryService(string? dataDirectory = null)
+    public JobHistoryService(string? dataDirectory = null, string? reportsDirectory = null)
     {
         _dataDirectory = dataDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EZDIT");
         _historyPath = Path.Combine(_dataDirectory, "history.json");
-        _reportsDirectory = Path.Combine(_dataDirectory, "Reports");
+        _defaultReportsDirectory = Path.Combine(_dataDirectory, "Reports");
+        _reportsDirectory = string.IsNullOrWhiteSpace(reportsDirectory)
+            ? _defaultReportsDirectory
+            : reportsDirectory;
     }
+
+    public void SetReportsDirectory(string? reportsDirectory) =>
+        _reportsDirectory = string.IsNullOrWhiteSpace(reportsDirectory)
+            ? _defaultReportsDirectory
+            : reportsDirectory;
 
     public async Task<List<JobHistoryItem>> LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -90,6 +99,11 @@ public sealed class JobHistoryService
         }
 
         string path = Path.Combine(_reportsDirectory, Path.GetFileName(fileName));
+        if (!File.Exists(path) && !string.Equals(
+                _reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            path = Path.Combine(_defaultReportsDirectory, Path.GetFileName(fileName));
+        }
         return File.Exists(path) ? await File.ReadAllTextAsync(path, cancellationToken) : null;
     }
 
@@ -98,6 +112,10 @@ public sealed class JobHistoryService
         if (!string.IsNullOrWhiteSpace(fileName))
         {
             TryDelete(Path.Combine(_reportsDirectory, Path.GetFileName(fileName)));
+            if (!string.Equals(_reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                TryDelete(Path.Combine(_defaultReportsDirectory, Path.GetFileName(fileName)));
+            }
         }
         return Task.CompletedTask;
     }

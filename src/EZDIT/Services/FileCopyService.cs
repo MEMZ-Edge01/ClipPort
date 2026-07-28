@@ -456,6 +456,28 @@ public sealed class FileCopyService
         return new FileRetryResult(remaining, copyWatch.Elapsed, TimeSpan.Zero);
     }
 
+    public Task<FileRetryResult> OverwriteVerificationMismatchesAsync(
+        IReadOnlyList<FileOperationFailure> failures,
+        CopyOptions options,
+        IProgress<CopyProgressInfo> progress,
+        Func<CancellationToken, Task> waitWhilePaused,
+        CancellationToken cancellationToken)
+    {
+        if (failures.Count == 0 || failures.Any(failure => !failure.IsVerificationMismatch))
+        {
+            throw new ArgumentException(
+                "\u53EA\u80FD\u8986\u76D6\u6821\u9A8C\u4E0D\u4E00\u81F4\u7684\u6587\u4EF6\u3002",
+                nameof(failures));
+        }
+
+        return RetryFailedFilesAsync(
+            failures,
+            options with { SkipCopy = false, VerifyFiles = true },
+            progress,
+            waitWhilePaused,
+            cancellationToken);
+    }
+
     private static Task CopyFileAsync(
         string sourcePath,
         string destinationPath,
@@ -608,9 +630,10 @@ public sealed class FileCopyService
         finally
         {
             pipelineCancellation.Cancel();
-            while (channel.Reader.TryRead(out CopyBuffer block))
+            while (channel.Reader.TryRead(out CopyBuffer? block))
             {
-                ArrayPool<byte>.Shared.Return(block.Buffer);
+                if (block is not null)
+                    ArrayPool<byte>.Shared.Return(block.Buffer);
             }
         }
     }

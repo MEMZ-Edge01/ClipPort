@@ -24,6 +24,18 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250205002" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Assets\Icons\*.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Strings\**\*.resw">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 
   <PropertyGroup>
     <NativeCopyOutput>$(MSBuildThisFileDirectory)..\EZDIT.NativeCopy\bin\$(Platform)\$(Configuration)\EZDIT.NativeCopy.dll</NativeCopyOutput>

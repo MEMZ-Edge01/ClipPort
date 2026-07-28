@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.UI.ViewManagement;
 using WinRT.Interop;
 
 namespace EZDIT;
@@ -20,7 +21,10 @@ namespace EZDIT;
 public sealed partial class MainWindow : Window
 {
     private readonly FileCopyService _copyService = new();
-    private readonly JobHistoryService _historyService = new();
+    private readonly AppSettings _appSettings = App.Settings;
+    private readonly JobHistoryService _historyService;
+    private readonly AppLogService _logService;
+    private readonly UISettings _uiSettings = new();
     private readonly ObservableCollection<JobHistoryItem> _history = [];
     private readonly ObservableCollection<DuplicateConflictChoice> _duplicateChoices = [];
     private readonly ObservableCollection<FailedFileChoice> _failedFileChoices = [];
@@ -37,6 +41,7 @@ public sealed partial class MainWindow : Window
     private bool _isMultiSelectMode;
     private bool _isChangingMultiSelectMode;
     private bool _updatingDuplicateSelection;
+    private bool _isApplyingAppearance;
     private volatile bool _isPaused;
     private DateTimeOffset? _startedAt;
     private DateTimeOffset? _finishedAt;
@@ -54,6 +59,8 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        _historyService = new JobHistoryService(reportsDirectory: _appSettings.LogAndReportDirectory);
+        _logService = new AppLogService(_appSettings.LogAndReportDirectory);
         InitializeComponent();
         NewJobsList.ItemsSource = _newJobs;
         HistoryList.ItemsSource = _visibleHistory;
@@ -62,6 +69,16 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         ConfigureWindow();
+        SettingsPage.Initialize(_appSettings);
+        SettingsPage.BackRequested += SettingsPage_BackRequested;
+        SettingsPage.SettingsChanged += SettingsPage_SettingsChanged;
+        SettingsPage.BrowseDirectoryRequested += SettingsPage_BrowseDirectoryRequested;
+        RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
+        _uiSettings.ColorValuesChanged += SystemColorValuesChanged;
+        LogText.RegisterPropertyChangedCallback(
+            TextBlock.TextProperty,
+            (_, _) => _ = _logService.WriteAsync(LogText.Text));
+        ApplyAppearanceAndLanguage();
         Closed += ConcurrentMainWindow_Closed;
     }
 
@@ -87,6 +104,7 @@ public sealed partial class MainWindow : Window
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyAppearanceAndLanguage();
         if (_historyLoaded)
         {
             return;
@@ -106,7 +124,7 @@ public sealed partial class MainWindow : Window
                 item.Status = JobStatus.Interrupted;
                 item.IsAcknowledged = false;
                 item.FinishedAt ??= DateTimeOffset.Now;
-                item.ErrorMessage = "应用在任务完成前退出。";
+                item.ErrorMessage = LocalizationService.Text("应用在任务完成前退出。");
                 repairedInterruptedJobs = true;
             }
             _history.Add(item);
@@ -124,7 +142,7 @@ public sealed partial class MainWindow : Window
 
     private async void ChooseSourceButton_Click(object sender, RoutedEventArgs e)
     {
-        string? path = await PickFolderAsync("选择源目录或存储卡");
+        string? path = await PickFolderAsync(LocalizationService.Text("选择源目录或存储卡"));
         if (path is null)
         {
             return;
@@ -137,14 +155,14 @@ public sealed partial class MainWindow : Window
         _sourcePath = path;
         SourcePathText.Text = path;
         HeroNameText.Text = GetDisplayName(path);
-        CurrentFileText.Text = "源目录已就绪，请选择拷卡目的地";
-        LogText.Text = $"已选择源目录：{path}";
+        CurrentFileText.Text = LocalizationService.Text("源目录已就绪，请选择拷卡目的地");
+        LogText.Text = string.Format(LocalizationService.Text("SelectedSourcePath"), path);
         UpdateStartButton();
     }
 
     private async void ChooseDestinationButton_Click(object sender, RoutedEventArgs e)
     {
-        string? path = await PickFolderAsync("选择拷卡目的地");
+        string? path = await PickFolderAsync(LocalizationService.Text("选择拷卡目的地"));
         if (path is null)
         {
             return;
@@ -157,8 +175,8 @@ public sealed partial class MainWindow : Window
         _destinationParentPath = path;
         _destinationPath = path;
         DestinationPathText.Text = path;
-        CurrentFileText.Text = "目录设置完成";
-        LogText.Text = $"已选择目标目录：{path}";
+        CurrentFileText.Text = LocalizationService.Text("目录设置完成");
+        LogText.Text = string.Format(LocalizationService.Text("SelectedDestinationPath"), path);
         UpdateStartButton();
     }
 
@@ -167,7 +185,7 @@ public sealed partial class MainWindow : Window
         var picker = new FolderPicker
         {
             SuggestedStartLocation = PickerLocationId.ComputerFolder,
-            CommitButtonText = "选择此目录"
+            CommitButtonText = LocalizationService.Text("选择此目录")
         };
         picker.FileTypeFilter.Add("*");
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
@@ -185,7 +203,7 @@ public sealed partial class MainWindow : Window
 
     private async void DialogSourceButton_Click(object sender, RoutedEventArgs e)
     {
-        string? path = await PickFolderAsync("选择源目录或存储卡");
+        string? path = await PickFolderAsync(LocalizationService.Text("选择源目录或存储卡"));
         if (path is null)
         {
             return;
@@ -205,7 +223,7 @@ public sealed partial class MainWindow : Window
 
     private async void DialogDestinationButton_Click(object sender, RoutedEventArgs e)
     {
-        string? path = await PickFolderAsync("选择拷卡目的地");
+        string? path = await PickFolderAsync(LocalizationService.Text("选择拷卡目的地"));
         if (path is null)
         {
             return;
@@ -219,8 +237,8 @@ public sealed partial class MainWindow : Window
     {
         _dialogSourcePath = _sourcePath;
         _dialogDestinationParentPath = _destinationParentPath;
-        DialogSourcePathText.Text = _dialogSourcePath ?? "请选择源目录或存储卡";
-        DialogDestinationPathText.Text = _dialogDestinationParentPath ?? "请选择文件拷贝目的地";
+        DialogSourcePathText.Text = _dialogSourcePath ?? LocalizationService.Text("请选择源目录或存储卡");
+        DialogDestinationPathText.Text = _dialogDestinationParentPath ?? LocalizationService.Text("请选择文件拷贝目的地");
 
         // 默认子文件夹名称：源目录名 + 时间戳
         if (_dialogSourcePath is not null)
@@ -236,7 +254,7 @@ public sealed partial class MainWindow : Window
         EnableCopyToggle.Toggled += OnEnableCopyToggled;
         OnEnableCopyToggled(EnableCopyToggle, null!);
 
-        while (await NewTaskDialog.ShowAsync() == ContentDialogResult.Primary)
+        while (await ShowLocalizedDialogAsync(NewTaskDialog) == ContentDialogResult.Primary)
         {
             bool copyEnabled = EnableCopyToggle.IsOn;
             AskExistingRadio.IsEnabled = copyEnabled;
@@ -281,8 +299,8 @@ public sealed partial class MainWindow : Window
             SourcePathText.Text = _sourcePath;
             DestinationPathText.Text = _destinationPath;
             HeroNameText.Text = GetDisplayName(_sourcePath);
-            CurrentFileText.Text = "任务设置完成，准备扫描文件";
-            LogText.Text = $"源目录：{_sourcePath}\n目标目录：{_destinationPath}";
+            CurrentFileText.Text = LocalizationService.Text("任务设置完成，准备扫描文件");
+            LogText.Text = string.Format(LocalizationService.Text("SourcePathLabel"), _sourcePath) + "\n" + string.Format(LocalizationService.Text("DestinationPathLabel"), _destinationPath);
             UpdateStartButton();
             EnableCopyToggle.Toggled -= OnEnableCopyToggled;
             return true;
@@ -311,6 +329,12 @@ public sealed partial class MainWindow : Window
         }
 
         ResetProgress();
+        CopyProgressRow.Visibility = _copyOptions.SkipCopy
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        VerifyProgressRow.Visibility = _copyOptions.VerifyFiles
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         _isRunning = true;
         _isPaused = false;
         _cancellation = new CancellationTokenSource();
@@ -346,10 +370,10 @@ public sealed partial class MainWindow : Window
         await SaveHistorySafeAsync();
 
         StartTimeText.Text = _startedAt.Value.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
-        StatusText.Text = "正在扫描";
+        StatusText.Text = LocalizationService.Text("正在扫描");
         StatusText.Foreground = (SolidColorBrush)Application.Current.Resources["MutedTextBrush"];
-        PhaseText.Text = "正在统计文件…";
-        LogText.Text = "正在扫描源目录并计算任务大小。";
+        PhaseText.Text = LocalizationService.Text("正在统计文件…");
+        LogText.Text = LocalizationService.Text("正在扫描源目录并计算任务大小。");
         SetRunningUi(true);
 
         try
@@ -433,7 +457,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogText.Text = $"任务已结束，但报告保存失败：{ex.Message}";
+            LogText.Text = string.Format(LocalizationService.Text("TaskReportSaveFailed"), ex.Message);
         }
 
         RefreshHistoryItem(job);
@@ -489,9 +513,9 @@ public sealed partial class MainWindow : Window
         {
             choice.SetCanChoose(true);
         }
-        StatusText.Text = "等待处理重复文件";
-        PhaseText.Text = "请为每个重复文件选择处理方式";
-        LogText.Text = "其他文件已继续复制和校验。完成下方每一项选择后即可继续处理重复文件。";
+        StatusText.Text = LocalizationService.Text("等待处理重复文件");
+        PhaseText.Text = LocalizationService.Text("请为每个重复文件选择处理方式");
+        LogText.Text = LocalizationService.Text("其他文件已继续复制和校验。完成下方每一项选择后即可继续处理重复文件。");
         UpdateDuplicateChoiceUi();
 
         using CancellationTokenRegistration registration = cancellationToken.Register(
@@ -595,7 +619,7 @@ public sealed partial class MainWindow : Window
     {
         if (!File.Exists(path) && !Directory.Exists(path))
         {
-            await ShowMessageAsync("文件不可用", $"当前无法找到该文件：\n{path}");
+            await ShowMessageAsync(LocalizationService.Text("文件不可用"), string.Format(LocalizationService.Text("FileNotFound"), path));
             return;
         }
 
@@ -636,7 +660,7 @@ public sealed partial class MainWindow : Window
         }
         ApplyDuplicateChoicesButton.IsEnabled = false;
         UpdateDuplicateChoiceUi();
-        DuplicateSelectionHint.Text = "正在按逐项选择处理";
+        DuplicateSelectionHint.Text = LocalizationService.Text("正在按逐项选择处理");
         _duplicateDecisionSource.TrySetResult(decisions);
     }
 
@@ -650,10 +674,10 @@ public sealed partial class MainWindow : Window
         int decided = _duplicateChoices.Count(item => item.IsDecided);
         int selectable = _duplicateChoices.Count(item => item.CanChoose);
         int selected = _duplicateChoices.Count(item => item.CanChoose && item.IsSelected);
-        DuplicateSummaryText.Text = $"发现 {_duplicateChoices.Count:N0} 个重复文件";
+        DuplicateSummaryText.Text = string.Format(LocalizationService.Text("FoundNDuplicates"), _duplicateChoices.Count.ToString("N0"));
         DuplicateSelectionHint.Text = _copyOptions.ExistingFilePolicy == ExistingFilePolicy.Ask
-            ? $"已选择处理方式 {decided}/{_duplicateChoices.Count}，已勾选 {selected} 项"
-            : $"按“{GetDuplicatePolicyText(_copyOptions.ExistingFilePolicy)}”处理";
+            ? LocalizationService.Format("已选择处理方式 {0}/{1}，已勾选 {2} 项", decided.ToString(), _duplicateChoices.Count.ToString(), selected.ToString())
+            : LocalizationService.Format("按{0}处理", GetDuplicatePolicyText(_copyOptions.ExistingFilePolicy));
 
         _updatingDuplicateSelection = true;
         DuplicateSelectAllCheckBox.IsEnabled = selectable > 0;
@@ -668,14 +692,15 @@ public sealed partial class MainWindow : Window
         BatchCreateCopyButton.IsEnabled = canBatch;
         ApplyDuplicateChoicesButton.IsEnabled = _duplicateDecisionSource is not null &&
             _duplicateChoices.Count > 0 && decided == _duplicateChoices.Count;
+        LocalizeTaskUi();
     }
 
     private static string GetDuplicatePolicyText(ExistingFilePolicy policy) => policy switch
     {
-        ExistingFilePolicy.Overwrite => "覆盖",
-        ExistingFilePolicy.Skip => "跳过",
-        ExistingFilePolicy.CreateCopy => "创建副本",
-        _ => "逐个询问"
+        ExistingFilePolicy.Overwrite => LocalizationService.Text("覆盖"),
+        ExistingFilePolicy.Skip => LocalizationService.Text("跳过"),
+        ExistingFilePolicy.CreateCopy => LocalizationService.Text("创建副本"),
+        _ => LocalizationService.Text("逐个询问")
     };
 
     private void ShowDuplicateHistory(JobHistoryItem job)
@@ -694,8 +719,8 @@ public sealed partial class MainWindow : Window
         UpdateDuplicateChoiceUi();
         if (_duplicateChoices.Count > 0)
         {
-            DuplicateSummaryText.Text = $"重复文件记录：{_duplicateChoices.Count:N0} 个";
-            DuplicateSelectionHint.Text = "已按各自选择处理";
+            DuplicateSummaryText.Text = string.Format(LocalizationService.Text("DuplicateFileRecords"), _duplicateChoices.Count.ToString("N0"));
+            DuplicateSelectionHint.Text = LocalizationService.Text("已按各自选择处理");
         }
     }
     private void UpdateProgress(CopyProgressInfo info)
@@ -742,22 +767,22 @@ public sealed partial class MainWindow : Window
         switch (info.Phase)
         {
             case CopyPhase.Scanning:
-                StatusText.Text = "正在扫描";
-                PhaseText.Text = "正在读取目录";
+                StatusText.Text = LocalizationService.Text("正在扫描");
+                PhaseText.Text = LocalizationService.Text("正在读取目录");
                 break;
 
             case CopyPhase.Copying:
                 _copiedBytes = info.ProcessedBytes;
                 _copiedFiles = info.ProcessedFiles;
                 _copyElapsed = info.Elapsed;
-                StatusText.Text = _isPaused ? "已暂停" : "正在拷贝";
-                PhaseText.Text = "拷贝文件";
+                StatusText.Text = _isPaused ? LocalizationService.Text("已暂停") : LocalizationService.Text("正在拷贝");
+                PhaseText.Text = LocalizationService.Text("拷贝文件");
                 double copyPercent = GetPercent(_copiedBytes, _copiedFiles);
                 CopyProgress.Value = copyPercent;
                 bool copyFinished = _copiedFiles >= info.TotalFiles;
                 CopyProgress.Visibility = copyFinished ? Visibility.Collapsed : Visibility.Visible;
                 CopyCompletedBadge.Visibility = copyFinished ? Visibility.Visible : Visibility.Collapsed;
-                CopyCompletedText.Text = "已完成";
+                CopyCompletedText.Text = LocalizationService.Text("已完成");
                 CopySpeedText.Text = $"{FormatBytes(info.BytesPerSecond)}/s";
                 CopyTimeText.Text = FormatDuration(info.Elapsed);
                 CopyCountText.Text = $"{info.ProcessedFiles}/{info.TotalFiles}";
@@ -768,14 +793,14 @@ public sealed partial class MainWindow : Window
                 _verifiedFiles = info.ProcessedFiles;
                 _verifiedBytes = info.ProcessedBytes;
                 _verifyElapsed = info.Elapsed;
-                StatusText.Text = _isPaused ? "已暂停" : "正在校验";
-                PhaseText.Text = "SHA-256 完整性校验";
+                StatusText.Text = _isPaused ? LocalizationService.Text("已暂停") : LocalizationService.Text("正在校验");
+                PhaseText.Text = LocalizationService.Text("SHA-256 完整性校验");
                 double verifyPercent = GetPercent(info.ProcessedBytes, info.ProcessedFiles);
                 VerifyProgress.Value = verifyPercent;
                 bool verificationFinished = _verifiedFiles >= info.TotalFiles;
                 VerifyProgress.Visibility = verificationFinished ? Visibility.Collapsed : Visibility.Visible;
                 VerifyCompletedBadge.Visibility = verificationFinished ? Visibility.Visible : Visibility.Collapsed;
-                VerifyCompletedText.Text = "已完成";
+                VerifyCompletedText.Text = LocalizationService.Text("已完成");
                 VerifySpeedText.Text = $"{FormatBytes(info.BytesPerSecond)}/s";
                 VerifyTimeText.Text = FormatDuration(info.Elapsed);
                 VerifyCountText.Text = $"{info.ProcessedFiles}/{info.TotalFiles}";
@@ -783,9 +808,9 @@ public sealed partial class MainWindow : Window
                 break;
 
             case CopyPhase.WaitingForDuplicateDecision:
-                StatusText.Text = "等待处理重复文件";
-                PhaseText.Text = "请在下方逐个选择处理方式";
-                CurrentFileText.Text = $"已记录 {_duplicateChoices.Count:N0} 个重复文件";
+                StatusText.Text = LocalizationService.Text("等待处理重复文件");
+                PhaseText.Text = LocalizationService.Text("请在下方逐个选择处理方式");
+                CurrentFileText.Text = LocalizationService.Format("已记录 {0} 个重复文件", _duplicateChoices.Count.ToString("N0"));
                 UpdateOverallProgress();
                 break;
 
@@ -802,14 +827,15 @@ public sealed partial class MainWindow : Window
                 }
                 CopyProgress.Visibility = Visibility.Collapsed;
                 CopyCompletedBadge.Visibility = Visibility.Visible;
-                CopyCompletedText.Text = _copyOptions.SkipCopy ? "未启用" : "已完成";
+                CopyCompletedText.Text = _copyOptions.SkipCopy ? LocalizationService.Text("未启用") : LocalizationService.Text("已完成");
                 VerifyProgress.Visibility = Visibility.Collapsed;
                 VerifyCompletedBadge.Visibility = Visibility.Visible;
-                VerifyCompletedText.Text = _copyOptions.VerifyFiles ? "已完成" : "未启用";
+                VerifyCompletedText.Text = _copyOptions.VerifyFiles ? LocalizationService.Text("已完成") : LocalizationService.Text("未启用");
                 OverallProgress.Value = 100;
                 PercentText.Text = "100.00%";
                 break;
         }
+        LocalizeTaskUi();
     }
 
     private void PauseButton_Click(object sender, RoutedEventArgs e)
@@ -820,16 +846,16 @@ public sealed partial class MainWindow : Window
         }
 
         _isPaused = !_isPaused;
-        PauseText.Text = _isPaused ? "继续" : "暂停";
+        PauseText.Text = _isPaused ? LocalizationService.Text("继续") : LocalizationService.Text("暂停");
         PauseIcon.Glyph = _isPaused ? "\uE768" : "\uE769";
-        StatusText.Text = _isPaused ? "已暂停" : "继续处理中";
-        LogText.Text = _isPaused ? "任务已暂停。" : "任务已继续。";
+        StatusText.Text = _isPaused ? LocalizationService.Text("已暂停") : LocalizationService.Text("继续处理中");
+        LogText.Text = _isPaused ? LocalizationService.Text("任务已暂停。") : LocalizationService.Text("任务已继续。");
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         CancelButton.IsEnabled = false;
-        StatusText.Text = "正在取消";
+        StatusText.Text = LocalizationService.Text("正在取消");
         _cancellation?.Cancel();
     }
 
@@ -869,14 +895,14 @@ public sealed partial class MainWindow : Window
         _destinationPath = null;
         _destinationParentPath = null;
         AskExistingRadio.IsChecked = true;
-        SourcePathText.Text = "尚未选择";
-        DestinationPathText.Text = "尚未选择";
+        SourcePathText.Text = LocalizationService.Text("尚未选择");
+        DestinationPathText.Text = LocalizationService.Text("尚未选择");
         PriorityExecutionToggle.IsOn = false;
         UseFastCopyAlgorithmToggle.IsOn = false;
         PreventSleepToggle.IsOn = true;
-        HeroNameText.Text = "准备新任务";
-        CurrentFileText.Text = "请选择源目录和目标目录";
-        LogText.Text = "就绪。选择目录后即可开始。";
+        HeroNameText.Text = LocalizationService.Text("准备新任务");
+        CurrentFileText.Text = LocalizationService.Text("请选择源目录和目标目录");
+        LogText.Text = LocalizationService.Text("就绪。选择目录后即可开始。");
         ResetProgress();
         StartButton.Visibility = Visibility.Visible;
         UpdateStartButton();
@@ -934,9 +960,15 @@ public sealed partial class MainWindow : Window
 
         CopyProgress.Value = copyPercent;
         VerifyProgress.Value = verifyPercent;
+        CopyProgressRow.Visibility = job.CopyEnabled
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        VerifyProgressRow.Visibility = job.VerificationEnabled
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         CopyProgress.Visibility = copyFinished ? Visibility.Collapsed : Visibility.Visible;
         CopyCompletedBadge.Visibility = copyFinished ? Visibility.Visible : Visibility.Collapsed;
-        CopyCompletedText.Text = job.CopyEnabled ? "已完成" : "未启用";
+        CopyCompletedText.Text = job.CopyEnabled ? LocalizationService.Text("已完成") : LocalizationService.Text("未启用");
         VerifyProgress.Visibility = verificationFinished || !job.VerificationEnabled
             ? Visibility.Collapsed
             : Visibility.Visible;
@@ -944,8 +976,8 @@ public sealed partial class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
         VerifyCompletedText.Text = !job.VerificationEnabled
-            ? "未启用"
-            : job.Status == JobStatus.VerificationFailed ? "校验失败" : "已完成";
+            ? LocalizationService.Text("未启用")
+            : job.Status == JobStatus.VerificationFailed ? LocalizationService.Text("校验失败") : LocalizationService.Text("已完成");
         VerifyCompletedBadge.Background = new SolidColorBrush(
             job.Status == JobStatus.VerificationFailed
                 ? ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A) // Error surface
@@ -978,6 +1010,16 @@ public sealed partial class MainWindow : Window
         DeleteJobButton.Visibility = IsBatchDeletable(job)
             ? Visibility.Visible
             : Visibility.Collapsed;
+        StartVerificationButton.Visibility = CanStartVerification(job)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ExportReportButton.Visibility = IsReportable(job)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        RestartJobButton.Visibility = job.CanRestart
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        RestartJobButtonText.Text = LocalizationService.Text("重新开始");
         StartButton.IsEnabled = false;
         StartButton.Visibility = Visibility.Collapsed;
 
@@ -991,34 +1033,35 @@ public sealed partial class MainWindow : Window
         PhaseText.Text = job.Status switch
         {
             JobStatus.CompletedWithErrors => job.CopyEnabled
-                ? "拷贝已完成，失败文件已跳过"
-                : "校验已完成，失败文件已跳过",
+                ? LocalizationService.Text("拷贝已完成，失败文件已跳过")
+                : LocalizationService.Text("校验已完成，失败文件已跳过"),
             JobStatus.Completed => job.CopyEnabled && job.VerificationEnabled
-                ? "拷贝和 SHA-256 校验均已完成"
+                ? LocalizationService.Text("拷贝和 SHA-256 校验均已完成")
                 : job.CopyEnabled
-                    ? "拷贝已完成"
-                    : "SHA-256 校验已完成",
+                    ? LocalizationService.Text("拷贝已完成")
+                    : LocalizationService.Text("SHA-256 校验已完成"),
             JobStatus.VerificationFailed => job.CopyEnabled
-                ? "拷贝完成，但完整性校验未通过"
-                : "SHA-256 校验未通过",
-            JobStatus.Cancelled => "任务已取消；已完成文件保留",
-            JobStatus.Interrupted => "应用在任务完成前退出",
-            JobStatus.Failed => "任务执行失败",
-            _ => "任务记录"
+                ? LocalizationService.Text("拷贝完成，但完整性校验未通过")
+                : LocalizationService.Text("SHA-256 校验未通过"),
+            JobStatus.Cancelled => LocalizationService.Text("任务已取消；已完成文件保留"),
+            JobStatus.Interrupted => LocalizationService.Text("应用在任务完成前退出"),
+            JobStatus.Failed => LocalizationService.Text("任务执行失败"),
+            _ => LocalizationService.Text("任务记录")
         };
         LogText.Text = job.Status switch
         {
-            JobStatus.CompletedWithErrors => $"\u4EFB\u52A1\u90E8\u5206\u5B8C\u6210\uFF1A\u5DF2\u8DF3\u8FC7 {job.FailedFiles.Count:N0} \u4E2A\u5931\u8D25\u6587\u4EF6\u3002",
+            JobStatus.CompletedWithErrors => LocalizationService.Format("任务部分完成：已跳过 {0} 个失败文件。", job.FailedFiles.Count.ToString("N0")),
             JobStatus.Completed => job.CopyEnabled && job.VerificationEnabled
-                ? $"任务完成：已拷贝并校验 {job.FileCount:N0} 个文件。"
+                ? LocalizationService.Format("任务完成：已拷贝并校验 {0} 个文件。", job.FileCount.ToString("N0"))
                 : job.CopyEnabled
-                    ? $"拷贝完成：已拷贝 {job.FileCount:N0} 个文件。"
-                    : $"校验完成：{job.FileCount:N0} 个文件均通过 SHA-256 校验。",
-            JobStatus.VerificationFailed => job.ErrorMessage ?? "校验发现不一致文件。",
-            JobStatus.Cancelled => "任务已取消，已完成文件予以保留。",
-            JobStatus.Interrupted => "应用上次在任务结束前退出，此记录已标记为中断。",
-            _ => job.ErrorMessage ?? "任务未完成。"
+                    ? LocalizationService.Format("拷贝完成：已拷贝 {0} 个文件。", job.FileCount.ToString("N0"))
+                    : LocalizationService.Format("校验完成：{0} 个文件均通过 SHA-256 校验。", job.FileCount.ToString("N0")),
+            JobStatus.VerificationFailed => job.ErrorMessage ?? LocalizationService.Text("校验发现不一致文件。"),
+            JobStatus.Cancelled => LocalizationService.Text("任务已取消，已完成文件予以保留。"),
+            JobStatus.Interrupted => LocalizationService.Text("应用上次在任务结束前退出，此记录已标记为中断。"),
+            _ => job.ErrorMessage ?? LocalizationService.Text("任务未完成。")
         };
+        LocalizeTaskUi();
     }
 
     private async void DeleteJobButton_Click(object sender, RoutedEventArgs e)
@@ -1029,20 +1072,20 @@ public sealed partial class MainWindow : Window
         }
         if (!IsBatchDeletable(_selectedJob))
         {
-            await ShowMessageAsync("无法删除任务", "只能删除已经完成处理的任务记录。");
+            await ShowMessageAsync("无法删除任务", "只能删除已经结束处理的任务记录。");
             return;
         }
 
         var dialog = new ContentDialog
         {
-            Title = "删除历史记录？",
-            Content = "只会从 EZ DIT 中移除这条已完成任务记录，不会删除任何文件。",
-            PrimaryButtonText = "删除记录",
-            CloseButtonText = "取消",
+            Title = LocalizationService.Text("删除历史记录？"),
+            Content = LocalizationService.Text("只会从 EZ DIT 中移除这条已结束的任务记录，不会删除任何文件。"),
+            PrimaryButtonText = LocalizationService.Text("删除记录"),
+            CloseButtonText = LocalizationService.Text("取消"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = Content.XamlRoot
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
         {
             return;
         }
@@ -1096,8 +1139,13 @@ public sealed partial class MainWindow : Window
         }
         NewJobButton.IsEnabled = false;
         DeleteJobButton.Visibility = Visibility.Collapsed;
+        StartVerificationButton.Visibility = Visibility.Collapsed;
+        ExportReportButton.Visibility = Visibility.Collapsed;
+        RestartJobButton.Visibility = Visibility.Collapsed;
         BatchActionPanel.Visibility = Visibility.Visible;
-        MultiSelectButtonText.Text = "完成";
+        MultiSelectButtonText.Text = LocalizationService.Text("完成");
+        BatchDeleteButtonText.Text = LocalizationService.Text("批量删除");
+        BatchReportButtonText.Text = LocalizationService.Text("批量创建报告");
         UpdateBatchSelectionUi();
     }
 
@@ -1117,7 +1165,7 @@ public sealed partial class MainWindow : Window
         }
         _isMultiSelectMode = false;
         BatchActionPanel.Visibility = Visibility.Collapsed;
-        MultiSelectButtonText.Text = "多选";
+        MultiSelectButtonText.Text = LocalizationService.Text("多选");
         NewJobButton.IsEnabled = true;
         BatchDeleteButton.IsEnabled = false;
         BatchReportButton.IsEnabled = false;
@@ -1145,10 +1193,13 @@ public sealed partial class MainWindow : Window
     }
 
     private static bool IsBatchDeletable(JobHistoryItem job) =>
-        job.Status == JobStatus.Completed;
+        job.CanExportReport;
 
     private static bool IsReportable(JobHistoryItem job) =>
-        job.Status is not JobStatus.Queued and not JobStatus.Running;
+        job.CanExportReport;
+
+    private static bool CanStartVerification(JobHistoryItem job) =>
+        job.CanStartVerification;
 
     private void UpdateBatchSelectionUi()
     {
@@ -1162,8 +1213,8 @@ public sealed partial class MainWindow : Window
 
         List<JobHistoryItem> selected = GetBatchSelectedJobs();
         BatchSelectionText.Text = selected.Count == 0
-            ? "请选择任务"
-            : $"已选择 {selected.Count:N0} 个任务，仅已完成任务可删除";
+            ? LocalizationService.Text("请选择任务")
+            : LocalizationService.Format("已选择 {0} 个任务，仅已结束任务可删除", selected.Count.ToString("N0"));
         BatchDeleteButton.IsEnabled = selected.Count > 0 && selected.All(IsBatchDeletable);
         BatchReportButton.IsEnabled = selected.Count > 0 && selected.All(IsReportable);
     }
@@ -1177,20 +1228,20 @@ public sealed partial class MainWindow : Window
         }
         if (selected.Any(job => !IsBatchDeletable(job)))
         {
-            await ShowMessageAsync("无法批量删除", "只能删除已经完成处理的任务记录，请取消选择其他状态的任务。");
+            await ShowMessageAsync("无法批量删除", "只能删除已经结束处理的任务记录，请取消选择运行中或排队中的任务。");
             return;
         }
 
         var dialog = new ContentDialog
         {
-            Title = $"删除 {selected.Count:N0} 条任务记录？",
-            Content = "只会从 EZ DIT 中移除已完成的任务记录，不会删除源文件、目的地文件或已经导出的报告。",
-            PrimaryButtonText = "批量删除",
-            CloseButtonText = "取消",
+            Title = LocalizationService.Format("删除 {0} 条任务记录？", selected.Count.ToString("N0")),
+            Content = LocalizationService.Text("只会从 EZ DIT 中移除已结束的任务记录，不会删除源文件、目的地文件或已经导出的报告。"),
+            PrimaryButtonText = LocalizationService.Text("批量删除"),
+            CloseButtonText = LocalizationService.Text("取消"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = Content.XamlRoot
         };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
         {
             return;
         }
@@ -1212,7 +1263,7 @@ public sealed partial class MainWindow : Window
         await SaveHistorySafeAsync();
         UpdateHistoryEmptyState();
         ExitMultiSelectMode(true);
-        LogText.Text = $"已删除 {selected.Count:N0} 条任务记录，所有文件均已保留。";
+        LogText.Text = LocalizationService.Format("已删除 {0} 条任务记录，所有文件均已保留。", selected.Count.ToString("N0"));
     }
 
     private async void BatchReportButton_Click(object sender, RoutedEventArgs e)
@@ -1255,7 +1306,7 @@ public sealed partial class MainWindow : Window
                 await FileIO.WriteTextAsync(file, report);
                 created++;
             }
-            LogText.Text = $"已在 {folder.Path} 创建 {created:N0} 份任务报告。";
+            LogText.Text = LocalizationService.Format("已在 {0} 创建 {1} 份任务报告。", folder.Path, created.ToString("N0"));
         }
         catch (Exception ex)
         {
@@ -1286,6 +1337,9 @@ public sealed partial class MainWindow : Window
         PauseButton.Visibility = Visibility.Visible;
         CancelButton.Visibility = Visibility.Visible;
         DeleteJobButton.Visibility = Visibility.Collapsed;
+        StartVerificationButton.Visibility = Visibility.Collapsed;
+        ExportReportButton.Visibility = Visibility.Collapsed;
+        RestartJobButton.Visibility = Visibility.Collapsed;
         CompletionIcon.Visibility = Visibility.Collapsed;
         PercentText.Visibility = Visibility.Visible;
         StatusText.FontSize = 15;
@@ -1314,12 +1368,14 @@ public sealed partial class MainWindow : Window
         DuplicatePanel.Visibility = Visibility.Collapsed;
         _failedFileChoices.Clear();
         FailedFilesPanel.Visibility = Visibility.Collapsed;
+        OverwriteFailedFilesButton.Visibility = Visibility.Collapsed;
+        OverwriteFailedFilesButton.IsEnabled = false;
         RetryFailedFilesButton.IsEnabled = false;
         SkipFailedFilesButton.IsEnabled = false;
         DuplicateList.IsEnabled = true;
         ApplyDuplicateChoicesButton.Visibility = Visibility.Visible;
         ApplyDuplicateChoicesButton.IsEnabled = false;
-        DuplicateSelectionHint.Text = "请逐个选择处理方式";
+        DuplicateSelectionHint.Text = LocalizationService.Text("请逐个选择处理方式");
         DuplicateSelectAllCheckBox.IsChecked = false;
         DuplicateSelectAllCheckBox.IsEnabled = false;
         BatchOverwriteButton.IsEnabled = false;
@@ -1328,23 +1384,28 @@ public sealed partial class MainWindow : Window
         OverallProgress.Value = 0;
         CopyProgress.Value = 0;
         VerifyProgress.Value = 0;
+        CopyProgressRow.Visibility = Visibility.Visible;
+        VerifyProgressRow.Visibility = Visibility.Visible;
         CopyProgress.Visibility = Visibility.Visible;
         VerifyProgress.Visibility = Visibility.Visible;
         CopyCompletedBadge.Visibility = Visibility.Collapsed;
         VerifyCompletedBadge.Visibility = Visibility.Collapsed;
-        CopyCompletedText.Text = "已完成";
-        VerifyCompletedText.Text = "已完成";
+        CopyCompletedText.Text = LocalizationService.Text("已完成");
+        VerifyCompletedText.Text = LocalizationService.Text("已完成");
         VerifyCompletedBadge.Background = new SolidColorBrush(ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77));
         PercentText.Text = "0.00%";
         PercentText.Visibility = Visibility.Visible;
         CompletionIcon.Visibility = Visibility.Collapsed;
         DeleteJobButton.Visibility = Visibility.Collapsed;
+        StartVerificationButton.Visibility = Visibility.Collapsed;
+        ExportReportButton.Visibility = Visibility.Collapsed;
+        RestartJobButton.Visibility = Visibility.Collapsed;
         PauseButton.Visibility = Visibility.Visible;
         CancelButton.Visibility = Visibility.Visible;
-        StatusText.Text = "等待设置";
+        StatusText.Text = LocalizationService.Text("等待设置");
         StatusText.FontSize = 15;
         StatusText.Foreground = (SolidColorBrush)Application.Current.Resources["MutedTextBrush"];
-        PhaseText.Text = "等待开始";
+        PhaseText.Text = LocalizationService.Text("等待开始");
         TotalSizeText.Text = "--";
         TotalCountText.Text = "--";
         StartTimeText.Text = "--";
@@ -1356,7 +1417,7 @@ public sealed partial class MainWindow : Window
         VerifyTimeText.Text = "00:00:00";
         CopyCountText.Text = "0/0";
         VerifyCountText.Text = "0/0";
-        PauseText.Text = "暂停";
+        PauseText.Text = LocalizationService.Text("暂停");
         PauseIcon.Glyph = "\uE769";
     }
 
@@ -1394,7 +1455,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            LogText.Text = $"历史记录保存失败：{ex.Message}";
+            LogText.Text = LocalizationService.Format("历史记录保存失败：{0}", ex.Message);
         }
     }
 
@@ -1418,7 +1479,7 @@ public sealed partial class MainWindow : Window
         {
             report.AppendLine($"拷贝算法：{(job.UseFastCopyAlgorithm ? "FastCopy 流水线" : "标准顺序复制")}");
         }
-        report.AppendLine($"校验算法：{(result.VerificationPerformed ? "SHA-256" : "未启用")}");
+        report.AppendLine($"校验算法：{(result.VerificationPerformed ? "SHA-256" : LocalizationService.Text("未启用"))}");
         report.AppendLine($"最终结果：{(result.Success ? "通过" : "失败")}");
         report.AppendLine();
         report.AppendLine("文件校验明细：");
@@ -1496,12 +1557,12 @@ public sealed partial class MainWindow : Window
 
         if (string.Equals(normalizedSource, normalizedDestination, comparison))
         {
-            message = "源目录和目标目录不能相同。";
+            message = LocalizationService.Text("源目录和目标目录不能相同。");
             return false;
         }
         if (normalizedDestination.StartsWith(normalizedSource + Path.DirectorySeparatorChar, comparison))
         {
-            message = "目标目录不能位于源目录内部，否则会产生递归复制。";
+            message = LocalizationService.Text("目标目录不能位于源目录内部，否则会产生递归复制。");
             return false;
         }
         message = string.Empty;
@@ -1547,12 +1608,18 @@ public sealed partial class MainWindow : Window
     {
         var dialog = new ContentDialog
         {
-            Title = title,
-            Content = message,
-            CloseButtonText = "确定",
+            Title = LocalizationService.Text(title),
+            Content = LocalizationService.Text(message),
+            CloseButtonText = LocalizationService.Text("确定"),
             XamlRoot = Content.XamlRoot
         };
         await dialog.ShowAsync();
+    }
+
+    private async Task<ContentDialogResult> ShowLocalizedDialogAsync(ContentDialog dialog)
+    {
+        LocalizationService.Apply(dialog);
+        return await dialog.ShowAsync();
     }
 
     private void MainWindow_Closed(object sender, WindowEventArgs args) => _cancellation?.Cancel();

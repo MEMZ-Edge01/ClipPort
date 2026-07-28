@@ -25,48 +25,6 @@
             <SolidColorBrush x:Key="ScrollBarTrackStrokePointerOver" Color="Transparent" />
             <SolidColorBrush x:Key="ScrollBarTrackStrokeDisabled" Color="Transparent" />
 
-            <!-- ListView multi-select checkboxes follow the Windows accent palette. -->
-            <SolidColorBrush x:Key="ListViewItemCheckBrush" Color="#737373" />
-            <SolidColorBrush x:Key="ListViewItemCheckPressedBrush" Color="#E6FFFFFF" />
-            <SolidColorBrush x:Key="ListViewItemCheckDisabledBrush" Color="#99FFFFFF" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBrush" Color="#F5F5F5" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBrush"
-                             Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.36" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBrush" Color="#F5F5F5" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedBrush"
-                             Color="{ThemeResource SystemAccentColor}" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPointerOverBrush"
-                             Color="{ThemeResource SystemAccentColorLight1}" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedPressedBrush"
-                             Color="{ThemeResource SystemAccentColorDark1}" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxSelectedDisabledBrush"
-                             Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxBorderBrush" Color="#737373" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxPointerOverBorderBrush"
-                             Color="{ThemeResource SystemAccentColor}" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBorderBrush"
-                             Color="{ThemeResource SystemAccentColorDark1}" />
-            <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBorderBrush" Color="#A1A1A1" />
-            <SolidColorBrush x:Key="ListViewItemCheckHintThemeBrush"
-                             Color="{ThemeResource SystemAccentColor}" />
-            <SolidColorBrush x:Key="ListViewItemCheckSelectingThemeBrush"
-                             Color="{ThemeResource SystemAccentColor}" />
-            <SolidColorBrush x:Key="ListViewItemCheckThemeBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelected"
-                             Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.36" />
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver"
-                             Color="{ThemeResource SystemAccentColorLight2}" Opacity="0.42" />
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed"
-                             Color="{ThemeResource SystemAccentColorLight1}" Opacity="0.48" />
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedDisabled"
-                             Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
-            <SolidColorBrush x:Key="ListViewItemForegroundSelected"
-                             Color="{ThemeResource SystemAccentColorDark1}" />
-            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver"
-                             Color="{ThemeResource SystemAccentColorDark2}" />
-            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed"
-                             Color="{ThemeResource SystemAccentColorDark2}" />
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 
@@ -190,6 +148,7 @@
     <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource TraeWorkTextTertiary}" />
     <SolidColorBrush x:Key="DisabledTextBrush" Color="{StaticResource TraeWorkTextDisabled}" />
     <SolidColorBrush x:Key="OnBrandTextBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
+    <SolidColorBrush x:Key="AccentButtonTextBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
     <SolidColorBrush x:Key="WhiteTextBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
 
     <!-- ── Icon Brushes ── -->
@@ -280,6 +239,27 @@
     <SolidColorBrush x:Key="ListViewItemCheckBoxPressedBorderBrush"
                      Color="{ThemeResource SystemAccentColorDark1}" />
     <SolidColorBrush x:Key="ListViewItemCheckBoxDisabledBorderBrush" Color="{StaticResource TraeWorkTextDisabled}" />
+
+    <!-- ListViewItem selection-state brushes required by WinUI default styles -->
+    <SolidColorBrush x:Key="ListViewItemCheckHintThemeBrush"
+                     Color="{ThemeResource SystemAccentColor}" />
+    <SolidColorBrush x:Key="ListViewItemCheckSelectingThemeBrush"
+                     Color="{ThemeResource SystemAccentColor}" />
+    <SolidColorBrush x:Key="ListViewItemCheckThemeBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundSelected"
+                     Color="{ThemeResource SystemAccentColorLight3}" Opacity="0.36" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver"
+                     Color="{ThemeResource SystemAccentColorLight2}" Opacity="0.42" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed"
+                     Color="{ThemeResource SystemAccentColorLight1}" Opacity="0.48" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedDisabled"
+                     Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
+    <SolidColorBrush x:Key="ListViewItemForegroundSelected"
+                     Color="{ThemeResource SystemAccentColorDark1}" />
+    <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver"
+                     Color="{ThemeResource SystemAccentColorDark2}" />
+    <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed"
+                     Color="{ThemeResource SystemAccentColorDark2}" />
 
     <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
 

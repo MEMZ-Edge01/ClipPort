@@ -119,9 +119,24 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     public bool NeedsAttention =>
         !IsAcknowledged && Status is not JobStatus.Queued and not JobStatus.Running;
 
+    [JsonIgnore]
+    public bool CanExportReport =>
+        Status is not JobStatus.Queued and not JobStatus.Running;
 
     [JsonIgnore]
     public string DurationText => TimeSpan.FromSeconds(CopySeconds + VerifySeconds).ToString(@"hh\:mm\:ss");
+
+    [JsonIgnore]
+    public bool CanStartVerification =>
+        Status == JobStatus.Completed && CopyEnabled && !VerificationEnabled;
+
+    [JsonIgnore]
+    public bool CanRestart =>
+        Status is JobStatus.CompletedWithErrors
+            or JobStatus.VerificationFailed
+            or JobStatus.Failed
+            or JobStatus.Cancelled
+            or JobStatus.Interrupted;
 
     private static string FormatBytes(double bytes)
     {

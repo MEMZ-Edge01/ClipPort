@@ -19,6 +19,7 @@ public sealed class FailedFileChoice : INotifyPropertyChanged
     public string StageText => Failure.StageText;
     public string SizeText => Failure.SizeText;
     public string Error => Failure.Error;
+    public bool CanOverwrite => Failure.IsVerificationMismatch;
 
     public bool IsSelected
     {
