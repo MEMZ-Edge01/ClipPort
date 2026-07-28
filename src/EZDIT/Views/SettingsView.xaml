@@ -178,8 +178,6 @@
                                 <TextBlock x:Name="LanguageLabel" x:Uid="LanguageLabel" Text="语言" VerticalAlignment="Center" FontWeight="SemiBold" />
                                 <ComboBox x:Name="LanguageComboBox" Grid.Column="1" MinWidth="260"
                                           HorizontalAlignment="Stretch" SelectionChanged="LanguageComboBox_SelectionChanged">
-                                    <ComboBoxItem Content="简体中文" />
-                                    <ComboBoxItem Content="English" />
                                 </ComboBox>
                             </Grid>
                             <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />

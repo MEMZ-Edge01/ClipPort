@@ -133,7 +133,7 @@
                         </Button>
                     </StackPanel>
                     <StackPanel x:Name="BatchActionPanel" Visibility="Collapsed" Spacing="8">
-                        <TextBlock x:Name="BatchSelectionText" Text="已选择 0 个任务"
+                        <TextBlock x:Name="BatchSelectionText" x:Uid="BatchSelectionText" Text="已选择 0 个任务"
                                    FontSize="12" Foreground="{StaticResource MutedTextBrush}" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="BatchDeleteButton" Click="BatchDeleteButton_Click"
@@ -524,11 +524,11 @@
                                                                VerticalAlignment="Center" Foreground="{StaticResource AlertBrush}"
                                                                HorizontalAlignment="Center" />
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                        <Button Content="覆盖" Tag="{Binding}" Click="DuplicateOverwrite_Click"
+                                                        <Button x:Uid="DupOverwriteButton" Content="覆盖" Tag="{Binding}" Click="DuplicateOverwrite_Click"
                                                                 IsEnabled="{Binding CanChoose}" Padding="9,5" />
-                                                        <Button Content="跳过" Tag="{Binding}" Click="DuplicateSkip_Click"
+                                                        <Button x:Uid="DupSkipButton" Content="跳过" Tag="{Binding}" Click="DuplicateSkip_Click"
                                                                 IsEnabled="{Binding CanChoose}" Padding="9,5" />
-                                                        <Button Content="创建副本" Tag="{Binding}" Click="DuplicateCreateCopy_Click"
+                                                        <Button x:Uid="DupCreateCopyButton" Content="创建副本" Tag="{Binding}" Click="DuplicateCreateCopy_Click"
                                                                 IsEnabled="{Binding CanChoose}" Padding="9,5" />
                                                     </StackPanel>
                                                 </Grid>
@@ -548,11 +548,11 @@
                                                 <TextBlock Grid.Column="1" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Grid.Row="1" x:Uid="DupSourceHeader" Text="来源位置" Foreground="{StaticResource MutedTextBrush}" />
                                                 <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SourcePath}" TextTrimming="CharacterEllipsis" />
-                                                <Button Grid.Row="1" Grid.Column="2" Content="在资源管理器中选择" Tag="{Binding}"
+                                                <Button x:Uid="DupOpenSourceButton" Grid.Row="1" Grid.Column="2" Content="在资源管理器中选择" Tag="{Binding}"
                                                         Click="OpenDuplicateSource_Click" Padding="10,5" />
                                                 <TextBlock Grid.Row="2" x:Uid="DupConflictHeader" Text="冲突位置" Foreground="{StaticResource MutedTextBrush}" />
                                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DestinationPath}" TextTrimming="CharacterEllipsis" />
-                                                <Button Grid.Row="2" Grid.Column="2" Content="在资源管理器中选择" Tag="{Binding}"
+                                                <Button x:Uid="DupOpenDestinationButton" Grid.Row="2" Grid.Column="2" Content="在资源管理器中选择" Tag="{Binding}"
                                                         Click="OpenDuplicateDestination_Click" Padding="10,5" />
                                             </Grid>
                                         </Expander>

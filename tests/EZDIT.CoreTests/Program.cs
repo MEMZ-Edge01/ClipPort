@@ -1,4 +1,7 @@
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 using EZDIT.Models;
 using EZDIT.Services;
 
@@ -8,6 +11,8 @@ internal static class Program
     {
         var tests = new (string Name, Func<Task> Run)[]
         {
+            ("localization resource coverage", TestLocalizationResourceCoverageAsync),
+            ("localized string lookup", TestLocalizedStringLookupAsync),
             ("copy and SHA-256 verification", TestCopyAndVerifyAsync),
             ("verification-only mode never copies", TestVerificationOnlyAsync),
             ("verification mismatch can be overwritten", TestOverwriteVerificationMismatchAsync),
@@ -34,6 +39,119 @@ internal static class Program
         Console.WriteLine($"All {tests.Length} core tests passed.");
         return 0;
     }
+
+    private static Task TestLocalizationResourceCoverageAsync()
+    {
+        string localizationDirectory = Path.Combine(AppContext.BaseDirectory, "Localization");
+        string stringsDirectory = Path.Combine(AppContext.BaseDirectory, "Strings");
+        Dictionary<string, string> chinese = LoadStringResources(
+            Path.Combine(stringsDirectory, "zh-CN", "Resources.resw"));
+        Dictionary<string, string> english = LoadStringResources(
+            Path.Combine(stringsDirectory, "en-US", "Resources.resw"));
+
+        Assert(chinese.Keys.ToHashSet().SetEquals(english.Keys),
+            "Chinese and English resource files should contain the same keys.");
+
+        foreach (string key in chinese.Keys)
+        {
+            string[] chinesePlaceholders = ExtractFormatPlaceholders(chinese[key]);
+            string[] englishPlaceholders = ExtractFormatPlaceholders(english[key]);
+            Assert(chinesePlaceholders.SequenceEqual(englishPlaceholders),
+                $"Resource '{key}' should use the same format placeholders in every language.");
+        }
+
+        string[] xamlFiles =
+        [
+            Path.Combine(localizationDirectory, "MainWindow.xaml"),
+            Path.Combine(localizationDirectory, "SettingsView.xaml")
+        ];
+        string[] localizedProperties =
+        [
+            "Text",
+            "Content",
+            "Header",
+            "OnContent",
+            "OffContent",
+            "Title",
+            "PrimaryButtonText",
+            "SecondaryButtonText",
+            "CloseButtonText",
+            "PlaceholderText",
+            "ToolTipService.ToolTip"
+        ];
+
+        foreach (string xamlFile in xamlFiles)
+        {
+            XDocument document = XDocument.Load(xamlFile, LoadOptions.SetLineInfo);
+            foreach (XElement element in document.Descendants())
+            {
+                // SettingsView populates ComboBoxItem labels from ResourceService because
+                // WinUI does not apply x:Uid resources reliably to collection items.
+                if (element.Name.LocalName == "ComboBoxItem")
+                {
+                    continue;
+                }
+
+                string? uid = element.Attributes()
+                    .FirstOrDefault(attribute => attribute.Name.LocalName == "Uid")
+                    ?.Value;
+                foreach (XAttribute attribute in element.Attributes())
+                {
+                    if (!localizedProperties.Contains(attribute.Name.LocalName) ||
+                        !ContainsChinese(attribute.Value))
+                    {
+                        continue;
+                    }
+
+                    IXmlLineInfo lineInfo = (IXmlLineInfo)element;
+                    string location = $"{Path.GetFileName(xamlFile)}:{lineInfo.LineNumber}";
+                    Assert(!string.IsNullOrWhiteSpace(uid),
+                        $"{location} contains Chinese UI text without x:Uid.");
+
+                    string resourceKey = $"{uid}.{attribute.Name.LocalName}";
+                    Assert(chinese.ContainsKey(resourceKey) && english.ContainsKey(resourceKey),
+                        $"{location} is missing resource key '{resourceKey}'.");
+                }
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestLocalizedStringLookupAsync()
+    {
+        ResourceService.SetLanguage(AppLanguage.SimplifiedChinese);
+        Assert(ResourceService.GetString("NewJobButtonText.Text") == "创建任务",
+            "Simplified Chinese resource lookup should return the localized value.");
+
+        ResourceService.SetLanguage(AppLanguage.English);
+        Assert(ResourceService.GetString("NewJobButtonText.Text") == "Create task",
+            "English resource lookup should return the localized value.");
+        Assert(ResourceService.GetString("创建任务") == "Create task",
+            "Legacy persisted Chinese values should resolve through their resource key.");
+        Assert(ResourceService.GetString("Missing.Resource.Key") == "Missing.Resource.Key",
+            "Missing resources should fall back to the key.");
+
+        return Task.CompletedTask;
+    }
+
+    private static Dictionary<string, string> LoadStringResources(string path) =>
+        XDocument.Load(path)
+            .Descendants("data")
+            .Where(element => element.Attribute("name") is not null)
+            .ToDictionary(
+                element => element.Attribute("name")!.Value,
+                element => element.Element("value")?.Value ?? string.Empty);
+
+    private static string[] ExtractFormatPlaceholders(string value) =>
+        Regex.Matches(value, @"\{\d+(?:[^}]*)?\}")
+            .Select(match => Regex.Replace(match.Value, @"[:,].*", "}"))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+    private static bool ContainsChinese(string value) =>
+        value.Any(character => character is >= '\u4E00' and <= '\u9FFF');
 
     private static async Task TestCopyAndVerifyAsync()
     {
@@ -517,7 +635,7 @@ internal static class Program
                 "The verification setting should round-trip.");
             Assert(!loaded[0].CopyEnabled,
                 "The copy setting should round-trip.");
-            Assert(loaded[0].StatusText == "校验完成" &&
+            Assert(loaded[0].StatusText == "Result.VerificationCompleted" &&
                    !loaded[0].CanStartVerification &&
                    loaded[0].CanExportReport,
                 "A verification-only job should not offer starting verification again.");
@@ -527,7 +645,7 @@ internal static class Program
                     CopyEnabled = true,
                     VerificationEnabled = false
                 };
-            Assert(copyOnly.StatusText == "拷贝完成" &&
+            Assert(copyOnly.StatusText == "Result.CopyCompletedShort" &&
                    copyOnly.CanStartVerification &&
                    copyOnly.CanExportReport,
                 "A copy-only job should offer starting verification.");
@@ -536,7 +654,7 @@ internal static class Program
                     Status = JobStatus.Completed,
                     CopyEnabled = true,
                     VerificationEnabled = true
-                }.StatusText == "任务完成",
+                }.StatusText == "Result.TaskCompleted",
                 "A copy-and-verification job should be labeled as task completed.");
             Assert(!new JobHistoryItem
                 {

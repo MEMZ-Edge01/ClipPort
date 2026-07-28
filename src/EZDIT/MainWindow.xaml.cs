@@ -64,9 +64,6 @@ public sealed partial class MainWindow : Window
         _logService = new AppLogService(_appSettings.LogAndReportDirectory);
         _previousLanguage = _appSettings.Language;
         InitializeComponent();
-        ResourceService.ApplyResources(RootGrid);
-        ResourceService.ApplyResources(NewTaskDialog);
-        ResourceService.ApplyResources(SettingsPage);
         NewJobsList.ItemsSource = _newJobs;
         HistoryList.ItemsSource = _visibleHistory;
         DuplicateList.ItemsSource = _duplicateChoices;

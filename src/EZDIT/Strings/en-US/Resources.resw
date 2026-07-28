@@ -329,4 +329,10 @@
   <data name="NewTaskDialog.Title" xml:space="preserve"><value>New copy task</value></data>
   <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>Start task</value></data>
   <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>Cancel</value></data>
+  <data name="BatchSelectionText.Text" xml:space="preserve"><value>0 tasks selected</value></data>
+  <data name="DupOverwriteButton.Content" xml:space="preserve"><value>Overwrite</value></data>
+  <data name="DupSkipButton.Content" xml:space="preserve"><value>Skip</value></data>
+  <data name="DupCreateCopyButton.Content" xml:space="preserve"><value>Create a copy</value></data>
+  <data name="DupOpenSourceButton.Content" xml:space="preserve"><value>Show in File Explorer</value></data>
+  <data name="DupOpenDestinationButton.Content" xml:space="preserve"><value>Show in File Explorer</value></data>
 </root>

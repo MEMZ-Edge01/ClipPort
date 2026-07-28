@@ -1,3 +1,4 @@
+using EZDIT.Models;
 using EZDIT.Services;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -29,12 +30,9 @@ public sealed partial class MainWindow
 
     private async void SettingsPage_SettingsChanged(object? sender, EventArgs e)
     {
-        bool languageChanged = _appSettings.Language != _previousLanguage;
-        if (languageChanged)
-        {
-            _previousLanguage = _appSettings.Language;
-            ResourceService.SetLanguage(_appSettings.Language);
-        }
+        AppLanguage requestedLanguage = _appSettings.Language;
+        AppLanguage previousLanguage = _previousLanguage;
+        bool languageChanged = requestedLanguage != previousLanguage;
 
         _historyService.SetReportsDirectory(_appSettings.LogAndReportDirectory);
         _logService.SetDirectory(_appSettings.LogAndReportDirectory);
@@ -46,11 +44,19 @@ public sealed partial class MainWindow
         }
         catch (Exception ex)
         {
+            if (languageChanged)
+            {
+                // Keep the UI and persisted state aligned when saving fails.
+                _appSettings.Language = previousLanguage;
+                SettingsPage.Initialize(_appSettings);
+            }
             LogText.Text = ResourceService.Format("Format.SettingsSaveFailed", ex.Message);
+            return;
         }
 
         if (languageChanged)
         {
+            _previousLanguage = requestedLanguage;
             await ShowLanguageRestartDialogAsync();
         }
     }
@@ -78,7 +84,7 @@ public sealed partial class MainWindow
 
     /// <summary>
     /// Applies theme, accent, and title-bar appearance only.
-    /// Language is managed via x:Uid at app startup and requires a restart to change.
+    /// Language is selected before XAML loads at app startup and requires a restart to change.
     /// </summary>
     private void ApplyTheme()
     {

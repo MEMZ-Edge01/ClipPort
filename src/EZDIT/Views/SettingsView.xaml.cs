@@ -26,8 +26,14 @@ public sealed partial class SettingsView : UserControl
         SetComboBoxItemContent(ThemeModeComboBox, 1, "Settings.LightMode");
         SetComboBoxItemContent(ThemeModeComboBox, 2, "Settings.DarkMode");
 
-        SetComboBoxItemContent(LanguageComboBox, 0, "Settings.SimplifiedChinese");
-        SetComboBoxItemContent(LanguageComboBox, 1, "Settings.English");
+        foreach (AppLanguageDefinition language in AppLanguages.Supported)
+        {
+            LanguageComboBox.Items.Add(new ComboBoxItem
+            {
+                Tag = language.Language,
+                Content = ResourceService.GetString(language.DisplayNameResourceKey)
+            });
+        }
 
         string? version = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
@@ -47,7 +53,9 @@ public sealed partial class SettingsView : UserControl
         _settings = settings;
         _initializing = true;
         ThemeModeComboBox.SelectedIndex = (int)settings.Theme;
-        LanguageComboBox.SelectedIndex = settings.Language == AppLanguage.English ? 1 : 0;
+        LanguageComboBox.SelectedItem = LanguageComboBox.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag is AppLanguage language && language == settings.Language);
         OutputDirectoryTextBox.Text = settings.LogAndReportDirectory;
         UpdateAccentSelectionText();
         _initializing = false;
@@ -104,13 +112,12 @@ public sealed partial class SettingsView : UserControl
 
     private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_initializing || _settings is null || LanguageComboBox.SelectedIndex < 0)
+        if (_initializing || _settings is null ||
+            LanguageComboBox.SelectedItem is not ComboBoxItem { Tag: AppLanguage language })
         {
             return;
         }
-        _settings.Language = LanguageComboBox.SelectedIndex == 1
-            ? AppLanguage.English
-            : AppLanguage.SimplifiedChinese;
+        _settings.Language = language;
         SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 
