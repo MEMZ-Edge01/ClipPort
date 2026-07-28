@@ -1,76 +1,170 @@
 # EZ DIT
 
-一个使用 C#、WinUI 3 和 Fluent Design 构建的 Windows 自动拷卡工具。
+<div align="center">
 
-## 功能
+**[English](#english)** &nbsp;|&nbsp; **[中文](#chinese)**
 
-- 选择源目录（存储卡）与目标目录
-- 两个目录选择完成后自动开始，也可关闭“自动开始”后手动启动
-- 保持目录结构进行异步流式复制，包括空目录
-- 新建任务时可选用 FastCopy 风格的有界读写流水线，并在校验阶段并行读取源文件与目标文件
-- 实时显示总进度、速度、文件数、当前文件和耗时
-- 支持暂停、继续与取消
-- 复制完成后逐文件执行 SHA-256 完整性校验
-- 左侧保存本机历史任务，点击可查看任意任务的时间、大小、路径、进度和结果
-- 完成页显示明确的成功或失败状态，可删除单条历史记录
-- 导出包含每个文件哈希值与验证结果的文本报告
-- 开始前检查目标磁盘可用空间
-- 防止源目录与目标目录相同、或目标位于源目录内部
-- 使用 `.ezdit-partial` 临时文件；完整写入后才替换目标文件，取消或失败不会破坏已有目标文件
-- 跳过目录联接和符号链接，避免意外递归复制
+一个使用 WinUI 3 + C# + C++ 构建的 Windows 自动拷卡工具 —— 安全、快速、可校验
 
-## 使用
+</div>
 
-1. 点击“源目录 / 存储卡”右侧的文件夹按钮，选择存储卡或素材目录。
-2. 点击“拷卡目的地”右侧的文件夹按钮，选择目标目录。
-3. 默认会自动开始；也可以先关闭“自动开始”，再点击“开始拷卡”。
-4. 复制阶段和 SHA-256 校验阶段都可以暂停、继续或取消。
-5. 点击左侧任意历史任务，可重新查看其时间、大小、路径与执行结果。
-6. 点击“创建报告”可导出所选历史任务的本地报告；“删除记录”不会删除素材。
+---
 
-目标目录中同名文件只会在新文件完整写入后被替换。取消任务时，已经完成的文件会保留，当前未完成的临时文件会自动清理。
+<a name="chinese"></a>
 
-历史任务和报告完全保存在本机 `%LOCALAPPDATA%\EZDIT`，不使用账号、云服务或网络数据库。
+## 🇨🇳 中文
 
-## 原生 FastCopy 引擎
+### 简介
 
-启用“使用 FastCopy 算法”后，程序优先调用独立开发的 EZDIT.NativeCopy.dll：
+**EZ DIT**（Easy Digital Imaging Transfer）是一款 Windows 桌面应用，专为摄影师和视频工作者设计，用于将存储卡中的素材安全、高效地拷贝到本地磁盘。支持完整的 SHA-256 完整性校验，确保每一个字节都被正确复制。
 
-- 使用两个原生工作线程重叠执行读取和写入
-- 使用 4 × 4 MiB 有界环形缓冲控制内存和背压
-- 使用 Win32 Overlapped I/O，并支持 CancelIoEx 快速取消
-- 大于 32 MiB 的文件会尝试无缓冲 Direct I/O；不满足对齐或设备不支持时自动回退
-- Direct I/O 最后的非扇区对齐部分会切换到普通缓冲 I/O
-- DLL 不存在或 API 版本不匹配时，自动使用托管 FastCopy 风格流水线
+### 特性
 
-原生实现是根据公开的 Windows I/O 能力独立编写的，没有复制 FastCopy-M 的 GPLv3 源码。
+- 🚀 **快速拷贝**：原生 C++ FastCopy 引擎，支持有界环形缓冲、Overlapped I/O 和 Direct I/O
+- ✅ **SHA-256 校验**：逐文件执行 SHA-256 哈希校验，确保数据完整性
+- 📂 **保持目录结构**：完整复制源目录结构，包括空目录
+- ⏯️ **暂停/继续/取消**：随时暂停拷贝或校验，取消不会损坏已有目标文件
+- 🔄 **并发任务队列**：支持同时配置多个任务，优先级任务可插队执行
+- 📋 **历史记录**：自动保存任务历史，数据仅存储在本地
+- 📄 **报告导出**：导出包含每个文件哈希值及验证结果的文本报告
+- 🌗 **深色/浅色主题**：支持跟随系统 + 6 种强调色
+- 🌐 **中英双语**：完整的中文和英文界面
+- 🛡️ **安全写入**：使用 `.ezdit-partial` 临时文件 + 原子替换，取消/失败不破坏已有文件
+- 🔗 **符号链接保护**：跳过目录联接和符号链接，避免意外递归
 
-## 构建要求
+### 使用
 
-- Windows 10 1809 或更高版本（推荐 Windows 11）
-- Visual Studio 2022 17.8 或更高版本
-- 安装“.NET 桌面开发”“Windows 应用 SDK C# 模板”和“使用 C++ 的桌面开发”工作负载
-- .NET 8 SDK
+1. 点击「源目录 / 存储卡」选择素材所在目录（如 SD 卡）。
+2. 点击「拷卡目的地」选择目标目录。
+3. 默认自动开始；可关闭「自动开始」再手动点击「开始拷卡」。
+4. 支持暂停 / 继续 / 取消，取消不会影响已完成的文件。
+5. 左侧历史面板可查看任意历史任务详情或导出报告。
+6. 可在设置中切换语言、主题和强调色。
 
-用 Visual Studio 打开 `EZDIT.sln`，选择 `x64` 后还原 NuGet 包并运行。项目采用非打包、自包含 Windows App SDK 配置。
+> 所有历史数据和报告仅保存在本机 `%LOCALAPPDATA%\EZDIT`，无云服务依赖。
 
-命令行构建：
+### 技术架构
 
-```powershell
-# 在 Visual Studio Developer PowerShell 中执行
-msbuild .\EZDIT.sln -restore -m -p:Configuration=Release -p:Platform=x64
+```
+EZ DIT
+├── src/EZDIT/                  # C# WinUI 3 主程序
+│   ├── Models/                 # 数据模型
+│   ├── Services/               # 核心服务层
+│   │   ├── FileCopyService.cs  # 文件拷贝与校验
+│   │   ├── NativeCopyEngine.cs # 原生引擎 P/Invoke 封装
+│   │   ├── CopyJobScheduler.cs # 并发任务调度器
+│   │   └── ThemeManager.cs     # 主题与强调色管理
+│   ├── Views/                  # XAML 视图
+│   ├── Converters/             # 绑定转换器
+│   └── Strings/                # 多语言资源 (.resw)
+├── src/EZDIT.NativeCopy/       # C++ 原生 FastCopy 引擎
+│   ├── native_copy.h           # 公开 API 头文件
+│   └── native_copy.cpp         # 实现
+└── tests/EZDIT.CoreTests/      # 核心流程测试（17 个用例）
 ```
 
-生成无需预装 .NET 的 x64 发布目录：
+### 拷贝引擎
+
+EZ DIT 提供三种拷贝模式，根据配置自动选择：
+
+| 模式 | 说明 | 适用场景 |
+|------|------|----------|
+| **标准顺序复制** | `FileStream` 异步读写，4 MiB 缓冲 | 小文件、默认模式 |
+| **托管流水线** | `Channel<T>` 实现的生产者-消费者流水线，4 个 4 MiB 缓冲区 | 大文件、无原生 DLL 时 |
+| **原生 FastCopy** | C++ 实现，Win32 Overlapped I/O、Direct I/O（>32 MiB 文件） | 最大性能 |
+
+原生引擎特性：
+- 两个原生工作线程重叠执行读取和写入
+- 4 × 4 MiB 有界环形缓冲控制内存和背压
+- 大于 32 MiB 的文件尝试 Direct I/O，不满足对齐要求时自动回退
+- 支持 `CancelIoEx` 快速取消
+- DLL 不存在或 API 版本不匹配时自动降级
+
+> 原生实现是根据公开的 Windows I/O 能力独立编写的，没有复制 FastCopy-M 的 GPLv3 源码。
+
+### 构建
+
+**环境要求：**
+
+- Windows 10 1809+（推荐 Windows 11）
+- Visual Studio 2022 17.8+
+- .NET 8 SDK
+- 工作负载：`.NET 桌面开发`、`Windows 应用 SDK C# 模板`、`使用 C++ 的桌面开发`
+
+**构建步骤：**
 
 ```powershell
+# 1. 克隆仓库
+git clone https://github.com/MEMZ-Edge01/EZ-DIT.git
+cd EZ-DIT
+
+# 2. 用 Visual Studio 打开 EZDIT.sln，选择 x64，生成
+
+# 3. 或用命令行构建
+msbuild .\EZDIT.sln -restore -m -p:Configuration=Release -p:Platform=x64
+
+# 4. 发布自包含 x64 包
 dotnet publish .\src\EZDIT\EZDIT.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:PublishSingleFile=false
 ```
 
-## 核心流程测试
-
-测试覆盖正常复制与哈希一致性、暂停/继续、取消安全、目标篡改检测、空目录、空卡处理和本地历史持久化：
+### 测试
 
 ```powershell
 dotnet run --project .\tests\EZDIT.CoreTests\EZDIT.CoreTests.csproj -c Release
 ```
+
+测试覆盖 17 个场景：正常复制与哈希一致性、暂停/继续、取消安全、损坏检测、文件失败恢复、空目录处理、FastCopy 流水线、重复文件逐策略处理、历史持久化、优先级调度等。
+
+### 数据存储
+
+所有任务历史和报告完全保存在本机 `%LOCALAPPDATA%\EZDIT`，不使用账号、云服务或网络数据库。默认报告输出目录为用户文档下的 `EZ DIT` 文件夹。
+
+### 许可证
+
+本项目目前未声明开源许可证，所有权利保留。
+
+### 致谢
+
+- [Windows App SDK / WinUI 3](https://github.com/microsoft/microsoft-ui-xaml) — UI 框架
+- [FastCopy](https://fastcopy.jp/) — 灵感来源（独立实现，未使用其源码）
+
+---
+
+<a name="english"></a>
+
+## 🇬🇧 English
+
+### Overview
+
+**EZ DIT** (Easy Digital Imaging Transfer) is a Windows desktop application designed for photographers and videographers to safely and efficiently copy media from memory cards to local storage. It features full SHA-256 integrity verification to ensure every byte is copied correctly.
+
+### Features
+
+- 🚀 **Fast Copy** — Native C++ engine with bounded ring buffers, Overlapped I/O, and Direct I/O
+- ✅ **SHA-256 Verification** — Per-file hash verification for data integrity
+- 📂 **Preserves Structure** — Full directory tree including empty folders
+- ⏯️ **Pause/Resume/Cancel** — Safe cancellation with `.ezdit-partial` atomic writes
+- 🔄 **Concurrent Queue** — Multiple jobs with priority scheduling
+- 📋 **History** — Local-only task history with no cloud dependencies
+- 📄 **Reports** — Export per-file hash verification reports
+- 🌗 **Themes** — Light/dark with system follow + 6 accent colors
+- 🌐 **i18n** — Full Chinese and English localization
+- 🛡️ **Safe Writes** — Temporary files + atomic replacement; cancelling never corrupts existing files
+- 🔗 **Symlink Safe** — Skips junctions and symbolic links
+
+### Architecture
+
+- **Frontend**: WinUI 3 (Windows App SDK), C#, .NET 8
+- **Core Logic**: `FileCopyService` — async streaming copy with SHA-256 verification
+- **Native Engine**: C++/Win32 — ring buffer pipeline with Direct I/O fallback
+- **Scheduler**: Custom priority-gated concurrent job scheduler
+- **Persistence**: JSON-based local history and settings
+- **Testing**: 17 core scenario tests covering copy, verify, pause, cancel, and recovery
+
+### Build & Test
+
+Same commands as the Chinese section above.
+
+### License
+
+No open-source license has been declared for this project. All rights reserved.

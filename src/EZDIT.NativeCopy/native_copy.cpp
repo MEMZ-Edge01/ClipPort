@@ -37,6 +37,7 @@ namespace
         wchar_t volumePath[MAX_PATH]{};
         if (!GetVolumePathNameW(path, volumePath, ARRAYSIZE(volumePath)))
         {
+            // Cannot resolve volume path — fall back to buffered I/O.
             return 0;
         }
 
@@ -44,6 +45,8 @@ namespace
         DWORD bytesPerSector = 0;
         DWORD freeClusters = 0;
         DWORD totalClusters = 0;
+        // A zero return disables Direct I/O for this volume, which is the
+        // safe default when the filesystem doesn't expose sector information.
         return GetDiskFreeSpaceW(
             volumePath, &sectorsPerCluster, &bytesPerSector,
             &freeClusters, &totalClusters)
@@ -387,9 +390,11 @@ namespace
                     GetOverlappedResult(
                         file, &overlapped, &bytesTransferred, TRUE);
                     CloseHandle(ioEvent);
-                    return waitError == ERROR_SUCCESS
-                        ? ERROR_GEN_FAILURE
-                        : waitError;
+                    // If WaitForMultipleObjects itself failed, use its error;
+                    // otherwise (e.g. WAIT_ABANDONED), report a generic failure.
+                    return waitResult == WAIT_FAILED && waitError != ERROR_SUCCESS
+                        ? waitError
+                        : ERROR_GEN_FAILURE;
                 }
             }
 

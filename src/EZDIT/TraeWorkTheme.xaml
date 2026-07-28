@@ -123,6 +123,9 @@
     <SolidColorBrush x:Key="CardOverlayBrush" Color="{StaticResource TraeWorkBgOverlayL1}" />
 
     <!-- ── Windows Accent Brushes ── -->
+    <!-- Kept separate from AccentBrush so the settings preview always shows
+         the Windows accent even while the app uses a custom accent. -->
+    <SolidColorBrush x:Key="WindowsAccentPreviewBrush" Color="{ThemeResource SystemAccentColor}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemAccentColor}" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="{ThemeResource SystemAccentColorLight1}" />
     <SolidColorBrush x:Key="AccentActiveBrush" Color="{ThemeResource SystemAccentColorDark1}" />

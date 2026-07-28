@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace EZDIT.Services;
 
 public sealed class CopyJobScheduler
@@ -63,7 +65,9 @@ public sealed class CopyJobScheduler
                 gateToOpen = _priorityGate;
             }
         }
-        gateToOpen?.TrySetResult();
+        bool opened = gateToOpen?.TrySetResult() ?? true;
+        Debug.Assert(opened,
+            "Priority gate was already completed — this may indicate an unbalanced register / dispose sequence.");
     }
 
     private static TaskCompletionSource CreateCompletedGate()

@@ -13,6 +13,7 @@ internal static class Program
         {
             ("localization resource coverage", TestLocalizationResourceCoverageAsync),
             ("localized string lookup", TestLocalizedStringLookupAsync),
+            ("Windows accent preview stays independent", TestWindowsAccentPreviewAsync),
             ("copy and SHA-256 verification", TestCopyAndVerifyAsync),
             ("verification-only mode never copies", TestVerificationOnlyAsync),
             ("verification mismatch can be overwritten", TestOverwriteVerificationMismatchAsync),
@@ -131,6 +132,36 @@ internal static class Program
             "Legacy persisted Chinese values should resolve through their resource key.");
         Assert(ResourceService.GetString("Missing.Resource.Key") == "Missing.Resource.Key",
             "Missing resources should fall back to the key.");
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestWindowsAccentPreviewAsync()
+    {
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XDocument settingsView = XDocument.Load(
+            Path.Combine(AppContext.BaseDirectory, "Localization", "SettingsView.xaml"));
+        XElement systemAccentButton = settingsView
+            .Descendants(presentation + "Button")
+            .Single(element => (string?)element.Attribute("Tag") == "System");
+        XElement previewEllipse = systemAccentButton
+            .Descendants(presentation + "Ellipse")
+            .Single();
+
+        Assert((string?)previewEllipse.Attribute("Fill") ==
+               "{StaticResource WindowsAccentPreviewBrush}",
+            "The Windows accent preview must not use the mutable application AccentBrush.");
+
+        XDocument theme = XDocument.Load(
+            Path.Combine(AppContext.BaseDirectory, "Themes", "TraeWorkTheme.xaml"));
+        XElement previewBrush = theme
+            .Descendants(presentation + "SolidColorBrush")
+            .Single(element =>
+                (string?)element.Attribute(x + "Key") == "WindowsAccentPreviewBrush");
+        Assert((string?)previewBrush.Attribute("Color") ==
+               "{ThemeResource SystemAccentColor}",
+            "The Windows accent preview brush must read the current Windows accent color.");
 
         return Task.CompletedTask;
     }

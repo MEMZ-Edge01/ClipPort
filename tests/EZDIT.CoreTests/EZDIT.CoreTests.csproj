@@ -26,6 +26,9 @@
     <Content Include="..\..\src\EZDIT\Views\SettingsView.xaml"
              Link="Localization\SettingsView.xaml"
              CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EZDIT\TraeWorkTheme.xaml"
+             Link="Themes\TraeWorkTheme.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\src\EZDIT\Strings\zh-CN\Resources.resw"
              Link="Strings\zh-CN\Resources.resw"
              CopyToOutputDirectory="PreserveNewest" />

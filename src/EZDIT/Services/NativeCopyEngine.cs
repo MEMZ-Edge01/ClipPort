@@ -22,7 +22,7 @@ internal static class NativeCopyEngine
     internal static async Task CopyFileAsync(
         string sourcePath,
         string destinationPath,
-        Func<CancellationToken, Task> waitWhilePaused,
+        Action<CancellationToken> waitWhilePaused,
         Action<int> reportBytesWritten,
         CancellationToken cancellationToken)
     {
@@ -45,7 +45,12 @@ internal static class NativeCopyEngine
                     reportBytesWritten(checked((int)bytesWritten));
                 }
 
-                waitWhilePaused(cancellationToken).GetAwaiter().GetResult();
+                // The native callback runs on a C++ worker thread.
+                // Blocking is intentional here — when the user pauses,
+                // the native pipeline must stop producing data.
+                // The waitWhilePaused delegate is guaranteed to be a
+                // trivial poll loop that never requires the UI thread.
+                waitWhilePaused(cancellationToken);
                 return cancellationToken.IsCancellationRequested ? 1 : 0;
             }
             catch (OperationCanceledException)
@@ -73,7 +78,6 @@ internal static class NativeCopyEngine
                 EnableDirectIo,
                 progressCallback,
                 nint.Zero));
-            GC.KeepAlive(progressCallback);
         }
         finally
         {

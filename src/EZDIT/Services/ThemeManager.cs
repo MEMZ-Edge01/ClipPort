@@ -94,6 +94,8 @@ public static class ThemeManager
 
     private static void ApplyAccent(AppAccentMode accentMode, bool dark)
     {
+        RefreshSystemAccentPreview();
+
         Color accent = accentMode switch
         {
             AppAccentMode.Seafoam => FromHex("#00B7C3"),
@@ -111,7 +113,7 @@ public static class ThemeManager
         SetBrush("AccentBrush", accent);
         SetBrush("AccentHoverBrush", hover);
         SetBrush("AccentActiveBrush", active);
-        SetBrush("AccentDisabledBrush", accent);
+        SetBrush("AccentDisabledBrush", Mix(accent, dark ? Colors.Black : Colors.White, dark ? 0.35 : 0.50));
         SetBrush("AccentSoftBrush", pale);
         SetBrush("AccentSelectionPaleBrush", selectionBg);
         SetBrush("AccentSelectionPalePointerOverBrush", Mix(selectionBg, accent, 0.12));
@@ -133,6 +135,12 @@ public static class ThemeManager
         SetBrush("ListViewItemBackgroundSelectedPressed", Mix(selectionBg, accent, 0.22));
         SetBrush("ListViewItemForegroundSelected", dark ? hover : active);
     }
+
+    /// <summary>
+    /// Refreshes the settings preview without changing the app's selected accent.
+    /// </summary>
+    public static void RefreshSystemAccentPreview() =>
+        SetBrush("WindowsAccentPreviewBrush", UiSettings.GetColorValue(UIColorType.Accent));
 
     private static double RelativeLuminance(Color color)
     {

@@ -50,7 +50,6 @@ public sealed partial class MainWindow : Window
     private CopyProgressInfo? _lastProgress;
     private JobHistoryItem? _activeJob;
     private JobHistoryItem? _selectedJob;
-    private string _lastReport = string.Empty;
     private long _copiedBytes;
     private int _copiedFiles;
     private int _verifiedFiles;
@@ -256,60 +255,65 @@ public sealed partial class MainWindow : Window
         EnableCopyToggle.Toggled += OnEnableCopyToggled;
         OnEnableCopyToggled(EnableCopyToggle, null!);
 
-        while (await ShowLocalizedDialogAsync(NewTaskDialog) == ContentDialogResult.Primary)
+        try
         {
-            bool copyEnabled = EnableCopyToggle.IsOn;
-            AskExistingRadio.IsEnabled = copyEnabled;
-            OverwriteExistingRadio.IsEnabled = copyEnabled;
-            SkipExistingRadio.IsEnabled = copyEnabled;
-            CreateCopyRadio.IsEnabled = copyEnabled;
-
-            if (_dialogSourcePath is null || _dialogDestinationParentPath is null)
+            while (await ShowLocalizedDialogAsync(NewTaskDialog) == ContentDialogResult.Primary)
             {
-                await ShowMessageAsync("Error.FoldersNotConfigured", "Error.SelectSourceAndDest");
-                continue;
+                bool copyEnabled = EnableCopyToggle.IsOn;
+                AskExistingRadio.IsEnabled = copyEnabled;
+                OverwriteExistingRadio.IsEnabled = copyEnabled;
+                SkipExistingRadio.IsEnabled = copyEnabled;
+                CreateCopyRadio.IsEnabled = copyEnabled;
+
+                if (_dialogSourcePath is null || _dialogDestinationParentPath is null)
+                {
+                    await ShowMessageAsync("Error.FoldersNotConfigured", "Error.SelectSourceAndDest");
+                    continue;
+                }
+
+                string destination = _dialogDestinationParentPath;
+                string subfolderName = (DialogDestinationSubfolderName.Text ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(subfolderName))
+                {
+                    destination = Path.Combine(destination, subfolderName);
+                }
+                if (!ValidatePaths(_dialogSourcePath, destination, out string validationMessage))
+                {
+                    await ShowMessageAsync("Error.UnableToStart", validationMessage);
+                    continue;
+                }
+
+                _sourcePath = _dialogSourcePath;
+                _destinationParentPath = _dialogDestinationParentPath;
+                _destinationPath = destination;
+                ExistingFilePolicy duplicatePolicy = AskExistingRadio.IsChecked == true
+                    ? ExistingFilePolicy.Ask
+                    : OverwriteExistingRadio.IsChecked == true
+                        ? ExistingFilePolicy.Overwrite
+                        : SkipExistingRadio.IsChecked == true
+                            ? ExistingFilePolicy.Skip
+                            : ExistingFilePolicy.CreateCopy;
+                bool verifyOnly = !EnableCopyToggle.IsOn;
+                _copyOptions = new CopyOptions(
+                    ExistingFilePolicy: duplicatePolicy,
+                    VerifyFiles: verifyOnly || VerifyFilesToggle.IsOn,
+                    UseFastCopyAlgorithm: false,
+                    SkipCopy: verifyOnly);
+                SourcePathText.Text = _sourcePath;
+                DestinationPathText.Text = _destinationPath;
+                HeroNameText.Text = GetDisplayName(_sourcePath);
+                CurrentFileText.Text = ResourceService.GetString("Info.TaskConfigured");
+                LogText.Text = ResourceService.Format("Format.SourcePathLabel", _sourcePath) + "\n" + ResourceService.Format("Format.DestinationPathLabel", _destinationPath);
+                UpdateStartButton();
+                return true;
             }
 
-            string destination = _dialogDestinationParentPath;
-            string subfolderName = (DialogDestinationSubfolderName.Text ?? "").Trim();
-            if (!string.IsNullOrWhiteSpace(subfolderName))
-            {
-                destination = Path.Combine(destination, subfolderName);
-            }
-            if (!ValidatePaths(_dialogSourcePath, destination, out string validationMessage))
-            {
-                await ShowMessageAsync("Error.UnableToStart", validationMessage);
-                continue;
-            }
-
-            _sourcePath = _dialogSourcePath;
-            _destinationParentPath = _dialogDestinationParentPath;
-            _destinationPath = destination;
-            ExistingFilePolicy duplicatePolicy = AskExistingRadio.IsChecked == true
-                ? ExistingFilePolicy.Ask
-                : OverwriteExistingRadio.IsChecked == true
-                    ? ExistingFilePolicy.Overwrite
-                    : SkipExistingRadio.IsChecked == true
-                        ? ExistingFilePolicy.Skip
-                        : ExistingFilePolicy.CreateCopy;
-            bool verifyOnly = !EnableCopyToggle.IsOn;
-            _copyOptions = new CopyOptions(
-                ExistingFilePolicy: duplicatePolicy,
-                VerifyFiles: verifyOnly || VerifyFilesToggle.IsOn,
-                UseFastCopyAlgorithm: false,
-                SkipCopy: verifyOnly);
-            SourcePathText.Text = _sourcePath;
-            DestinationPathText.Text = _destinationPath;
-            HeroNameText.Text = GetDisplayName(_sourcePath);
-            CurrentFileText.Text = ResourceService.GetString("Info.TaskConfigured");
-            LogText.Text = ResourceService.Format("Format.SourcePathLabel", _sourcePath) + "\n" + ResourceService.Format("Format.DestinationPathLabel", _destinationPath);
-            UpdateStartButton();
-            EnableCopyToggle.Toggled -= OnEnableCopyToggled;
-            return true;
+            return false;
         }
-
-        EnableCopyToggle.Toggled -= OnEnableCopyToggled;
-        return false;
+        finally
+        {
+            EnableCopyToggle.Toggled -= OnEnableCopyToggled;
+        }
     }
     private async Task StartCopyAsync()
     {
@@ -344,7 +348,6 @@ public sealed partial class MainWindow : Window
         _finishedAt = null;
         _lastResult = null;
         _lastProgress = null;
-        _lastReport = string.Empty;
         _copiedBytes = 0;
         _copiedFiles = 0;
         _verifiedFiles = 0;
@@ -452,10 +455,10 @@ public sealed partial class MainWindow : Window
         }
         job.ErrorMessage = error;
 
-        _lastReport = result is not null ? BuildReport(result, job) : BuildIncompleteReport(job);
+        string report = result is not null ? BuildReport(result, job) : BuildIncompleteReport(job);
         try
         {
-            job.ReportFileName = await _historyService.SaveReportAsync(job.Id, _lastReport);
+            job.ReportFileName = await _historyService.SaveReportAsync(job.Id, report);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

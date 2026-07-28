@@ -186,6 +186,20 @@ public sealed class FileCopyService
                         },
                         cancellationToken);
 
+                    // Guard against TOCTOU: if another process created the
+                    // destination while we were copying and the policy is Skip,
+                    // discard the partial file and leave the existing file intact.
+                    if (policy == ExistingFilePolicy.Skip && File.Exists(destinationPath))
+                    {
+                        TryDeletePartialFile(partialPath);
+                        // The copy callback already reported every byte written;
+                        // no additional byte counting is needed.
+                        destinationPaths[file.RelativePath] = destinationPath;
+                        copiedFiles++;
+                        ReportCopyProgress(file);
+                        continue;
+                    }
+
                     File.Move(partialPath, destinationPath, true);
                     File.SetLastWriteTimeUtc(destinationPath, File.GetLastWriteTimeUtc(file.FullPath));
                     destinationPaths[file.RelativePath] = destinationPath;
@@ -398,6 +412,7 @@ public sealed class FileCopyService
             await waitWhilePaused(cancellationToken);
             string partialPath = failure.DestinationPath + ".ezdit-partial";
             bool copied = false;
+            long fileReportedBytes = 0;
             try
             {
                 string? destinationDirectory = Path.GetDirectoryName(failure.DestinationPath);
@@ -406,12 +421,27 @@ public sealed class FileCopyService
                     Directory.CreateDirectory(destinationDirectory);
                 }
 
+                long lastRetryReportTicks = copyWatch.ElapsedTicks;
                 await CopyFileAsync(
                     failure.SourcePath,
                     partialPath,
                     options.UseFastCopyAlgorithm,
                     waitWhilePaused,
-                    _ => { },
+                    written =>
+                    {
+                        fileReportedBytes += written;
+                        processedBytes += written;
+                        long now = copyWatch.ElapsedTicks;
+                        if (now - lastRetryReportTicks >= Stopwatch.Frequency / 10)
+                        {
+                            progress.Report(new CopyProgressInfo(
+                                CopyPhase.Copying, totalBytes, processedBytes,
+                                failures.Count, processedFiles, failure.RelativePath,
+                                processedBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001),
+                                copyWatch.Elapsed));
+                            lastRetryReportTicks = now;
+                        }
+                    },
                     cancellationToken);
                 File.Move(partialPath, failure.DestinationPath, true);
                 File.SetLastWriteTimeUtc(failure.DestinationPath, File.GetLastWriteTimeUtc(failure.SourcePath));
@@ -420,11 +450,11 @@ public sealed class FileCopyService
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 TryDeletePartialFile(partialPath);
+                processedBytes += Math.Max(0, failure.Length - fileReportedBytes);
                 string error = $"\u65E0\u6CD5\u62F7\u8D1D {failure.RelativePath}\uFF1A{ex.Message}";
                 remaining.Add(failure with { Stage = FileOperationStage.Copying, Error = error });
             }
 
-            processedBytes += failure.Length;
             processedFiles++;
             progress.Report(new CopyProgressInfo(
                 CopyPhase.Copying, totalBytes, processedBytes, failures.Count, processedFiles,
@@ -484,15 +514,29 @@ public sealed class FileCopyService
         bool useFastCopyAlgorithm,
         Func<CancellationToken, Task> waitWhilePaused,
         Action<int> reportBytesWritten,
-        CancellationToken cancellationToken) =>
-        useFastCopyAlgorithm && NativeCopyEngine.IsAvailable
-            ? NativeCopyEngine.CopyFileAsync(
+        CancellationToken cancellationToken)
+    {
+        if (useFastCopyAlgorithm && NativeCopyEngine.IsAvailable)
+        {
+            Action<CancellationToken> syncWait = ct =>
+            {
+                // The native callback runs on a C++ worker thread
+                // which cannot safely run async state machines.
+                // We wait synchronously; the delegate is always a
+                // fast polling loop (Task.Delay / TCS check) that
+                // never requires the UI thread.
+                waitWhilePaused(ct).GetAwaiter().GetResult();
+            };
+            return NativeCopyEngine.CopyFileAsync(
+                sourcePath, destinationPath, syncWait, reportBytesWritten, cancellationToken);
+        }
+
+        return useFastCopyAlgorithm
+            ? CopyFilePipelinedAsync(
                 sourcePath, destinationPath, waitWhilePaused, reportBytesWritten, cancellationToken)
-            : useFastCopyAlgorithm
-                ? CopyFilePipelinedAsync(
-                    sourcePath, destinationPath, waitWhilePaused, reportBytesWritten, cancellationToken)
-                : CopyFileSequentialAsync(
-                    sourcePath, destinationPath, waitWhilePaused, reportBytesWritten, cancellationToken);
+            : CopyFileSequentialAsync(
+                sourcePath, destinationPath, waitWhilePaused, reportBytesWritten, cancellationToken);
+    }
 
     private static async Task CopyFileSequentialAsync(
         string sourcePath,

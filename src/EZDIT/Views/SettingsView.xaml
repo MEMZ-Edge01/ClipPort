@@ -130,7 +130,7 @@
                                 <Button Tag="System" Click="AccentButton_Click" MinWidth="116" Height="54"
                                         Background="{StaticResource ControlSecondaryBrush}">
                                     <StackPanel Orientation="Horizontal" Spacing="9">
-                                        <Ellipse Width="20" Height="20" Fill="{StaticResource AccentBrush}" />
+                                        <Ellipse Width="20" Height="20" Fill="{StaticResource WindowsAccentPreviewBrush}" />
                                         <TextBlock x:Uid="WinAccentText" Text="Windows 主题色" />
                                     </StackPanel>
                                 </Button>

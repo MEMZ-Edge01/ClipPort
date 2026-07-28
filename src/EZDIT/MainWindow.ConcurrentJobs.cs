@@ -403,7 +403,6 @@ public sealed partial class MainWindow
         }
 
         runtime.Report = result is not null ? BuildReport(result, job) : BuildIncompleteReport(job);
-        _lastReport = runtime.Report;
         try
         {
             job.ReportFileName = await _historyService.SaveReportAsync(job.Id, runtime.Report);

@@ -148,6 +148,10 @@ public sealed partial class MainWindow
             {
                 ThemeManager.Apply(RootGrid, _appSettings);
             }
+            else
+            {
+                ThemeManager.RefreshSystemAccentPreview();
+            }
         });
     }
 }
