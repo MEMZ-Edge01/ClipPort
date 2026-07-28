@@ -126,7 +126,7 @@ public sealed partial class MainWindow
                 runtime,
                 JobStatus.Cancelled,
                 null,
-                LocalizationService.Text("任务已由用户取消，已完成的文件予以保留。"));
+                ResourceService.GetString("Error.TaskCancelledKept"));
         }
         catch (Exception ex)
         {
@@ -412,7 +412,7 @@ public sealed partial class MainWindow
         {
             if (ReferenceEquals(_selectedJob, job))
             {
-                LogText.Text = LocalizationService.Format("任务已结束，但报告保存失败：{0}", ex.Message);
+                LogText.Text = ResourceService.Format("Format.TaskReportSaveFailed", ex.Message);
             }
         }
 
@@ -450,7 +450,7 @@ public sealed partial class MainWindow
     {
         JobHistoryItem job = runtime.Job;
         CopyProgressInfo? info = runtime.LastProgress;
-        HeroNameText.Text = job.DisplayName + (job.IsPriority ? LocalizationService.Text("优先") : string.Empty);
+        HeroNameText.Text = job.DisplayName + (job.IsPriority ? ResourceService.GetString("Common.Priority") : string.Empty);
         SourcePathText.Text = job.SourcePath;
         DestinationPathText.Text = job.DestinationPath;
         TotalSizeText.Text = info is null ? "--" : FormatBytes(info.TotalBytes);
@@ -494,10 +494,10 @@ public sealed partial class MainWindow
         bool verifyDone = runtime.Options.VerifyFiles && totalFiles > 0 && runtime.VerifiedFiles >= totalFiles;
         CopyProgress.Visibility = copyDone ? Visibility.Collapsed : Visibility.Visible;
         CopyCompletedBadge.Visibility = copyDone ? Visibility.Visible : Visibility.Collapsed;
-        CopyCompletedText.Text = runtime.Options.SkipCopy ? LocalizationService.Text("未启用") : LocalizationService.Text("已完成");
+        CopyCompletedText.Text = runtime.Options.SkipCopy ? ResourceService.GetString("Common.Disabled") : ResourceService.GetString("Common.Completed");
         VerifyProgress.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Collapsed : Visibility.Visible;
         VerifyCompletedBadge.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Visible : Visibility.Collapsed;
-        VerifyCompletedText.Text = runtime.Options.VerifyFiles ? LocalizationService.Text("已完成") : LocalizationService.Text("未启用");
+        VerifyCompletedText.Text = runtime.Options.VerifyFiles ? ResourceService.GetString("Common.Completed") : ResourceService.GetString("Common.Disabled");
 
         CompletionIcon.Visibility = Visibility.Collapsed;
         PercentText.Visibility = Visibility.Visible;
@@ -512,7 +512,7 @@ public sealed partial class MainWindow
         CancelButton.Visibility = Visibility.Visible;
         PauseButton.IsEnabled = true;
         CancelButton.IsEnabled = true;
-        PauseText.Text = runtime.IsPaused ? LocalizationService.Text("继续") : LocalizationService.Text("暂停");
+        PauseText.Text = runtime.IsPaused ? ResourceService.GetString("Button.Resume") : ResourceService.GetString("Button.Pause");
         PauseIcon.Glyph = runtime.IsPaused ? "\uE768" : "\uE769";
         NewJobButton.IsEnabled = !_isMultiSelectMode;
         SourcePickerButton.IsEnabled = false;
@@ -524,60 +524,59 @@ public sealed partial class MainWindow
         {
             bool overwriting = runtime.ActiveFailureAction == FailureResolutionMode.Overwrite;
             StatusText.Text = overwriting
-                ? LocalizationService.Text("正在覆盖校验不一致文件")
-                : LocalizationService.Text("正在重试失败文件");
+                ? ResourceService.GetString("Status.OverwritingMismatched")
+                : ResourceService.GetString("Status.RetryingFailedFiles");
             PhaseText.Text = overwriting
-                ? LocalizationService.Text("覆盖后重新执行 SHA-256 校验")
-                : LocalizationService.Text("仅处理已选失败项");
+                ? ResourceService.GetString("Info.ReverifyAfterOverwrite")
+                : ResourceService.GetString("Info.OnlySelectedFailures");
             CurrentFileText.Text = runtime.RetryProgress?.CurrentFile ?? job.SourcePath;
             LogText.Text = overwriting
-                ? LocalizationService.Text("正在用源文件覆盖目标文件，并重新校验完整性。")
-                : LocalizationService.Text("重试完成后，仍失败的文件会继续保留在下方。");
+                ? ResourceService.GetString("Info.OverwriteAndReverifyDesc")
+                : ResourceService.GetString("Info.StillFailedRemain");
         }
         else if (runtime.IsAwaitingFailureDecision)
         {
-            StatusText.Text = LocalizationService.Text("等待处理失败文件");
-            PhaseText.Text = LocalizationService.Text("请在下方选择重试或跳过");
-            CurrentFileText.Text = LocalizationService.Format("{0} 个文件待处理", runtime.FailedFileChoices.Count.ToString("N0"));
-            LogText.Text = LocalizationService.Text("其他文件已继续处理，任务不会因单个文件错误直接失败。");
+            StatusText.Text = ResourceService.GetString("Status.WaitingFailedFiles");
+            PhaseText.Text = ResourceService.GetString("Info.ChooseRetryOrSkip");
+            CurrentFileText.Text = ResourceService.Format("Format.NFilesAwaitingAction", runtime.FailedFileChoices.Count.ToString("N0"));
+            LogText.Text = ResourceService.GetString("Info.OtherFilesProcessed");
         }
         else if (runtime.IsPaused)
         {
-            StatusText.Text = LocalizationService.Text("已暂停");
-            PhaseText.Text = LocalizationService.Text("等待用户继续");
-            LogText.Text = LocalizationService.Text("任务已暂停。");
+            StatusText.Text = ResourceService.GetString("Status.Paused");
+            PhaseText.Text = ResourceService.GetString("Info.WaitingToResume");
+            LogText.Text = ResourceService.GetString("Info.TaskPaused");
         }
         else if (runtime.IsWaitingForPriority || job.Status == JobStatus.Queued)
         {
-            StatusText.Text = LocalizationService.Text("等待优先任务");
-            PhaseText.Text = LocalizationService.Text("优先任务结束后自动继续");
-            LogText.Text = LocalizationService.Text("当前任务已安全暂停；全部优先任务结束后会自动继续。");
+            StatusText.Text = ResourceService.GetString("Status.WaitingPriorityTasks");
+            PhaseText.Text = ResourceService.GetString("Info.AutoResumeAfterPriority");
+            LogText.Text = ResourceService.GetString("Info.TaskSafelyPaused");
         }
         else
         {
             StatusText.Text = info?.Phase switch
             {
-                CopyPhase.Scanning => LocalizationService.Text("正在扫描"),
-                CopyPhase.Copying => LocalizationService.Text("正在拷贝"),
-                CopyPhase.Verifying => LocalizationService.Text("正在校验"),
-                CopyPhase.WaitingForDuplicateDecision => LocalizationService.Text("等待处理重复文件"),
-                _ => LocalizationService.Text("准备执行")
+                CopyPhase.Scanning => ResourceService.GetString("Status.Scanning"),
+                CopyPhase.Copying => ResourceService.GetString("Status.Copying"),
+                CopyPhase.Verifying => ResourceService.GetString("Status.Verifying"),
+                CopyPhase.WaitingForDuplicateDecision => ResourceService.GetString("Status.WaitingDuplicateChoices"),
+                _ => ResourceService.GetString("Status.Preparing")
             };
             PhaseText.Text = info?.Phase switch
             {
-                CopyPhase.Scanning => LocalizationService.Text("正在读取目录"),
-                CopyPhase.Copying => LocalizationService.Text("拷贝文件"),
-                CopyPhase.Verifying => LocalizationService.Text("SHA-256 完整性校验"),
-                CopyPhase.WaitingForDuplicateDecision => LocalizationService.Text("请在下方逐个选择处理方式"),
-                _ => job.IsPriority ? LocalizationService.Text("优先任务即将开始") : LocalizationService.Text("任务即将开始")
+                CopyPhase.Scanning => ResourceService.GetString("Status.ReadingDirectories"),
+                CopyPhase.Copying => ResourceService.GetString("Status.CopyingFiles"),
+                CopyPhase.Verifying => ResourceService.GetString("Status.SHA256Verification"),
+                CopyPhase.WaitingForDuplicateDecision => ResourceService.GetString("Info.ChooseActionBelow"),
+                _ => job.IsPriority ? ResourceService.GetString("Status.PriorityTaskStarting") : ResourceService.GetString("Status.TaskStarting")
             };
             LogText.Text = job.IsPriority
-                ? LocalizationService.Text("优先任务正在执行；普通任务将在安全检查点等待。")
-                : LocalizationService.Text("任务正在并行执行。");
+                ? ResourceService.GetString("Info.PriorityTasksRunning")
+                : ResourceService.GetString("Info.TasksRunningConcurrently");
         }
         ShowRuntimeDuplicateChoices(runtime);
         ShowRuntimeFailedFiles(runtime);
-        LocalizeTaskUi();
     }
 
     private static double GetJobPercent(long totalBytes, int totalFiles, long bytes, int files)
@@ -603,8 +602,8 @@ public sealed partial class MainWindow
         int decided = _duplicateChoices.Count(item => item.IsDecided);
         int selectable = _duplicateChoices.Count(item => item.CanChoose);
         int selected = _duplicateChoices.Count(item => item.CanChoose && item.IsSelected);
-        DuplicateSummaryText.Text = LocalizationService.Format("发现 {0} 个重复文件", _duplicateChoices.Count.ToString("N0"));
-        DuplicateSelectionHint.Text = LocalizationService.Format("已选择处理方式 {0}/{1}，已勾选 {2} 项", decided.ToString(), _duplicateChoices.Count.ToString(), selected.ToString());
+        DuplicateSummaryText.Text = ResourceService.Format("Format.FoundNDuplicates", _duplicateChoices.Count.ToString("N0"));
+        DuplicateSelectionHint.Text = ResourceService.Format("Format.ChoicesMadeNOfMSelectedK", decided.ToString(), _duplicateChoices.Count.ToString(), selected.ToString());
         _updatingDuplicateSelection = true;
         DuplicateSelectAllCheckBox.IsEnabled = selectable > 0;
         DuplicateSelectAllCheckBox.IsChecked = selectable == 0 || selected == 0
@@ -617,7 +616,6 @@ public sealed partial class MainWindow
         BatchCreateCopyButton.IsEnabled = canBatch;
         ApplyDuplicateChoicesButton.IsEnabled = runtime.DuplicateDecisionSource is not null &&
             _duplicateChoices.Count > 0 && decided == _duplicateChoices.Count;
-        LocalizeTaskUi();
     }
 
     private void ShowRuntimeFailedFiles(CopyJobRuntime runtime)
@@ -645,8 +643,7 @@ public sealed partial class MainWindow
             canAct && selectedChoices.All(item => item.CanOverwrite);
         RetryFailedFilesButton.IsEnabled = canAct;
         SkipFailedFilesButton.IsEnabled = canAct;
-        FailedFilesSummaryText.Text = LocalizationService.Format("失败文件：{0} 个，已选 {1} 个", _failedFileChoices.Count.ToString("N0"), selected.ToString("N0"));
-        LocalizeTaskUi();
+        FailedFilesSummaryText.Text = ResourceService.Format("Format.FailedFilesNSelectedK", _failedFileChoices.Count.ToString("N0"), selected.ToString("N0"));
     }
 
     private void ShowFailedFileHistory(JobHistoryItem job)
@@ -664,8 +661,7 @@ public sealed partial class MainWindow
         OverwriteFailedFilesButton.Visibility = Visibility.Collapsed;
         RetryFailedFilesButton.Visibility = Visibility.Collapsed;
         SkipFailedFilesButton.Visibility = Visibility.Collapsed;
-        FailedFilesSummaryText.Text = LocalizationService.Format("已跳过的失败文件：{0}", _failedFileChoices.Count.ToString("N0"));
-        LocalizeTaskUi();
+        FailedFilesSummaryText.Text = ResourceService.Format("Format.SkippedNFailedFiles", _failedFileChoices.Count.ToString("N0"));
     }
 
     private void ConcurrentFailedFileSelection_Click(object sender, RoutedEventArgs e)
@@ -816,7 +812,7 @@ public sealed partial class MainWindow
             return;
         }
         CancelButton.IsEnabled = false;
-        StatusText.Text = LocalizationService.Text("正在取消");
+        StatusText.Text = ResourceService.GetString("Status.Cancelling");
         runtime.Cancellation.Cancel();
     }
 
@@ -833,10 +829,10 @@ public sealed partial class MainWindow
         }
         var dialog = new ContentDialog
         {
-            Title = LocalizationService.Text("删除历史记录？"),
-            Content = LocalizationService.Text("只会从 EZ DIT 中移除这条已结束的任务记录，不会删除任何文件。"),
-            PrimaryButtonText = LocalizationService.Text("删除记录"),
-            CloseButtonText = LocalizationService.Text("取消"),
+            Title = ResourceService.GetString("Dialog.DeleteHistory"),
+            Content = ResourceService.GetString("Error.DeleteRecordReminder"),
+            PrimaryButtonText = ResourceService.GetString("Button.DeleteRecord"),
+            CloseButtonText = ResourceService.GetString("Common.Cancel"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = Content.XamlRoot
         };
@@ -871,12 +867,12 @@ public sealed partial class MainWindow
         }
         if (!Directory.Exists(originalJob.SourcePath))
         {
-            await ShowMessageAsync(LocalizationService.Text("无法开始校验"), LocalizationService.Format("源目录不存在或无法访问：\n{0}", originalJob.SourcePath));
+            await ShowMessageAsync(ResourceService.GetString("Error.CannotStartVerification"), ResourceService.Format("Format.SourceFolderNotExist", originalJob.SourcePath));
             return;
         }
         if (!Directory.Exists(originalJob.DestinationPath))
         {
-            await ShowMessageAsync(LocalizationService.Text("无法开始校验"), LocalizationService.Format("目标目录不存在或无法访问：\n{0}", originalJob.DestinationPath));
+            await ShowMessageAsync(ResourceService.GetString("Error.CannotStartVerification"), ResourceService.Format("Format.DestinationFolderNotExist", originalJob.DestinationPath));
             return;
         }
         if (!ValidatePaths(originalJob.SourcePath, originalJob.DestinationPath, out string validationMessage))
@@ -912,7 +908,7 @@ public sealed partial class MainWindow
             SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
             SuggestedFileName = $"EZDIT_Report_{job.StartedAt:yyyyMMdd_HHmmss}_{SanitizeReportFileName(job.DisplayName)}"
         };
-        picker.FileTypeChoices.Add(LocalizationService.Text("文本报告"), new List<string> { ".txt" });
+        picker.FileTypeChoices.Add(ResourceService.GetString("Common.TextReport"), new List<string> { ".txt" });
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
         StorageFile? file = await picker.PickSaveFileAsync();
         if (file is null)
@@ -926,7 +922,7 @@ public sealed partial class MainWindow
             string? report = await _historyService.ReadReportAsync(job.ReportFileName);
             report ??= BuildIncompleteReport(job);
             await FileIO.WriteTextAsync(file, report);
-            LogText.Text = LocalizationService.Format("任务报告已导出：{0}", file.Path);
+            LogText.Text = ResourceService.Format("Format.TaskReportExported", file.Path);
         }
         catch (Exception ex)
         {
@@ -950,12 +946,12 @@ public sealed partial class MainWindow
 
         if (!Directory.Exists(originalJob.SourcePath))
         {
-            await ShowMessageAsync(LocalizationService.Text("无法重新开始"), LocalizationService.Format("源目录不存在或无法访问：\n{0}", originalJob.SourcePath));
+            await ShowMessageAsync(ResourceService.GetString("Error.CannotRestart"), ResourceService.Format("Format.SourceFolderNotExist", originalJob.SourcePath));
             return;
         }
         if (!Directory.Exists(originalJob.DestinationPath))
         {
-            await ShowMessageAsync(LocalizationService.Text("无法重新开始"), LocalizationService.Format("目标目录不存在或无法访问：\n{0}", originalJob.DestinationPath));
+            await ShowMessageAsync(ResourceService.GetString("Error.CannotRestart"), ResourceService.Format("Format.DestinationFolderNotExist", originalJob.DestinationPath));
             return;
         }
         if (!ValidatePaths(originalJob.SourcePath, originalJob.DestinationPath, out string validationMessage))

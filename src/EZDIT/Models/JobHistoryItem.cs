@@ -90,20 +90,20 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     public string MetaText => $"{FormatBytes(TotalBytes)} · {StartedAt:MM/dd HH:mm:ss}";
 
     [JsonIgnore]
-    public string StatusText => Status == JobStatus.CompletedWithErrors ? "\u90E8\u5206\u5B8C\u6210" : Status switch
+    public string StatusText => Status == JobStatus.CompletedWithErrors ? "Result.CompletedWithErrors" : Status switch
     {
-        JobStatus.Queued => "\u7B49\u5F85\u4F18\u5148\u4EFB\u52A1",
-        JobStatus.Running => CopyEnabled ? "正在拷贝" : "正在校验",
+        JobStatus.Queued => "Status.WaitingPriorityTasks",
+        JobStatus.Running => CopyEnabled ? "Status.Copying" : "Status.Verifying",
         JobStatus.Completed => CopyEnabled && VerificationEnabled
-            ? "\u4EFB\u52A1\u5B8C\u6210"
+            ? "Result.TaskCompleted"
             : CopyEnabled
-                ? "\u62F7\u8D1D\u5B8C\u6210"
-                : "\u6821\u9A8C\u5B8C\u6210",
-        JobStatus.VerificationFailed => "校验失败",
-        JobStatus.Failed => "任务失败",
-        JobStatus.Cancelled => "已取消",
-        JobStatus.Interrupted => "意外中断",
-        _ => "未知状态"
+                ? "Result.CopyCompletedShort"
+                : "Result.VerificationCompleted",
+        JobStatus.VerificationFailed => "Error.VerificationFailed",
+        JobStatus.Failed => "Result.TaskFailedStatus",
+        JobStatus.Cancelled => "Result.Cancelled",
+        JobStatus.Interrupted => "Result.Interrupted",
+        _ => "Result.UnknownStatus"
     };
 
     [JsonIgnore]

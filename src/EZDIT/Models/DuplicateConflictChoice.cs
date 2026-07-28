@@ -55,10 +55,10 @@ public sealed class DuplicateConflictChoice : INotifyPropertyChanged
     }
     public string DecisionText => _decision switch
     {
-        ExistingFilePolicy.Overwrite => "覆盖",
-        ExistingFilePolicy.Skip => "跳过",
-        ExistingFilePolicy.CreateCopy => "创建副本",
-        _ => "等待选择"
+        ExistingFilePolicy.Overwrite => "Button.OverwriteSelected",
+        ExistingFilePolicy.Skip => "Button.SkipSelected",
+        ExistingFilePolicy.CreateCopy => "Button.CopySelected",
+        _ => "Info.ChooseActionEach"
     };
 
     public void SetCanChoose(bool value) => CanChoose = value;

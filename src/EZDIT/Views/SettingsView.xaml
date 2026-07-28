@@ -49,12 +49,12 @@
                         </Border>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="EZ DIT" FontSize="17" FontWeight="SemiBold" />
-                            <TextBlock x:Name="SidebarSettingsLabel" Text="设置" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBlock x:Name="SidebarSettingsLabel" x:Uid="SidebarSettingsLabel" Text="设置" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
                     </StackPanel>
 
                     <StackPanel Spacing="7">
-                        <TextBlock x:Name="SettingsSectionLabel" Text="设置" Margin="10,0,0,3" FontSize="11"
+                        <TextBlock x:Name="SettingsSectionLabel" x:Uid="SettingsSectionLabel" Text="设置" Margin="10,0,0,3" FontSize="11"
                                    Foreground="{StaticResource MutedTextBrush}" />
                         <Button x:Name="AppearanceNavButton" Style="{StaticResource SettingsNavButtonStyle}"
                                 Click="AppearanceNavButton_Click" Background="{StaticResource ControlSecondaryBrush}">
@@ -62,7 +62,7 @@
                                 <Border Width="24" Height="24" CornerRadius="5" Background="#FFFFFF">
                                     <Image Source="ms-appx:///Assets/Icons/design-palette.svg" Width="15" Height="15" />
                                 </Border>
-                                <TextBlock x:Name="AppearanceNavText" Text="外观" />
+                                <TextBlock x:Name="AppearanceNavText" x:Uid="AppearanceNavText" Text="外观" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="GeneralNavButton" Style="{StaticResource SettingsNavButtonStyle}"
@@ -71,7 +71,7 @@
                                 <Border Width="24" Height="24" CornerRadius="5" Background="#FFFFFF">
                                     <Image Source="ms-appx:///Assets/Icons/settings.svg" Width="15" Height="15" />
                                 </Border>
-                                <TextBlock x:Name="GeneralNavText" Text="常规" />
+                                <TextBlock x:Name="GeneralNavText" x:Uid="GeneralNavText" Text="常规" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="AboutNavButton" Style="{StaticResource SettingsNavButtonStyle}"
@@ -80,7 +80,7 @@
                                 <Border Width="24" Height="24" CornerRadius="5" Background="#FFFFFF">
                                     <Image Source="ms-appx:///Assets/Icons/information_simple.svg" Width="15" Height="15" />
                                 </Border>
-                                <TextBlock x:Name="AboutNavText" Text="关于" />
+                                <TextBlock x:Name="AboutNavText" x:Uid="AboutNavText" Text="关于" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -91,7 +91,7 @@
                         Padding="12,0" Background="{StaticResource ControlSecondaryBrush}">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <FontIcon Glyph="&#xE72B;" FontSize="14" />
-                        <TextBlock x:Name="BackToTaskText" Text="返回任务" />
+                        <TextBlock x:Name="BackToTaskText" x:Uid="BackToTaskText" Text="返回任务" />
                     </StackPanel>
                 </Button>
             </Grid>
@@ -102,20 +102,20 @@
             <Grid MaxWidth="920" HorizontalAlignment="Left" Margin="34,34,34,48">
                 <StackPanel x:Name="AppearancePanel" Spacing="24">
                     <StackPanel Spacing="8">
-                        <TextBlock x:Name="AppearanceTitle" Text="外观" FontSize="28" FontWeight="SemiBold" />
-                        <TextBlock x:Name="AppearanceDesc" Text="选择应用的明暗外观与强调色。" FontSize="14"
+                        <TextBlock x:Name="AppearanceTitle" x:Uid="AppearanceTitle" Text="外观" FontSize="28" FontWeight="SemiBold" />
+                        <TextBlock x:Name="AppearanceDesc" x:Uid="AppearanceDesc" Text="选择应用的明暗外观与强调色。" FontSize="14"
                                    Foreground="{StaticResource SecondaryTextBrush}" />
                     </StackPanel>
 
                     <Border Style="{StaticResource SettingsCardStyle}">
                         <StackPanel Spacing="20">
-                            <TextBlock x:Name="ColorModeSectionTitle" Text="颜色模式与主题色" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock x:Name="ColorModeSectionTitle" x:Uid="ColorModeSectionTitle" Text="颜色模式与主题色" FontSize="18" FontWeight="SemiBold" />
                             <Grid ColumnSpacing="24">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="220" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="ColorModeLabel" Text="颜色模式" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ColorModeLabel" x:Uid="ColorModeLabel" Text="颜色模式" VerticalAlignment="Center" FontWeight="SemiBold" />
                                 <ComboBox x:Name="ThemeModeComboBox" Grid.Column="1" MinWidth="260"
                                           HorizontalAlignment="Stretch" SelectionChanged="ThemeModeComboBox_SelectionChanged">
                                     <ComboBoxItem Content="跟随系统" />
@@ -125,33 +125,33 @@
                             </Grid>
 
                             <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />
-                            <TextBlock x:Name="AccentColorLabel" Text="主题色" FontWeight="SemiBold" />
+                            <TextBlock x:Name="AccentColorLabel" x:Uid="AccentColorLabel" Text="主题色" FontWeight="SemiBold" />
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <Button Tag="System" Click="AccentButton_Click" MinWidth="116" Height="54"
                                         Background="{StaticResource ControlSecondaryBrush}">
                                     <StackPanel Orientation="Horizontal" Spacing="9">
                                         <Ellipse Width="20" Height="20" Fill="{StaticResource AccentBrush}" />
-                                        <TextBlock Text="Windows 主题色" />
+                                        <TextBlock x:Uid="WinAccentText" Text="Windows 主题色" />
                                     </StackPanel>
                                 </Button>
                                 <Button Tag="Seafoam" Click="AccentButton_Click" Width="54" Height="54"
-                                        Background="{StaticResource ControlSecondaryBrush}" ToolTipService.ToolTip="海沫绿">
+                                        Background="{StaticResource ControlSecondaryBrush}" x:Uid="AccentBtnSeafoam" ToolTipService.ToolTip="海沫绿">
                                     <Ellipse Width="24" Height="24" Fill="#00B7C3" />
                                 </Button>
                                 <Button Tag="BrightRose" Click="AccentButton_Click" Width="54" Height="54"
-                                        Background="{StaticResource ControlSecondaryBrush}" ToolTipService.ToolTip="亮玫红">
+                                        Background="{StaticResource ControlSecondaryBrush}" x:Uid="AccentBtnBrightRose" ToolTipService.ToolTip="亮玫红">
                                     <Ellipse Width="24" Height="24" Fill="#EA005E" />
                                 </Button>
                                 <Button Tag="Gold" Click="AccentButton_Click" Width="54" Height="54"
-                                        Background="{StaticResource ControlSecondaryBrush}" ToolTipService.ToolTip="黄金色">
+                                        Background="{StaticResource ControlSecondaryBrush}" x:Uid="AccentBtnGold" ToolTipService.ToolTip="黄金色">
                                     <Ellipse Width="24" Height="24" Fill="#FFB900" />
                                 </Button>
                                 <Button Tag="Mint" Click="AccentButton_Click" Width="54" Height="54"
-                                        Background="{StaticResource ControlSecondaryBrush}" ToolTipService.ToolTip="浅薄荷色">
+                                        Background="{StaticResource ControlSecondaryBrush}" x:Uid="AccentBtnMint" ToolTipService.ToolTip="浅薄荷色">
                                     <Ellipse Width="24" Height="24" Fill="#00B294" />
                                 </Button>
                                 <Button Tag="PurpleShadow" Click="AccentButton_Click" Width="54" Height="54"
-                                        Background="{StaticResource ControlSecondaryBrush}" ToolTipService.ToolTip="紫影色">
+                                        Background="{StaticResource ControlSecondaryBrush}" x:Uid="AccentBtnPurpleShadow" ToolTipService.ToolTip="紫影色">
                                     <Ellipse Width="24" Height="24" Fill="#8E8CD8" />
                                 </Button>
                             </StackPanel>
@@ -162,20 +162,20 @@
 
                 <StackPanel x:Name="GeneralPanel" Spacing="24" Visibility="Collapsed">
                     <StackPanel Spacing="8">
-                        <TextBlock x:Name="GeneralTitle" Text="常规" FontSize="28" FontWeight="SemiBold" />
-                        <TextBlock x:Name="GeneralDesc" Text="设置界面语言以及日志与报告的默认位置。" FontSize="14"
+                        <TextBlock x:Name="GeneralTitle" x:Uid="GeneralTitle" Text="常规" FontSize="28" FontWeight="SemiBold" />
+                        <TextBlock x:Name="GeneralDesc" x:Uid="GeneralDesc" Text="设置界面语言以及日志与报告的默认位置。" FontSize="14"
                                    Foreground="{StaticResource SecondaryTextBrush}" />
                     </StackPanel>
 
                     <Border Style="{StaticResource SettingsCardStyle}">
                         <StackPanel Spacing="22">
-                            <TextBlock x:Name="LangFileSectionTitle" Text="语言与文件" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock x:Name="LangFileSectionTitle" x:Uid="LangFileSectionTitle" Text="语言与文件" FontSize="18" FontWeight="SemiBold" />
                             <Grid ColumnSpacing="24">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="220" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="LanguageLabel" Text="语言" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                <TextBlock x:Name="LanguageLabel" x:Uid="LanguageLabel" Text="语言" VerticalAlignment="Center" FontWeight="SemiBold" />
                                 <ComboBox x:Name="LanguageComboBox" Grid.Column="1" MinWidth="260"
                                           HorizontalAlignment="Stretch" SelectionChanged="LanguageComboBox_SelectionChanged">
                                     <ComboBoxItem Content="简体中文" />
@@ -183,7 +183,7 @@
                                 </ComboBox>
                             </Grid>
                             <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />
-                            <TextBlock x:Name="LogPathLabel" Text="日志与报告默认保存位置" FontWeight="SemiBold" />
+                            <TextBlock x:Name="LogPathLabel" x:Uid="LogPathLabel" Text="日志与报告默认保存位置" FontWeight="SemiBold" />
                             <Grid ColumnSpacing="10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -192,7 +192,7 @@
                                 <TextBox x:Name="OutputDirectoryTextBox" IsReadOnly="True"
                                          Background="{StaticResource ControlSecondaryBrush}" />
                                 <Button Grid.Column="1" Click="BrowseDirectoryButton_Click"
-                                        x:Name="BrowseFolderButton" Content="选择文件夹" Padding="16,0" />
+                                        x:Name="BrowseFolderButton" x:Uid="BrowseFolderButton" Content="选择文件夹" Padding="16,0" />
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -200,20 +200,20 @@
 
                 <StackPanel x:Name="AboutPanel" Spacing="24" Visibility="Collapsed">
                     <StackPanel Spacing="8">
-                        <TextBlock x:Name="AboutTitle" Text="关于" FontSize="28" FontWeight="SemiBold" />
-                        <TextBlock x:Name="AboutDesc" Text="查看版本信息并访问 EZ DIT 项目仓库。" FontSize="14"
+                        <TextBlock x:Name="AboutTitle" x:Uid="AboutTitle" Text="关于" FontSize="28" FontWeight="SemiBold" />
+                        <TextBlock x:Name="AboutDesc" x:Uid="AboutDesc" Text="查看版本信息并访问 EZ DIT 项目仓库。" FontSize="14"
                                    Foreground="{StaticResource SecondaryTextBrush}" />
                     </StackPanel>
 
                     <Border Style="{StaticResource SettingsCardStyle}">
                         <StackPanel Spacing="18">
-                            <TextBlock x:Name="AppInfoTitle" Text="应用信息" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock x:Name="AppInfoTitle" x:Uid="AppInfoTitle" Text="应用信息" FontSize="18" FontWeight="SemiBold" />
                             <Grid ColumnSpacing="24">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="220" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="VersionLabel" Text="版本" FontWeight="SemiBold" />
+                                <TextBlock x:Name="VersionLabel" x:Uid="VersionLabel" Text="版本" FontWeight="SemiBold" />
                                 <TextBlock x:Name="VersionTextBlock" Grid.Column="1" />
                             </Grid>
                             <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />
@@ -222,7 +222,7 @@
                                     <ColumnDefinition Width="220" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="RepoLabel" Text="项目仓库" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <TextBlock x:Name="RepoLabel" x:Uid="RepoLabel" Text="项目仓库" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <Button Grid.Column="1" Click="RepositoryButton_Click"
                                         HorizontalAlignment="Left" Padding="14,0" Height="40">
                                     <StackPanel Orientation="Horizontal" Spacing="9">
@@ -231,7 +231,7 @@
                                         </Border>
                                         <StackPanel>
                                             <TextBlock Text="MEMZ-Edge01/EZ-DIT" FontWeight="SemiBold" />
-                                            <TextBlock x:Name="OpenGitHubText" Text="在 GitHub 中打开" FontSize="11"
+                                            <TextBlock x:Name="OpenGitHubText" x:Uid="OpenGitHubText" Text="在 GitHub 中打开" FontSize="11"
                                                        Foreground="{StaticResource MutedTextBrush}" />
                                         </StackPanel>
                                     </StackPanel>

@@ -65,13 +65,14 @@ public sealed record FileOperationFailure(
     FileOperationStage Stage,
     string Error)
 {
-    public string StageText => Stage == FileOperationStage.Copying ? "\u62F7\u8D1D" : "\u6821\u9A8C";
+    public string StageText => Stage == FileOperationStage.Copying ? "Status.CopyingFiles" : "Status.Verifying";
     public string SizeText => FormatBytes(Length);
 
     [JsonIgnore]
     public bool IsVerificationMismatch =>
         Stage == FileOperationStage.Verifying &&
-        Error.StartsWith("\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF1A", StringComparison.Ordinal);
+        (Error.StartsWith("\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF1A", StringComparison.Ordinal) ||
+         Error.StartsWith("Verification mismatch:", StringComparison.Ordinal));
 
     private static string FormatBytes(double bytes) => bytes >= 1024 * 1024 * 1024
         ? $"{bytes / (1024 * 1024 * 1024):F2} GB"

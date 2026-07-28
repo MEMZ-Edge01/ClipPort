@@ -5,247 +5,328 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="创建任务" xml:space="preserve"><value>创建任务</value></data>
-  <data name="多选" xml:space="preserve"><value>多选</value></data>
-  <data name="完成" xml:space="preserve"><value>完成</value></data>
-  <data name="批量删除" xml:space="preserve"><value>批量删除</value></data>
-  <data name="批量创建报告" xml:space="preserve"><value>批量创建报告</value></data>
-  <data name="新任务" xml:space="preserve"><value>新任务</value></data>
-  <data name="暂无新任务" xml:space="preserve"><value>暂无新任务</value></data>
-  <data name="历史任务" xml:space="preserve"><value>历史任务</value></data>
-  <data name="暂无历史任务" xml:space="preserve"><value>暂无历史任务</value></data>
-  <data name="准备新任务" xml:space="preserve"><value>准备新任务</value></data>
-  <data name="数据源" xml:space="preserve"><value>数据源</value></data>
-  <data name="拷卡目的地" xml:space="preserve"><value>拷卡目的地</value></data>
-  <data name="尚未选择" xml:space="preserve"><value>尚未选择</value></data>
-  <data name="在资源管理器中选择" xml:space="preserve"><value>在资源管理器中选择</value></data>
-  <data name="任务进度" xml:space="preserve"><value>任务进度</value></data>
-  <data name="拷贝" xml:space="preserve"><value>拷贝</value></data>
-  <data name="SHA-256 校验" xml:space="preserve"><value>SHA-256 校验</value></data>
-  <data name="等待设置" xml:space="preserve"><value>等待设置</value></data>
-  <data name="等待开始" xml:space="preserve"><value>等待开始</value></data>
-  <data name="开始拷卡" xml:space="preserve"><value>开始拷卡</value></data>
-  <data name="开始任务" xml:space="preserve"><value>开始任务</value></data>
-  <data name="开始校验" xml:space="preserve"><value>开始校验</value></data>
-  <data name="暂停" xml:space="preserve"><value>暂停</value></data>
-  <data name="继续" xml:space="preserve"><value>继续</value></data>
-  <data name="取消" xml:space="preserve"><value>取消</value></data>
-  <data name="导出报告" xml:space="preserve"><value>导出报告</value></data>
-  <data name="删除记录" xml:space="preserve"><value>删除记录</value></data>
-  <data name="重新开始" xml:space="preserve"><value>重新开始</value></data>
-  <data name="就绪。选择目录后即可开始。" xml:space="preserve"><value>就绪。选择目录后即可开始。</value></data>
-  <data name="新建拷卡任务" xml:space="preserve"><value>新建拷卡任务</value></data>
-  <data name="源目录 / 存储卡" xml:space="preserve"><value>源目录 / 存储卡</value></data>
-  <data name="拷贝目的地" xml:space="preserve"><value>拷贝目的地</value></data>
-  <data name="请选择源目录或存储卡" xml:space="preserve"><value>请选择源目录或存储卡</value></data>
-  <data name="请选择文件拷贝目的地" xml:space="preserve"><value>请选择文件拷贝目的地</value></data>
-  <data name="拷贝目的地文件夹名" xml:space="preserve"><value>拷贝目的地文件夹名</value></data>
-  <data name="留空即不创建子文件夹" xml:space="preserve"><value>留空即不创建子文件夹</value></data>
-  <data name="使用 FastCopy 算法" xml:space="preserve"><value>使用 FastCopy 算法</value></data>
-  <data name="文件校验（SHA-256）" xml:space="preserve"><value>文件校验（SHA-256）</value></data>
-  <data name="开启" xml:space="preserve"><value>开启</value></data>
-  <data name="关闭" xml:space="preserve"><value>关闭</value></data>
-  <data name="重复项处理" xml:space="preserve"><value>重复项处理</value></data>
-  <data name="询问" xml:space="preserve"><value>询问</value></data>
-  <data name="覆盖" xml:space="preserve"><value>覆盖</value></data>
-  <data name="跳过" xml:space="preserve"><value>跳过</value></data>
-  <data name="创建副本" xml:space="preserve"><value>创建副本</value></data>
-  <data name="请选择源目录和目标目录" xml:space="preserve"><value>请选择源目录和目标目录</value></data>
-  <data name="发现重复文件" xml:space="preserve"><value>发现重复文件</value></data>
-  <data name="全选" xml:space="preserve"><value>全选</value></data>
-  <data name="所选创建副本" xml:space="preserve"><value>所选创建副本</value></data>
-  <data name="覆盖所选" xml:space="preserve"><value>覆盖所选</value></data>
-  <data name="跳过所选" xml:space="preserve"><value>跳过所选</value></data>
-  <data name="请逐个选择处理方式" xml:space="preserve"><value>请逐个选择处理方式</value></data>
-  <data name="应用选择并继续" xml:space="preserve"><value>应用选择并继续</value></data>
-  <data name="文件名称" xml:space="preserve"><value>文件名称</value></data>
-  <data name="来源位置" xml:space="preserve"><value>来源位置</value></data>
-  <data name="冲突位置" xml:space="preserve"><value>冲突位置</value></data>
-  <data name="文件大小" xml:space="preserve"><value>文件大小</value></data>
-  <data name="创建时间" xml:space="preserve"><value>创建时间</value></data>
-  <data name="结束时间" xml:space="preserve"><value>结束时间</value></data>
-  <data name="累计用时" xml:space="preserve"><value>累计用时</value></data>
-  <data name="文件数" xml:space="preserve"><value>文件数</value></data>
-  <data name="已完成" xml:space="preserve"><value>已完成</value></data>
-  <data name="未启用" xml:space="preserve"><value>未启用</value></data>
-  <data name="正在扫描" xml:space="preserve"><value>正在扫描</value></data>
-  <data name="正在读取目录" xml:space="preserve"><value>正在读取目录</value></data>
-  <data name="正在拷贝" xml:space="preserve"><value>正在拷贝</value></data>
-  <data name="拷贝文件" xml:space="preserve"><value>拷贝文件</value></data>
-  <data name="正在校验" xml:space="preserve"><value>正在校验</value></data>
-  <data name="SHA-256 完整性校验" xml:space="preserve"><value>SHA-256 完整性校验</value></data>
-  <data name="等待处理重复文件" xml:space="preserve"><value>等待处理重复文件</value></data>
-  <data name="请在下方逐个选择处理方式" xml:space="preserve"><value>请在下方逐个选择处理方式</value></data>
-  <data name="正在取消" xml:space="preserve"><value>正在取消</value></data>
-  <data name="已暂停" xml:space="preserve"><value>已暂停</value></data>
-  <data name="等待用户继续" xml:space="preserve"><value>等待用户继续</value></data>
-  <data name="优先任务结束后自动继续" xml:space="preserve"><value>优先任务结束后自动继续</value></data>
-  <data name="等待优先任务" xml:space="preserve"><value>等待优先任务</value></data>
-  <data name="部分完成" xml:space="preserve"><value>部分完成</value></data>
-  <data name="任务完成" xml:space="preserve"><value>任务完成</value></data>
-  <data name="拷贝完成" xml:space="preserve"><value>拷贝完成</value></data>
-  <data name="校验完成" xml:space="preserve"><value>校验完成</value></data>
-  <data name="意外中断" xml:space="preserve"><value>意外中断</value></data>
-  <data name="未知状态" xml:space="preserve"><value>未知状态</value></data>
-  <data name="任务期间阻止电脑休眠" xml:space="preserve"><value>任务期间阻止电脑休眠</value></data>
-  <data name="优先执行" xml:space="preserve"><value>优先执行</value></data>
-  <data name="失败文件" xml:space="preserve"><value>失败文件</value></data>
-  <data name="重试所选" xml:space="preserve"><value>重试所选</value></data>
-  <data name="文本报告" xml:space="preserve"><value>文本报告</value></data>
-  <data name="目录尚未设置" xml:space="preserve"><value>目录尚未设置</value></data>
-  <data name="请选择数据源和拷贝目的地。" xml:space="preserve"><value>请选择数据源和拷贝目的地。</value></data>
-  <data name="请先选择源目录和拷卡目的地。" xml:space="preserve"><value>请先选择源目录和拷卡目的地。</value></data>
-  <data name="无法开始" xml:space="preserve"><value>无法开始</value></data>
-  <data name="拷卡失败" xml:space="preserve"><value>拷卡失败</value></data>
-  <data name="文件不可用" xml:space="preserve"><value>文件不可用</value></data>
-  <data name="无法打开文件资源管理器" xml:space="preserve"><value>无法打开文件资源管理器</value></data>
-  <data name="任务正在运行" xml:space="preserve"><value>任务正在运行</value></data>
-  <data name="请先完成或取消当前任务。" xml:space="preserve"><value>请先完成或取消当前任务。</value></data>
-  <data name="无法删除任务" xml:space="preserve"><value>无法删除任务</value></data>
-  <data name="只能删除已经结束处理的任务记录。" xml:space="preserve"><value>只能删除已经结束处理的任务记录。</value></data>
-  <data name="无法批量删除" xml:space="preserve"><value>无法批量删除</value></data>
-  <data name="报告尚不可用" xml:space="preserve"><value>报告尚不可用</value></data>
-  <data name="运行中或排队中的任务暂时不能创建报告。" xml:space="preserve"><value>运行中或排队中的任务暂时不能创建报告。</value></data>
-  <data name="运行中或排队中的任务暂时不能导出报告。" xml:space="preserve"><value>运行中或排队中的任务暂时不能导出报告。</value></data>
-  <data name="导出报告失败" xml:space="preserve"><value>导出报告失败</value></data>
-  <data name="批量创建报告失败" xml:space="preserve"><value>批量创建报告失败</value></data>
-  <data name="无法开始校验" xml:space="preserve"><value>无法开始校验</value></data>
-  <data name="无法重新开始" xml:space="preserve"><value>无法重新开始</value></data>
-  <data name="原任务没有启用拷贝或校验。" xml:space="preserve"><value>原任务没有启用拷贝或校验。</value></data>
-  <data name="任务已暂停。" xml:space="preserve"><value>任务已暂停。</value></data>
-  <data name="任务已继续。" xml:space="preserve"><value>任务已继续。</value></data>
-  <data name="继续处理中" xml:space="preserve"><value>继续处理中</value></data>
-  <data name="准备执行" xml:space="preserve"><value>准备执行</value></data>
-  <data name="优先任务即将开始" xml:space="preserve"><value>优先任务即将开始</value></data>
-  <data name="任务即将开始" xml:space="preserve"><value>任务即将开始</value></data>
-  <data name="任务正在并行执行。" xml:space="preserve"><value>任务正在并行执行。</value></data>
-  <data name="SHA-256 校验未通过" xml:space="preserve"><value>SHA-256 校验未通过</value></data>
-  <data name="SHA-256 校验已完成" xml:space="preserve"><value>SHA-256 校验已完成</value></data>
-  <data name="拷贝和 SHA-256 校验均已完成" xml:space="preserve"><value>拷贝和 SHA-256 校验均已完成</value></data>
-  <data name="拷贝完成，但完整性校验未通过" xml:space="preserve"><value>拷贝完成，但完整性校验未通过</value></data>
-  <data name="拷贝已完成" xml:space="preserve"><value>拷贝已完成</value></data>
-  <data name="拷贝已完成，失败文件已跳过" xml:space="preserve"><value>拷贝已完成，失败文件已跳过</value></data>
-  <data name="校验已完成，失败文件已跳过" xml:space="preserve"><value>校验已完成，失败文件已跳过</value></data>
-  <data name="源目录和目标目录不能相同。" xml:space="preserve"><value>源目录和目标目录不能相同。</value></data>
-  <data name="目录设置完成" xml:space="preserve"><value>目录设置完成</value></data>
-  <data name="请为每个重复文件选择处理方式" xml:space="preserve"><value>请为每个重复文件选择处理方式</value></data>
-  <data name="请选择任务" xml:space="preserve"><value>请选择任务</value></data>
-  <data name="任务设置完成，准备扫描文件" xml:space="preserve"><value>任务设置完成，准备扫描文件</value></data>
-  <data name="任务未完成。" xml:space="preserve"><value>任务未完成。</value></data>
-  <data name="任务已取消，已完成文件予以保留。" xml:space="preserve"><value>任务已取消，已完成文件予以保留。</value></data>
-  <data name="任务已取消；已完成文件保留" xml:space="preserve"><value>任务已取消；已完成文件保留</value></data>
-  <data name="任务执行失败" xml:space="preserve"><value>任务执行失败</value></data>
-  <data name="校验发现不一致文件。" xml:space="preserve"><value>校验发现不一致文件。</value></data>
-  <data name="应用在任务完成前退出" xml:space="preserve"><value>应用在任务完成前退出</value></data>
-  <data name="应用在任务完成前退出。" xml:space="preserve"><value>应用在任务完成前退出。</value></data>
-  <data name="源目录已就绪，请选择拷卡目的地" xml:space="preserve"><value>源目录已就绪，请选择拷卡目的地</value></data>
-  <data name="正在按逐项选择处理" xml:space="preserve"><value>正在按逐项选择处理</value></data>
-  <data name="正在扫描源目录并计算任务大小。" xml:space="preserve"><value>正在扫描源目录并计算任务大小。</value></data>
-  <data name="正在统计文件…" xml:space="preserve"><value>正在统计文件…</value></data>
-  <data name="选择拷卡目的地" xml:space="preserve"><value>选择拷卡目的地</value></data>
-  <data name="选择源目录或存储卡" xml:space="preserve"><value>选择源目录或存储卡</value></data>
-  <data name="已按各自选择处理" xml:space="preserve"><value>已按各自选择处理</value></data>
-  <data name="设置" xml:space="preserve"><value>设置</value></data>
-  <data name="外观" xml:space="preserve"><value>外观</value></data>
-  <data name="颜色模式与主题色" xml:space="preserve"><value>颜色模式与主题色</value></data>
-  <data name="选择应用的明暗外观与强调色。" xml:space="preserve"><value>选择应用的明暗外观与强调色。</value></data>
-  <data name="颜色模式" xml:space="preserve"><value>颜色模式</value></data>
-  <data name="跟随系统" xml:space="preserve"><value>跟随系统</value></data>
-  <data name="浅色模式" xml:space="preserve"><value>浅色模式</value></data>
-  <data name="深色模式" xml:space="preserve"><value>深色模式</value></data>
-  <data name="主题色" xml:space="preserve"><value>主题色</value></data>
-  <data name="Windows 主题色" xml:space="preserve"><value>Windows 主题色</value></data>
-  <data name="海沫绿" xml:space="preserve"><value>海沫绿</value></data>
-  <data name="亮玫红" xml:space="preserve"><value>亮玫红</value></data>
-  <data name="黄金色" xml:space="preserve"><value>黄金色</value></data>
-  <data name="浅薄荷色" xml:space="preserve"><value>浅薄荷色</value></data>
-  <data name="紫影色" xml:space="preserve"><value>紫影色</value></data>
-  <data name="常规" xml:space="preserve"><value>常规</value></data>
-  <data name="语言与文件" xml:space="preserve"><value>语言与文件</value></data>
-  <data name="设置界面语言以及日志与报告的默认位置。" xml:space="preserve"><value>设置界面语言以及日志与报告的默认位置。</value></data>
-  <data name="语言" xml:space="preserve"><value>语言</value></data>
-  <data name="简体中文" xml:space="preserve"><value>简体中文</value></data>
-  <data name="日志与报告默认保存位置" xml:space="preserve"><value>日志与报告默认保存位置</value></data>
-  <data name="选择文件夹" xml:space="preserve"><value>选择文件夹</value></data>
-  <data name="关于" xml:space="preserve"><value>关于</value></data>
-  <data name="应用信息" xml:space="preserve"><value>应用信息</value></data>
-  <data name="查看版本信息并访问 EZ DIT 项目仓库。" xml:space="preserve"><value>查看版本信息并访问 EZ DIT 项目仓库。</value></data>
-  <data name="版本" xml:space="preserve"><value>版本</value></data>
-  <data name="项目仓库" xml:space="preserve"><value>项目仓库</value></data>
-  <data name="在 GitHub 中打开" xml:space="preserve"><value>在 GitHub 中打开</value></data>
-  <data name="返回任务" xml:space="preserve"><value>返回任务</value></data>
-  <data name="确定" xml:space="preserve"><value>确定</value></data>
-  <data name="选择此目录" xml:space="preserve"><value>选择此目录</value></data>
-  <data name="任务记录" xml:space="preserve"><value>任务记录</value></data>
-  <data name="逐个询问" xml:space="preserve"><value>逐个询问</value></data>
-  <data name="通过" xml:space="preserve"><value>通过</value></data>
-  <data name="失败" xml:space="preserve"><value>失败</value></data>
-  <data name="任务失败" xml:space="preserve"><value>任务失败</value></data>
-  <data name="已取消" xml:space="preserve"><value>已取消</value></data>
-  <data name="意外终止" xml:space="preserve"><value>意外终止</value></data>
-  <data name="校验失败" xml:space="preserve"><value>校验失败</value></data>
-  <data name="删除历史记录？" xml:space="preserve"><value>删除历史记录？</value></data>
-  <data name="使用原生流水线复制引擎；不可用时自动回退到托管流水线。文件大小、进度和剩余时间仍会正常显示。" xml:space="preserve"><value>使用原生流水线复制引擎；不可用时自动回退到托管流水线。文件大小、进度和剩余时间仍会正常显示。</value></data>
-  <data name="询问模式会先继续处理其他文件，再逐个处理检测到的重复文件。" xml:space="preserve"><value>询问模式会先继续处理其他文件，再逐个处理检测到的重复文件。</value></data>
-  <data name="可勾选多项后批量设置；仍可在每行单独修改。" xml:space="preserve"><value>可勾选多项后批量设置；仍可在每行单独修改。</value></data>
-  <data name="优先任务会并行执行；其他普通任务会在安全检查点等待，直到全部优先任务结束。" xml:space="preserve"><value>优先任务会并行执行；其他普通任务会在安全检查点等待，直到全部优先任务结束。</value></data>
-  <data name="优先任务会并行执行；其他任务将在安全检查点等待，直到全部优先任务结束。" xml:space="preserve"><value>优先任务会并行执行；其他任务将在安全检查点等待，直到全部优先任务结束。</value></data>
-  <data name="只能删除已经结束处理的任务记录，请取消选择运行中或排队中的任务。" xml:space="preserve"><value>只能删除已经结束处理的任务记录，请取消选择运行中或排队中的任务。</value></data>
-  <data name="优先任务正在执行；普通任务将在安全检查点等待。" xml:space="preserve"><value>优先任务正在执行；普通任务将在安全检查点等待。</value></data>
-  <data name="当前任务已安全暂停；全部优先任务结束后会自动继续。" xml:space="preserve"><value>当前任务已安全暂停；全部优先任务结束后会自动继续。</value></data>
-  <data name="目标目录不能位于源目录内部，否则会产生递归复制。" xml:space="preserve"><value>目标目录不能位于源目录内部，否则会产生递归复制。</value></data>
-  <data name="其他文件已继续复制和校验。完成下方每一项选择后即可继续处理重复文件。" xml:space="preserve"><value>其他文件已继续复制和校验。完成下方每一项选择后即可继续处理重复文件。</value></data>
-  <data name="任务已由用户取消，已完成的文件予以保留。" xml:space="preserve"><value>任务已由用户取消，已完成的文件予以保留。</value></data>
-  <data name="应用上次在任务结束前退出，此记录已标记为中断。" xml:space="preserve"><value>应用上次在任务结束前退出，此记录已标记为中断。</value></data>
-  <data name="勾选文件后选择覆盖、重试或跳过；覆盖仅适用于校验不一致文件。" xml:space="preserve"><value>勾选文件后选择覆盖、重试或跳过；覆盖仅适用于校验不一致文件。</value></data>
-  <data name="只会从 EZ DIT 中移除这条已结束的任务记录，不会删除任何文件。" xml:space="preserve"><value>只会从 EZ DIT 中移除这条已结束的任务记录，不会删除任何文件。</value></data>
-  <data name="只会从 EZ DIT 中移除已结束的任务记录，不会删除源文件、目的地文件或已经导出的报告。" xml:space="preserve"><value>只会从 EZ DIT 中移除已结束的任务记录，不会删除源文件、目的地文件或已经导出的报告。</value></data>
-  <data name="任务部分完成：已跳过 {0} 个失败文件。" xml:space="preserve"><value>任务部分完成：已跳过 {0} 个失败文件。</value></data>
-  <data name="已选择处理方式 {0}/{1}，已勾选 {2} 项" xml:space="preserve"><value>已选择处理方式 {0}/{1}，已勾选 {2} 项</value></data>
-  <data name="SelectedSourcePath" xml:space="preserve"><value>已选择源目录：{0}</value></data>
-  <data name="SelectedDestinationPath" xml:space="preserve"><value>已选择目标目录：{0}</value></data>
-  <data name="SourcePathLabel" xml:space="preserve"><value>源目录：{0}</value></data>
-  <data name="DestinationPathLabel" xml:space="preserve"><value>目标目录：{0}</value></data>
-  <data name="FileNotFound" xml:space="preserve"><value>当前无法找到该文件：{0}</value></data>
-  <data name="SourceFolderNotExist" xml:space="preserve"><value>源目录不存在或无法访问：{0}</value></data>
-  <data name="DestinationFolderNotExist" xml:space="preserve"><value>目标目录不存在或无法访问：{0}</value></data>
-  <data name="HistorySaveFailed" xml:space="preserve"><value>历史记录保存失败：{0}</value></data>
-  <data name="TaskReportSaveFailed" xml:space="preserve"><value>任务已结束，但报告保存失败：{0}</value></data>
-  <data name="TaskReportExported" xml:space="preserve"><value>任务报告已导出：{0}</value></data>
-  <data name="FoundNDuplicates" xml:space="preserve"><value>发现 {0} 个重复文件</value></data>
-  <data name="SelectedNTasks" xml:space="preserve"><value>已选择 {0} 个任务</value></data>
-  <data name="SelectedNTasksOnlyFinished" xml:space="preserve"><value>已选择 {0} 个任务，仅已结束任务可删除</value></data>
-  <data name="DeleteNTaskRecords" xml:space="preserve"><value>删除 {0} 条任务记录？</value></data>
-  <data name="DeletedNTaskRecords" xml:space="preserve"><value>已删除 {0} 条任务记录，所有文件均已保留。</value></data>
-  <data name="TaskCompletedCopiedVerified" xml:space="preserve"><value>任务完成：已拷贝并校验 {0} 个文件。</value></data>
-  <data name="CopyCompletedCopied" xml:space="preserve"><value>拷贝完成：已拷贝 {0} 个文件。</value></data>
-  <data name="VerificationCompletedAllPassed" xml:space="preserve"><value>校验完成：{0} 个文件均通过 SHA-256 校验。</value></data>
-  <data name="CreatedNReportsInPath" xml:space="preserve"><value>已在 {0} 创建 {1} 份任务报告。</value></data>
-  <data name="DuplicateFileRecords" xml:space="preserve"><value>重复文件记录：{0} 个</value></data>
-  <data name="NFilesAwaitingAction" xml:space="preserve"><value>{0} 个文件待处理</value></data>
-  <data name="Priority" xml:space="preserve"><value>优先</value></data>
-  <data name="ChoicesMadeNOfMSelectedK" xml:space="preserve"><value>已选择处理方式 {0}/{1}，已勾选 {2} 项</value></data>
-  <data name="RecordedNDuplicates" xml:space="preserve"><value>已记录 {0} 个重复文件</value></data>
-  <data name="SkippedNFailedFiles" xml:space="preserve"><value>已跳过的失败文件：{0} 个</value></data>
-  <data name="FailedFilesNSelectedK" xml:space="preserve"><value>失败文件：{0} 个，已选 {1} 个</value></data>
-  <data name="任务部分完成：已跳过 {0} 个失败文件。" xml:space="preserve"><value>任务部分完成：已跳过 {0} 个失败文件。</value></data>
-  <data name="已选择处理方式 {0}/{1}，已勾选 {2} 项" xml:space="preserve"><value>已选择处理方式 {0}/{1}，已勾选 {2} 项</value></data>
-  <data name="设置保存失败：{0}" xml:space="preserve"><value>设置保存失败：{0}</value></data>
-  <data name="正在覆盖校验不一致文件" xml:space="preserve"><value>正在覆盖校验不一致文件</value></data>
-  <data name="正在重试失败文件" xml:space="preserve"><value>正在重试失败文件</value></data>
-  <data name="覆盖后重新执行 SHA-256 校验" xml:space="preserve"><value>覆盖后重新执行 SHA-256 校验</value></data>
-  <data name="仅处理已选失败项" xml:space="preserve"><value>仅处理已选失败项</value></data>
-  <data name="正在用源文件覆盖目标文件，并重新校验完整性。" xml:space="preserve"><value>正在用源文件覆盖目标文件，并重新校验完整性。</value></data>
-  <data name="重试完成后，仍失败的文件会继续保留在下方。" xml:space="preserve"><value>重试完成后，仍失败的文件会继续保留在下方。</value></data>
-  <data name="等待处理失败文件" xml:space="preserve"><value>等待处理失败文件</value></data>
-  <data name="请在下方选择重试或跳过" xml:space="preserve"><value>请在下方选择重试或跳过</value></data>
-  <data name="其他文件已继续处理，任务不会因单个文件错误直接失败。" xml:space="preserve"><value>其他文件已继续处理，任务不会因单个文件错误直接失败。</value></data>
-  <data name="{0} 个文件待处理" xml:space="preserve"><value>{0} 个文件待处理</value></data>
-  <data name="失败文件：{0} 个，已选 {1} 个" xml:space="preserve"><value>失败文件：{0} 个，已选 {1} 个</value></data>
-  <data name="已跳过的失败文件：{0}" xml:space="preserve"><value>已跳过的失败文件：{0}</value></data>
-  <data name="拷贝文件" xml:space="preserve"><value>拷贝文件</value></data>
-  <data name="已记录 {0} 个重复文件" xml:space="preserve"><value>已记录 {0} 个重复文件</value></data>
-  <data name="按{0}处理" xml:space="preserve"><value>按“{0}”处理</value></data>
-  <data name="任务报告已导出：{0}" xml:space="preserve"><value>任务报告已导出：{0}</value></data>
-  <data name="任务已结束，但报告保存失败：{0}" xml:space="preserve"><value>任务已结束，但报告保存失败：{0}</value></data>
+  <!-- ===== Common ===== -->
+  <data name="Common.OK" xml:space="preserve"><value>确定</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="Common.On" xml:space="preserve"><value>开启</value></data>
+  <data name="Common.Off" xml:space="preserve"><value>关闭</value></data>
+  <data name="Common.Done" xml:space="preserve"><value>完成</value></data>
+  <data name="Common.Completed" xml:space="preserve"><value>已完成</value></data>
+  <data name="Common.Priority" xml:space="preserve"><value>优先</value></data>
+  <data name="Common.Disabled" xml:space="preserve"><value>未启用</value></data>
+  <data name="Common.TextReport" xml:space="preserve"><value>文本报告</value></data>
+  <data name="Common.Passed" xml:space="preserve"><value>通过</value></data>
+  <data name="Common.Failed" xml:space="preserve"><value>失败</value></data>
+  <!-- ===== Buttons ===== -->
+  <data name="Button.StartTask" xml:space="preserve"><value>开始拷卡</value></data>
+  <data name="Button.StartVerification" xml:space="preserve"><value>开始校验</value></data>
+  <data name="Button.Pause" xml:space="preserve"><value>暂停</value></data>
+  <data name="Button.Resume" xml:space="preserve"><value>继续</value></data>
+  <data name="Button.ExportReport" xml:space="preserve"><value>导出报告</value></data>
+  <data name="Button.DeleteRecord" xml:space="preserve"><value>删除记录</value></data>
+  <data name="Button.Restart" xml:space="preserve"><value>重新开始</value></data>
+  <data name="Button.MultiSelect" xml:space="preserve"><value>多选</value></data>
+  <data name="Button.BatchDelete" xml:space="preserve"><value>批量删除</value></data>
+  <data name="Button.BatchCreateReports" xml:space="preserve"><value>批量创建报告</value></data>
+  <data name="Button.SelectFolder" xml:space="preserve"><value>选择文件夹</value></data>
+  <data name="Button.Browse" xml:space="preserve"><value>在资源管理器中选择</value></data>
+  <data name="Button.SelectThisFolder" xml:space="preserve"><value>选择此目录</value></data>
+  <data name="Button.ApplyAndContinue" xml:space="preserve"><value>应用选择并继续</value></data>
+  <data name="Button.SelectAll" xml:space="preserve"><value>全选</value></data>
+  <data name="Button.OverwriteSelected" xml:space="preserve"><value>覆盖所选</value></data>
+  <data name="Button.SkipSelected" xml:space="preserve"><value>跳过所选</value></data>
+  <data name="Button.CopySelected" xml:space="preserve"><value>所选创建副本</value></data>
+  <data name="Button.RetrySelected" xml:space="preserve"><value>重试所选</value></data>
+  <data name="Button.AskEachFile" xml:space="preserve"><value>逐个询问</value></data>
+  <!-- ===== Status ===== -->
+  <data name="Status.WaitingSetup" xml:space="preserve"><value>等待设置</value></data>
+  <data name="Status.WaitingStart" xml:space="preserve"><value>等待开始</value></data>
+  <data name="Status.Scanning" xml:space="preserve"><value>正在扫描</value></data>
+  <data name="Status.CountingFiles" xml:space="preserve"><value>正在统计文件…</value></data>
+  <data name="Status.ReadingDirectories" xml:space="preserve"><value>正在读取目录</value></data>
+  <data name="Status.Copying" xml:space="preserve"><value>正在拷贝</value></data>
+  <data name="Status.CopyingFiles" xml:space="preserve"><value>拷贝文件</value></data>
+  <data name="Status.Verifying" xml:space="preserve"><value>正在校验</value></data>
+  <data name="Status.SHA256Verification" xml:space="preserve"><value>SHA-256 完整性校验</value></data>
+  <data name="Status.WaitingDuplicateChoices" xml:space="preserve"><value>等待处理重复文件</value></data>
+  <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>等待处理失败文件</value></data>
+  <data name="Status.Cancelling" xml:space="preserve"><value>正在取消</value></data>
+  <data name="Status.Paused" xml:space="preserve"><value>已暂停</value></data>
+  <data name="Status.ProcessingResumed" xml:space="preserve"><value>继续处理中</value></data>
+  <data name="Status.WaitingPriorityTasks" xml:space="preserve"><value>等待优先任务</value></data>
+  <data name="Status.Preparing" xml:space="preserve"><value>准备执行</value></data>
+  <data name="Status.PriorityTaskStarting" xml:space="preserve"><value>优先任务即将开始</value></data>
+  <data name="Status.TaskStarting" xml:space="preserve"><value>任务即将开始</value></data>
+  <data name="Status.OverwritingMismatched" xml:space="preserve"><value>正在覆盖校验不一致文件</value></data>
+  <data name="Status.RetryingFailedFiles" xml:space="preserve"><value>正在重试失败文件</value></data>
+  <data name="Status.ApplyingIndividualChoices" xml:space="preserve"><value>正在按逐项选择处理</value></data>
+  <data name="Status.AppliedEachAction" xml:space="preserve"><value>已按各自选择处理</value></data>
+  <!-- ===== Info ===== -->
+  <data name="Info.Ready" xml:space="preserve"><value>就绪。选择目录后即可开始。</value></data>
+  <data name="Info.PrepareNewTask" xml:space="preserve"><value>准备新任务</value></data>
+  <data name="Info.SelectSourceAndDest" xml:space="preserve"><value>请选择源目录和目标目录</value></data>
+  <data name="Info.SourceReady" xml:space="preserve"><value>源目录已就绪，请选择拷卡目的地</value></data>
+  <data name="Info.DirectoriesConfigured" xml:space="preserve"><value>目录设置完成</value></data>
+  <data name="Info.TaskConfigured" xml:space="preserve"><value>任务设置完成，准备扫描文件</value></data>
+  <data name="Info.ScanningDescription" xml:space="preserve"><value>正在扫描源目录并计算任务大小。</value></data>
+  <data name="Info.NotSelected" xml:space="preserve"><value>尚未选择</value></data>
+  <data name="Info.SelectTask" xml:space="preserve"><value>请选择任务</value></data>
+  <data name="Info.ChooseActionPerFile" xml:space="preserve"><value>请为每个重复文件选择处理方式</value></data>
+  <data name="Info.ChooseActionEach" xml:space="preserve"><value>请逐个选择处理方式</value></data>
+  <data name="Info.OtherFilesContinue" xml:space="preserve"><value>其他文件已继续复制和校验。完成下方每一项选择后即可继续处理重复文件。</value></data>
+  <data name="Info.PriorityTasksRunning" xml:space="preserve"><value>优先任务正在执行；普通任务将在安全检查点等待。</value></data>
+  <data name="Info.TasksRunningConcurrently" xml:space="preserve"><value>任务正在并行执行。</value></data>
+  <data name="Info.TaskSafelyPaused" xml:space="preserve"><value>当前任务已安全暂停；全部优先任务结束后会自动继续。</value></data>
+  <data name="Info.AutoResumeAfterPriority" xml:space="preserve"><value>优先任务结束后自动继续</value></data>
+  <data name="Info.WaitingToResume" xml:space="preserve"><value>等待用户继续</value></data>
+  <data name="Info.TaskPaused" xml:space="preserve"><value>任务已暂停。</value></data>
+  <data name="Info.TaskResumed" xml:space="preserve"><value>任务已继续。</value></data>
+  <data name="Info.BatchHint" xml:space="preserve"><value>可勾选多项后批量设置；仍可在每行单独修改。</value></data>
+  <data name="Info.FailedFilesHint" xml:space="preserve"><value>勾选文件后选择覆盖、重试或跳过；覆盖仅适用于校验不一致文件。</value></data>
+  <data name="Info.ChooseRetryOrSkip" xml:space="preserve"><value>请在下方选择重试或跳过</value></data>
+  <data name="Info.OtherFilesProcessed" xml:space="preserve"><value>其他文件已继续处理，任务不会因单个文件错误直接失败。</value></data>
+  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>覆盖后重新执行 SHA-256 校验</value></data>
+  <data name="Info.OnlySelectedFailures" xml:space="preserve"><value>仅处理已选失败项</value></data>
+  <data name="Info.OverwriteAndReverifyDesc" xml:space="preserve"><value>正在用源文件覆盖目标文件，并重新校验完整性。</value></data>
+  <data name="Info.StillFailedRemain" xml:space="preserve"><value>重试完成后，仍失败的文件会继续保留在下方。</value></data>
+  <data name="Info.ChooseActionBelow" xml:space="preserve"><value>请在下方逐个选择处理方式</value></data>
+  <data name="Info.FastCopyHint" xml:space="preserve"><value>使用原生流水线复制引擎；不可用时自动回退到托管流水线。文件大小、进度和剩余时间仍会正常显示。</value></data>
+  <!-- ===== Language restart ===== -->
+  <data name="Info.LanguageRestartRequired" xml:space="preserve"><value>语言已更改，请重启应用以生效。</value></data>
+  <!-- ===== Error ===== -->
+  <data name="Error.TaskFailed" xml:space="preserve"><value>拷卡失败</value></data>
+  <data name="Error.FileUnavailable" xml:space="preserve"><value>文件不可用</value></data>
+  <data name="Error.CannotDeleteTask" xml:space="preserve"><value>只能删除已经结束处理的任务记录。</value></data>
+  <data name="Error.CannotBatchDelete" xml:space="preserve"><value>只能删除已经结束处理的任务记录，请取消选择运行中或排队中的任务。</value></data>
+  <data name="Error.DeleteRecordReminder" xml:space="preserve"><value>只会从 EZ DIT 中移除这条已结束的任务记录，不会删除任何文件。</value></data>
+  <data name="Error.DeleteBatchReminder" xml:space="preserve"><value>只会从 EZ DIT 中移除已结束的任务记录，不会删除源文件、目的地文件或已经导出的报告。</value></data>
+  <data name="Error.SourceDestSame" xml:space="preserve"><value>源目录和目标目录不能相同。</value></data>
+  <data name="Error.DestInsideSource" xml:space="preserve"><value>目标目录不能位于源目录内部，否则会产生递归复制。</value></data>
+  <data name="Error.TaskNotFinished" xml:space="preserve"><value>任务未完成。</value></data>
+  <data name="Error.TaskCancelledKept" xml:space="preserve"><value>任务已取消，已完成文件予以保留。</value></data>
+  <data name="Error.TaskCancelledKeptShort" xml:space="preserve"><value>任务已取消；已完成文件保留</value></data>
+  <data name="Error.TaskExecutionFailed" xml:space="preserve"><value>任务执行失败</value></data>
+  <data name="Error.VerificationFailed" xml:space="preserve"><value>校验失败</value></data>
+  <data name="Error.VerificationMismatch" xml:space="preserve"><value>校验发现不一致文件。</value></data>
+  <data name="Error.AppExitedBeforeFinish" xml:space="preserve"><value>应用在任务完成前退出。</value></data>
+  <data name="Error.AppExitedBeforeFinishShort" xml:space="preserve"><value>应用在任务完成前退出</value></data>
+  <data name="Error.InterruptedRecord" xml:space="preserve"><value>应用上次在任务结束前退出，此记录已标记为中断。</value></data>
+  <data name="Error.CannotOpenExplorer" xml:space="preserve"><value>无法打开文件资源管理器</value></data>
+  <data name="Error.TaskRunning" xml:space="preserve"><value>任务正在运行</value></data>
+  <data name="Error.FinishOrCancelFirst" xml:space="preserve"><value>请先完成或取消当前任务。</value></data>
+  <data name="Error.ReportUnavailable" xml:space="preserve"><value>报告尚不可用</value></data>
+  <data name="Error.ReportNotAvailableRunning" xml:space="preserve"><value>运行中或排队中的任务暂时不能导出报告。</value></data>
+  <data name="Error.ReportNotAvailableQueued" xml:space="preserve"><value>运行中或排队中的任务暂时不能创建报告。</value></data>
+  <data name="Error.ReportExportFailed" xml:space="preserve"><value>导出报告失败</value></data>
+  <data name="Error.BatchReportFailed" xml:space="preserve"><value>批量创建报告失败</value></data>
+  <data name="Error.CannotStartVerification" xml:space="preserve"><value>无法开始校验</value></data>
+  <data name="Error.CannotRestart" xml:space="preserve"><value>无法重新开始</value></data>
+  <data name="Error.NoCopyOrVerify" xml:space="preserve"><value>原任务没有启用拷贝或校验。</value></data>
+  <data name="Error.CannotDeleteTaskTitle" xml:space="preserve"><value>无法删除任务</value></data>
+  <data name="Error.CannotBatchDeleteTitle" xml:space="preserve"><value>无法批量删除</value></data>
+  <data name="Error.UnableToStart" xml:space="preserve"><value>无法开始</value></data>
+  <data name="Error.FoldersNotConfigured" xml:space="preserve"><value>目录尚未设置</value></data>
+  <data name="Error.SelectSourceAndDest" xml:space="preserve"><value>请选择数据源和拷贝目的地。</value></data>
+  <data name="Error.SelectSourceAndDestFirst" xml:space="preserve"><value>请先选择源目录和拷卡目的地。</value></data>
+  <!-- ===== Dialog ===== -->
+  <data name="Dialog.NewTaskTitle" xml:space="preserve"><value>新建拷卡任务</value></data>
+  <data name="Dialog.DeleteHistory" xml:space="preserve"><value>删除历史记录？</value></data>
+  <data name="Dialog.TaskRecord" xml:space="preserve"><value>任务记录</value></data>
+  <!-- ===== Result ===== -->
+  <data name="Result.CopiedFailedFilesSkipped" xml:space="preserve"><value>拷贝已完成，失败文件已跳过</value></data>
+  <data name="Result.VerifiedFailedFilesSkipped" xml:space="preserve"><value>校验已完成，失败文件已跳过</value></data>
+  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>拷贝和 SHA-256 校验均已完成</value></data>
+  <data name="Result.CopyCompleted" xml:space="preserve"><value>拷贝已完成</value></data>
+  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>SHA-256 校验已完成</value></data>
+  <data name="Result.CopyCompletedButVerifyFailed" xml:space="preserve"><value>拷贝完成，但完整性校验未通过</value></data>
+  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>SHA-256 校验未通过</value></data>
+  <data name="Result.UnknownStatus" xml:space="preserve"><value>未知状态</value></data>
+  <data name="Result.Interrupted" xml:space="preserve"><value>意外中断</value></data>
+  <data name="Result.Cancelled" xml:space="preserve"><value>已取消</value></data>
+  <data name="Result.TaskFailedStatus" xml:space="preserve"><value>任务失败</value></data>
+  <data name="Result.CompletedWithErrors" xml:space="preserve"><value>部分完成</value></data>
+  <data name="Result.TaskCompleted" xml:space="preserve"><value>任务完成</value></data>
+  <data name="Result.CopyCompletedShort" xml:space="preserve"><value>拷贝完成</value></data>
+  <data name="Result.VerificationCompleted" xml:space="preserve"><value>校验完成</value></data>
+  <!-- ===== Format ===== -->
+  <data name="Format.SelectedSourcePath" xml:space="preserve"><value>已选择源目录：{0}</value></data>
+  <data name="Format.SelectedDestinationPath" xml:space="preserve"><value>已选择目标目录：{0}</value></data>
+  <data name="Format.SourcePathLabel" xml:space="preserve"><value>源目录：{0}</value></data>
+  <data name="Format.DestinationPathLabel" xml:space="preserve"><value>目标目录：{0}</value></data>
+  <data name="Format.FileNotFound" xml:space="preserve"><value>当前无法找到该文件：{0}</value></data>
+  <data name="Format.SourceFolderNotExist" xml:space="preserve"><value>源目录不存在或无法访问：{0}</value></data>
+  <data name="Format.DestinationFolderNotExist" xml:space="preserve"><value>目标目录不存在或无法访问：{0}</value></data>
+  <data name="Format.HistorySaveFailed" xml:space="preserve"><value>历史记录保存失败：{0}</value></data>
+  <data name="Format.TaskReportSaveFailed" xml:space="preserve"><value>任务已结束，但报告保存失败：{0}</value></data>
+  <data name="Format.TaskReportExported" xml:space="preserve"><value>任务报告已导出：{0}</value></data>
+  <data name="Format.FoundNDuplicates" xml:space="preserve"><value>发现 {0} 个重复文件</value></data>
+  <data name="Format.SelectedNTasks" xml:space="preserve"><value>已选择 {0} 个任务</value></data>
+  <data name="Format.SelectedNTasksOnlyFinished" xml:space="preserve"><value>已选择 {0} 个任务，仅已结束任务可删除</value></data>
+  <data name="Format.DeleteNTaskRecords" xml:space="preserve"><value>删除 {0} 条任务记录？</value></data>
+  <data name="Format.DeletedNTaskRecords" xml:space="preserve"><value>已删除 {0} 条任务记录，所有文件均已保留。</value></data>
+  <data name="Format.TaskCompletedCopiedVerified" xml:space="preserve"><value>任务完成：已拷贝并校验 {0} 个文件。</value></data>
+  <data name="Format.CopyCompletedCopied" xml:space="preserve"><value>拷贝完成：已拷贝 {0} 个文件。</value></data>
+  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>校验完成：{0} 个文件均通过 SHA-256 校验。</value></data>
+  <data name="Format.CreatedNReportsInPath" xml:space="preserve"><value>已在 {0} 创建 {1} 份任务报告。</value></data>
+  <data name="Format.DuplicateFileRecords" xml:space="preserve"><value>重复文件记录：{0} 个</value></data>
+  <data name="Format.NFilesAwaitingAction" xml:space="preserve"><value>{0} 个文件待处理</value></data>
+  <data name="Format.ChoicesMadeNOfMSelectedK" xml:space="preserve"><value>已选择处理方式 {0}/{1}，已勾选 {2} 项</value></data>
+  <data name="Format.RecordedNDuplicates" xml:space="preserve"><value>已记录 {0} 个重复文件</value></data>
+  <data name="Format.SkippedNFailedFiles" xml:space="preserve"><value>已跳过的失败文件：{0}</value></data>
+  <data name="Format.FailedFilesNSelectedK" xml:space="preserve"><value>失败文件：{0} 个，已选 {1} 个</value></data>
+  <data name="Format.TaskPartiallyCompletedSkipped" xml:space="preserve"><value>任务部分完成：已跳过 {0} 个失败文件。</value></data>
+  <data name="Format.SettingsSaveFailed" xml:space="preserve"><value>设置保存失败：{0}</value></data>
+  <data name="Format.HandlingAs" xml:space="preserve"><value>按"{0}"处理</value></data>
+  <data name="Format.BatchReportFailedDetail" xml:space="preserve"><value>已创建 {0} 份报告，随后发生错误：{1}</value></data>
+  <!-- ===== Settings page strings (code-behind) ===== -->
+  <data name="Settings.PageTitle" xml:space="preserve"><value>设置</value></data>
+  <data name="Settings.Appearance" xml:space="preserve"><value>外观</value></data>
+  <data name="Settings.General" xml:space="preserve"><value>常规</value></data>
+  <data name="Settings.About" xml:space="preserve"><value>关于</value></data>
+  <data name="Settings.BackToTask" xml:space="preserve"><value>返回任务</value></data>
+  <data name="Settings.AppearanceDesc" xml:space="preserve"><value>选择应用的明暗外观与强调色。</value></data>
+  <data name="Settings.ColorModeAndAccent" xml:space="preserve"><value>颜色模式与主题色</value></data>
+  <data name="Settings.ColorMode" xml:space="preserve"><value>颜色模式</value></data>
+  <data name="Settings.AccentColor" xml:space="preserve"><value>主题色</value></data>
+  <data name="Settings.GeneralDesc" xml:space="preserve"><value>设置界面语言以及日志与报告的默认位置。</value></data>
+  <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>语言与文件</value></data>
+  <data name="Settings.Language" xml:space="preserve"><value>语言</value></data>
+  <data name="Settings.LogPath" xml:space="preserve"><value>日志与报告默认保存位置</value></data>
+  <data name="Settings.AboutDesc" xml:space="preserve"><value>查看版本信息并访问 EZ DIT 项目仓库。</value></data>
+  <data name="Settings.AppInfo" xml:space="preserve"><value>应用信息</value></data>
+  <data name="Settings.Version" xml:space="preserve"><value>版本</value></data>
+  <data name="Settings.ProjectRepo" xml:space="preserve"><value>项目仓库</value></data>
+  <data name="Settings.OpenGitHub" xml:space="preserve"><value>在 GitHub 中打开</value></data>
+  <data name="Settings.FollowSystem" xml:space="preserve"><value>跟随系统</value></data>
+  <data name="Settings.LightMode" xml:space="preserve"><value>浅色模式</value></data>
+  <data name="Settings.DarkMode" xml:space="preserve"><value>深色模式</value></data>
+  <data name="Settings.WindowsAccent" xml:space="preserve"><value>Windows 主题色</value></data>
+  <data name="Settings.SimplifiedChinese" xml:space="preserve"><value>简体中文</value></data>
+  <data name="Settings.English" xml:space="preserve"><value>English</value></data>
+  <data name="Settings.Seafoam" xml:space="preserve"><value>海沫绿</value></data>
+  <data name="Settings.BrightRose" xml:space="preserve"><value>亮玫红</value></data>
+  <data name="Settings.Gold" xml:space="preserve"><value>黄金色</value></data>
+  <data name="Settings.LightMint" xml:space="preserve"><value>浅薄荷色</value></data>
+  <data name="Settings.PurpleShadow" xml:space="preserve"><value>紫影色</value></data>
+  <!-- ===== Picker titles ===== -->
+  <data name="Picker.SourceFolderTitle" xml:space="preserve"><value>选择源目录或存储卡</value></data>
+  <data name="Picker.DestinationFolderTitle" xml:space="preserve"><value>选择拷卡目的地</value></data>
+  <!-- ===== SettingsView XAML x:Uid keys ===== -->
+  <data name="SidebarSettingsLabel.Text" xml:space="preserve"><value>设置</value></data>
+  <data name="SettingsSectionLabel.Text" xml:space="preserve"><value>设置</value></data>
+  <data name="AppearanceNavText.Text" xml:space="preserve"><value>外观</value></data>
+  <data name="GeneralNavText.Text" xml:space="preserve"><value>常规</value></data>
+  <data name="AboutNavText.Text" xml:space="preserve"><value>关于</value></data>
+  <data name="BackToTaskText.Text" xml:space="preserve"><value>返回任务</value></data>
+  <data name="AppearanceTitle.Text" xml:space="preserve"><value>外观</value></data>
+  <data name="AppearanceDesc.Text" xml:space="preserve"><value>选择应用的明暗外观与强调色。</value></data>
+  <data name="ColorModeSectionTitle.Text" xml:space="preserve"><value>颜色模式与主题色</value></data>
+  <data name="ColorModeLabel.Text" xml:space="preserve"><value>颜色模式</value></data>
+  <data name="AccentColorLabel.Text" xml:space="preserve"><value>主题色</value></data>
+  <data name="GeneralTitle.Text" xml:space="preserve"><value>常规</value></data>
+  <data name="GeneralDesc.Text" xml:space="preserve"><value>设置界面语言以及日志与报告的默认位置。</value></data>
+  <data name="LangFileSectionTitle.Text" xml:space="preserve"><value>语言与文件</value></data>
+  <data name="LanguageLabel.Text" xml:space="preserve"><value>语言</value></data>
+  <data name="LogPathLabel.Text" xml:space="preserve"><value>日志与报告默认保存位置</value></data>
+  <data name="BrowseFolderButton.Content" xml:space="preserve"><value>选择文件夹</value></data>
+  <data name="AboutTitle.Text" xml:space="preserve"><value>关于</value></data>
+  <data name="AboutDesc.Text" xml:space="preserve"><value>查看版本信息并访问 EZ DIT 项目仓库。</value></data>
+  <data name="AppInfoTitle.Text" xml:space="preserve"><value>应用信息</value></data>
+  <data name="VersionLabel.Text" xml:space="preserve"><value>版本</value></data>
+  <data name="RepoLabel.Text" xml:space="preserve"><value>项目仓库</value></data>
+  <data name="OpenGitHubText.Text" xml:space="preserve"><value>在 GitHub 中打开</value></data>
+  <data name="WinAccentText.Text" xml:space="preserve"><value>Windows 主题色</value></data>
+  <data name="AccentBtnSeafoam.ToolTipService.ToolTip" xml:space="preserve"><value>海沫绿</value></data>
+  <data name="AccentBtnBrightRose.ToolTipService.ToolTip" xml:space="preserve"><value>亮玫红</value></data>
+  <data name="AccentBtnGold.ToolTipService.ToolTip" xml:space="preserve"><value>黄金色</value></data>
+  <data name="AccentBtnMint.ToolTipService.ToolTip" xml:space="preserve"><value>浅薄荷色</value></data>
+  <data name="AccentBtnPurpleShadow.ToolTipService.ToolTip" xml:space="preserve"><value>紫影色</value></data>
+  <!-- ===== MainWindow XAML x:Uid keys ===== -->
+  <data name="NewJobButtonText.Text" xml:space="preserve"><value>创建任务</value></data>
+  <data name="MultiSelectButtonText.Text" xml:space="preserve"><value>多选</value></data>
+  <data name="SettingsToolbarButton.ToolTipService.ToolTip" xml:space="preserve"><value>设置</value></data>
+  <data name="BatchDeleteButtonText.Text" xml:space="preserve"><value>批量删除</value></data>
+  <data name="BatchReportButtonText.Text" xml:space="preserve"><value>批量创建报告</value></data>
+  <data name="NewTasksSectionHeader.Text" xml:space="preserve"><value>新任务</value></data>
+  <data name="NewJobsEmptyText.Text" xml:space="preserve"><value>暂无新任务</value></data>
+  <data name="HistorySectionHeader.Text" xml:space="preserve"><value>历史任务</value></data>
+  <data name="HistoryEmptyText.Text" xml:space="preserve"><value>暂无历史任务</value></data>
+  <data name="HeroNameText.Text" xml:space="preserve"><value>准备新任务</value></data>
+  <data name="CurrentFileText.Text" xml:space="preserve"><value>请选择源目录和目标目录</value></data>
+  <data name="StatusText.Text" xml:space="preserve"><value>等待设置</value></data>
+  <data name="PhaseText.Text" xml:space="preserve"><value>等待开始</value></data>
+  <data name="ProgressSectionTitle.Text" xml:space="preserve"><value>任务进度</value></data>
+  <data name="SourcePathLabel.Text" xml:space="preserve"><value>源目录 / 存储卡</value></data>
+  <data name="SourcePathText.Text" xml:space="preserve"><value>尚未选择</value></data>
+  <data name="DestinationPathLabel.Text" xml:space="preserve"><value>拷卡目的地</value></data>
+  <data name="DestinationPathText.Text" xml:space="preserve"><value>尚未选择</value></data>
+  <data name="FileSizeLabel.Text" xml:space="preserve"><value>文件大小</value></data>
+  <data name="FileCountLabel.Text" xml:space="preserve"><value>文件数</value></data>
+  <data name="CreatedTimeLabel.Text" xml:space="preserve"><value>创建时间</value></data>
+  <data name="EndTimeLabel.Text" xml:space="preserve"><value>结束时间</value></data>
+  <data name="ElapsedTimeLabel.Text" xml:space="preserve"><value>累计用时</value></data>
+  <data name="CopySectionLabel.Text" xml:space="preserve"><value>拷贝</value></data>
+  <data name="CopyCompletedText.Text" xml:space="preserve"><value>已完成</value></data>
+  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>SHA-256 校验</value></data>
+  <data name="VerifyCompletedText.Text" xml:space="preserve"><value>已完成</value></data>
+  <data name="StartButtonText.Text" xml:space="preserve"><value>开始拷卡</value></data>
+  <data name="StartVerificationButtonText.Text" xml:space="preserve"><value>开始校验</value></data>
+  <data name="ExportReportButtonText.Text" xml:space="preserve"><value>导出报告</value></data>
+  <data name="DeleteJobButtonText.Text" xml:space="preserve"><value>删除记录</value></data>
+  <data name="RestartJobButtonText.Text" xml:space="preserve"><value>重新开始</value></data>
+  <data name="PauseText.Text" xml:space="preserve"><value>暂停</value></data>
+  <data name="CancelButtonText.Text" xml:space="preserve"><value>取消</value></data>
+  <data name="SourcePickerButton.ToolTipService.ToolTip" xml:space="preserve"><value>选择源目录</value></data>
+  <data name="DestinationPickerButton.ToolTipService.ToolTip" xml:space="preserve"><value>选择目标目录</value></data>
+  <data name="DuplicateSummaryText.Text" xml:space="preserve"><value>发现重复文件</value></data>
+  <data name="DuplicateSelectionHint.Text" xml:space="preserve"><value>请逐个选择处理方式</value></data>
+  <data name="DuplicateBatchHintText.Text" xml:space="preserve"><value>可勾选多项后批量设置；仍可在每行单独修改。</value></data>
+  <data name="ApplyDuplicateChoicesButton.Content" xml:space="preserve"><value>应用选择并继续</value></data>
+  <data name="DuplicateSelectAllCheckBox.Content" xml:space="preserve"><value>全选</value></data>
+  <data name="BatchOverwriteButton.Content" xml:space="preserve"><value>覆盖所选</value></data>
+  <data name="BatchSkipButton.Content" xml:space="preserve"><value>跳过所选</value></data>
+  <data name="BatchCreateCopyButton.Content" xml:space="preserve"><value>所选创建副本</value></data>
+  <data name="OverwriteFailedFilesButton.Content" xml:space="preserve"><value>覆盖所选</value></data>
+  <data name="RetryFailedFilesButton.Content" xml:space="preserve"><value>重试所选</value></data>
+  <data name="SkipFailedFilesButton.Content" xml:space="preserve"><value>跳过所选</value></data>
+  <data name="FailedFilesSummaryText.Text" xml:space="preserve"><value>失败文件</value></data>
+  <data name="FailedFilesHintText.Text" xml:space="preserve"><value>勾选文件后选择覆盖、重试或跳过；覆盖仅适用于校验不一致文件。</value></data>
+  <data name="LogText.Text" xml:space="preserve"><value>就绪。选择目录后即可开始。</value></data>
+  <data name="DupFileNameHeader.Text" xml:space="preserve"><value>文件名称</value></data>
+  <data name="DupSourceHeader.Text" xml:space="preserve"><value>来源位置</value></data>
+  <data name="DupConflictHeader.Text" xml:space="preserve"><value>冲突位置</value></data>
+  <!-- ===== NewTaskDialog XAML x:Uid keys ===== -->
+  <data name="DialogSourceLabel.Text" xml:space="preserve"><value>数据源</value></data>
+  <data name="DialogSourcePathText.Text" xml:space="preserve"><value>请选择源目录或存储卡</value></data>
+  <data name="DialogCopyLabel.Text" xml:space="preserve"><value>拷贝</value></data>
+  <data name="DialogCopyDestLabel.Text" xml:space="preserve"><value>拷贝目的地</value></data>
+  <data name="DialogDestinationPathText.Text" xml:space="preserve"><value>请选择文件拷贝目的地</value></data>
+  <data name="EnableCopyToggle.Header" xml:space="preserve"><value>拷贝文件</value></data>
+  <data name="EnableCopyToggle.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="EnableCopyToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="DestinationSubfolderNameLabel.Text" xml:space="preserve"><value>拷贝目的地文件夹名</value></data>
+  <data name="DestinationSubfolderHintText.Text" xml:space="preserve"><value>留空即不创建子文件夹</value></data>
+  <data name="DuplicateHandlingLabel.Text" xml:space="preserve"><value>重复项处理</value></data>
+  <data name="AskExistingRadio.Content" xml:space="preserve"><value>询问</value></data>
+  <data name="OverwriteExistingRadio.Content" xml:space="preserve"><value>覆盖</value></data>
+  <data name="SkipExistingRadio.Content" xml:space="preserve"><value>跳过</value></data>
+  <data name="CreateCopyRadio.Content" xml:space="preserve"><value>创建副本</value></data>
+  <data name="DuplicateAskHintText.Text" xml:space="preserve"><value>询问模式会先继续处理其他文件，再逐个处理检测到的重复文件。</value></data>
+  <data name="FastCopyToggle.Header" xml:space="preserve"><value>使用 FastCopy 算法</value></data>
+  <data name="FastCopyToggle.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="FastCopyToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="FastCopyHintText.Text" xml:space="preserve"><value>使用原生流水线复制引擎；不可用时自动回退到托管流水线。文件大小、进度和剩余时间仍会正常显示。</value></data>
+  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>文件校验（SHA-256）</value></data>
+  <data name="VerifyFilesToggle.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="VerifyFilesToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="PreventSleepToggle.Header" xml:space="preserve"><value>任务期间阻止电脑休眠</value></data>
+  <data name="PreventSleepToggle.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="PreventSleepToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="PriorityExecutionToggle.Header" xml:space="preserve"><value>优先执行</value></data>
+  <data name="PriorityExecutionToggle.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="PriorityExecutionToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="PriorityHintText.Text" xml:space="preserve"><value>优先任务会并行执行；其他普通任务会在安全检查点等待，直到全部优先任务结束。</value></data>
+  <data name="NewTaskDialog.Title" xml:space="preserve"><value>新建拷卡任务</value></data>
+  <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>开始任务</value></data>
+  <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>取消</value></data>
 </root>
