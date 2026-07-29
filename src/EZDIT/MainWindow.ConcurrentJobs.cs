@@ -1322,6 +1322,32 @@ public sealed partial class MainWindow
         }
     }
 
+    private async Task<bool> TryScheduleApplicationRestartAsync()
+    {
+        string? executablePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executablePath) ||
+            !File.Exists(executablePath))
+        {
+            await _logService.WriteAsync(
+                "Restart failed because the executable path is unavailable.");
+            return false;
+        }
+
+        try
+        {
+            ApplicationRestartService.StartReplacement(
+                executablePath,
+                AppContext.BaseDirectory);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _logService.WriteAsync(
+                $"Restart failed with an exception: {ex.Message}");
+            return false;
+        }
+    }
+
     private enum FailureResolutionMode
     {
         Retry,

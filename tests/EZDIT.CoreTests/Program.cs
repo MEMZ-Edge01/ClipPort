@@ -56,20 +56,38 @@ internal static class Program
     {
         string localizationDirectory = Path.Combine(AppContext.BaseDirectory, "Localization");
         string stringsDirectory = Path.Combine(AppContext.BaseDirectory, "Strings");
-        Dictionary<string, string> chinese = LoadStringResources(
-            Path.Combine(stringsDirectory, "zh-CN", "Resources.resw"));
-        Dictionary<string, string> english = LoadStringResources(
-            Path.Combine(stringsDirectory, "en-US", "Resources.resw"));
+        Dictionary<AppLanguage, Dictionary<string, string>> resourcesByLanguage =
+            AppLanguages.Supported.ToDictionary(
+                definition => definition.Language,
+                definition => LoadStringResources(Path.Combine(
+                    stringsDirectory,
+                    definition.LanguageTag,
+                    "Resources.resw")));
+        Dictionary<string, string> chinese =
+            resourcesByLanguage[AppLanguage.SimplifiedChinese];
 
-        Assert(chinese.Keys.ToHashSet().SetEquals(english.Keys),
-            "Chinese and English resource files should contain the same keys.");
+        Assert(
+            AppLanguages.Supported.Select(definition => definition.Language).Distinct().Count() ==
+            AppLanguages.Supported.Count &&
+            AppLanguages.Supported.Select(definition => definition.LanguageTag)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count() == AppLanguages.Supported.Count,
+            "Every supported language should have a unique enum value and language tag.");
 
-        foreach (string key in chinese.Keys)
+        foreach (AppLanguageDefinition language in AppLanguages.Supported)
         {
-            string[] chinesePlaceholders = ExtractFormatPlaceholders(chinese[key]);
-            string[] englishPlaceholders = ExtractFormatPlaceholders(english[key]);
-            Assert(chinesePlaceholders.SequenceEqual(englishPlaceholders),
-                $"Resource '{key}' should use the same format placeholders in every language.");
+            Dictionary<string, string> localized = resourcesByLanguage[language.Language];
+            Assert(chinese.Keys.ToHashSet().SetEquals(localized.Keys),
+                $"Language '{language.LanguageTag}' should contain every resource key.");
+
+            foreach (string key in chinese.Keys)
+            {
+                string[] chinesePlaceholders = ExtractFormatPlaceholders(chinese[key]);
+                string[] localizedPlaceholders = ExtractFormatPlaceholders(localized[key]);
+                Assert(chinesePlaceholders.SequenceEqual(localizedPlaceholders),
+                    $"Resource '{key}' should use the same format placeholders in " +
+                    $"language '{language.LanguageTag}'.");
+            }
         }
 
         string[] xamlFiles =
@@ -121,7 +139,8 @@ internal static class Program
                         $"{location} contains Chinese UI text without x:Uid.");
 
                     string resourceKey = $"{uid}.{attribute.Name.LocalName}";
-                    Assert(chinese.ContainsKey(resourceKey) && english.ContainsKey(resourceKey),
+                    Assert(resourcesByLanguage.Values.All(resources =>
+                            resources.ContainsKey(resourceKey)),
                         $"{location} is missing resource key '{resourceKey}'.");
                 }
             }
@@ -135,15 +154,33 @@ internal static class Program
         ResourceService.SetLanguage(AppLanguage.SimplifiedChinese);
         Assert(ResourceService.GetString("NewJobButtonText.Text") == "创建任务",
             "Simplified Chinese resource lookup should return the localized value.");
+        Assert(ResourceService.GetString("Button.RestartLater") == "稍后重启" &&
+               ResourceService.GetString("Button.RestartNow") == "现在重启",
+            "Simplified Chinese should provide both language restart actions.");
 
         ResourceService.SetLanguage(AppLanguage.English);
         Assert(ResourceService.GetString("NewJobButtonText.Text") == "Create task",
             "English resource lookup should return the localized value.");
+        Assert(ResourceService.GetString("Button.RestartLater") == "Restart later" &&
+               ResourceService.GetString("Button.RestartNow") == "Restart now",
+            "English should provide both language restart actions.");
         Assert(ResourceService.GetString("创建任务") == "Create task",
             "Legacy persisted Chinese values should resolve through their resource key.");
+
+        ResourceService.SetLanguage(AppLanguage.ClassicalChinese);
+        Assert(ResourceService.GetString("NewJobButtonText.Text") == "立新役",
+            "Classical Chinese resource lookup should return the translated value.");
+        Assert(ResourceService.GetString("创建任务") == "立新役",
+            "Legacy persisted Chinese values should resolve to Classical Chinese.");
+        Assert(ResourceService.GetString("Settings.ClassicalChinese") == "文言文",
+            "The Classical Chinese language should have a visible selector label.");
+        Assert(ResourceService.GetString("Button.RestartLater") == "后复启" &&
+               ResourceService.GetString("Button.RestartNow") == "今复启",
+            "Classical Chinese should provide both language restart actions.");
         Assert(ResourceService.GetString("Missing.Resource.Key") == "Missing.Resource.Key",
             "Missing resources should fall back to the key.");
 
+        ResourceService.SetLanguage(AppLanguage.SimplifiedChinese);
         return Task.CompletedTask;
     }
 
@@ -985,6 +1022,15 @@ internal static class Program
         string chinese = TaskReportBuilder.Build(result, job);
         Assert(chinese.Contains("任务名称：Card A", StringComparison.Ordinal),
             "Chinese reports should use the Chinese report resources.");
+
+        ResourceService.SetLanguage(AppLanguage.ClassicalChinese);
+        string classicalChinese = TaskReportBuilder.Build(result, job);
+        Assert(classicalChinese.Contains("役名：Card A", StringComparison.Ordinal) &&
+               classicalChinese.Contains("传写既成：1/1 卷", StringComparison.Ordinal) &&
+               !classicalChinese.Contains("任务名称", StringComparison.Ordinal),
+            "Classical Chinese reports should use the complete Classical Chinese resources.");
+
+        ResourceService.SetLanguage(AppLanguage.SimplifiedChinese);
         return Task.CompletedTask;
     }
 

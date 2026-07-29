@@ -27,6 +27,8 @@
   <data name="Button.ExportReport" xml:space="preserve"><value>Export report</value></data>
   <data name="Button.DeleteRecord" xml:space="preserve"><value>Delete record</value></data>
   <data name="Button.Restart" xml:space="preserve"><value>Restart</value></data>
+  <data name="Button.RestartLater" xml:space="preserve"><value>Restart later</value></data>
+  <data name="Button.RestartNow" xml:space="preserve"><value>Restart now</value></data>
   <data name="Button.MultiSelect" xml:space="preserve"><value>Select multiple</value></data>
   <data name="Button.BatchDelete" xml:space="preserve"><value>Delete selected</value></data>
   <data name="Button.BatchCreateReports" xml:space="preserve"><value>Create reports</value></data>
@@ -231,6 +233,7 @@
   <data name="Settings.WindowsAccent" xml:space="preserve"><value>Windows accent</value></data>
   <data name="Settings.SimplifiedChinese" xml:space="preserve"><value>Simplified Chinese</value></data>
   <data name="Settings.English" xml:space="preserve"><value>English</value></data>
+  <data name="Settings.ClassicalChinese" xml:space="preserve"><value>Classical Chinese</value></data>
   <data name="Settings.Seafoam" xml:space="preserve"><value>Seafoam</value></data>
   <data name="Settings.BrightRose" xml:space="preserve"><value>Bright rose</value></data>
   <data name="Settings.Gold" xml:space="preserve"><value>Gold</value></data>

@@ -86,10 +86,21 @@ public sealed partial class MainWindow
         {
             Title = ResourceService.GetString("Settings.Language"),
             Content = ResourceService.GetString("Info.LanguageRestartRequired"),
-            CloseButtonText = ResourceService.GetString("Common.OK"),
+            PrimaryButtonText = ResourceService.GetString("Button.RestartNow"),
+            CloseButtonText = ResourceService.GetString("Button.RestartLater"),
+            DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot
         };
-        await dialog.ShowAsync();
+        ContentDialogResult result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            // Register the replacement before closing. The AppWindow closing
+            // event can otherwise race with WinUI's dispatcher teardown.
+            if (await TryScheduleApplicationRestartAsync())
+            {
+                Close();
+            }
+        }
     }
 
     private async void SettingsPage_BrowseDirectoryRequested(object? sender, EventArgs e)

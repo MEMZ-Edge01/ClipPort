@@ -222,8 +222,6 @@ namespace
             {
                 error = GetLastError();
             }
-            CloseFiles();
-
             if (error == ERROR_SUCCESS && pipelineLength_ < fileSize_)
             {
                 error = CopyBufferedTail(

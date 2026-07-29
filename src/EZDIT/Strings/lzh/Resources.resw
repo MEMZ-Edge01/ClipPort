@@ -1,0 +1,402 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"><xsd:element name="root" msdata:IsDataSet="true"><xsd:complexType><xsd:choice maxOccurs="unbounded"><xsd:element name="metadata"><xsd:complexType><xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" /></xsd:sequence><xsd:attribute name="name" use="required" type="xsd:string" /><xsd:attribute name="type" type="xsd:string" /><xsd:attribute name="mimetype" type="xsd:string" /><xsd:attribute ref="xml:space" /></xsd:complexType></xsd:element><xsd:element name="assembly"><xsd:complexType><xsd:attribute name="alias" type="xsd:string" /><xsd:attribute name="name" type="xsd:string" /></xsd:complexType></xsd:element><xsd:element name="data"><xsd:complexType><xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" /><xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" /></xsd:sequence><xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" /><xsd:attribute name="type" type="xsd:string" /><xsd:attribute name="mimetype" type="xsd:string" /><xsd:attribute ref="xml:space" /></xsd:complexType></xsd:element><xsd:element name="resheader"><xsd:complexType><xsd:sequence><xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" /></xsd:sequence><xsd:attribute name="name" type="xsd:string" use="required" /></xsd:complexType></xsd:element></xsd:choice></xsd:complexType></xsd:element></xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <!-- ===== Common (Literary Chinese / lzh) ===== -->
+  <data name="Common.OK" xml:space="preserve"><value>然</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>罢</value></data>
+  <data name="Common.On" xml:space="preserve"><value>启</value></data>
+  <data name="Common.Off" xml:space="preserve"><value>闭</value></data>
+  <data name="Common.Done" xml:space="preserve"><value>毕</value></data>
+  <data name="Common.Completed" xml:space="preserve"><value>已毕</value></data>
+  <data name="Common.Processed" xml:space="preserve"><value>已治</value></data>
+  <data name="Common.Priority" xml:space="preserve"><value>先行</value></data>
+  <data name="Common.Disabled" xml:space="preserve"><value>未启</value></data>
+  <data name="Common.TextReport" xml:space="preserve"><value>文字录</value></data>
+  <data name="Common.Passed" xml:space="preserve"><value>合</value></data>
+  <data name="Common.Failed" xml:space="preserve"><value>败</value></data>
+  <!-- ===== Buttons ===== -->
+  <data name="Button.StartTask" xml:space="preserve"><value>始传写</value></data>
+  <data name="Button.StartVerification" xml:space="preserve"><value>始验</value></data>
+  <data name="Button.Reverify" xml:space="preserve"><value>复验</value></data>
+  <data name="Button.Pause" xml:space="preserve"><value>暂止</value></data>
+  <data name="Button.Resume" xml:space="preserve"><value>续行</value></data>
+  <data name="Button.ExportReport" xml:space="preserve"><value>出具其录</value></data>
+  <data name="Button.DeleteRecord" xml:space="preserve"><value>删其录</value></data>
+  <data name="Button.Restart" xml:space="preserve"><value>复始</value></data>
+  <data name="Button.RestartLater" xml:space="preserve"><value>后复启</value></data>
+  <data name="Button.RestartNow" xml:space="preserve"><value>今复启</value></data>
+  <data name="Button.MultiSelect" xml:space="preserve"><value>多择</value></data>
+  <data name="Button.BatchDelete" xml:space="preserve"><value>批删</value></data>
+  <data name="Button.BatchCreateReports" xml:space="preserve"><value>批撰其录</value></data>
+  <data name="Button.SelectFolder" xml:space="preserve"><value>择目录</value></data>
+  <data name="Button.Browse" xml:space="preserve"><value>于文卷司中择之</value></data>
+  <data name="Button.SelectThisFolder" xml:space="preserve"><value>择此目录</value></data>
+  <data name="Button.ApplyAndContinue" xml:space="preserve"><value>施所择而续</value></data>
+  <data name="Button.SelectAll" xml:space="preserve"><value>悉择</value></data>
+  <data name="Button.OverwriteSelected" xml:space="preserve"><value>覆写所择</value></data>
+  <data name="Button.SkipSelected" xml:space="preserve"><value>略所择</value></data>
+  <data name="Button.CopySelected" xml:space="preserve"><value>为所择作副本</value></data>
+  <data name="Button.RetrySelected" xml:space="preserve"><value>复试所择</value></data>
+  <data name="Button.AskEachFile" xml:space="preserve"><value>逐卷询之</value></data>
+  <!-- ===== Status ===== -->
+  <data name="Status.WaitingSetup" xml:space="preserve"><value>待设</value></data>
+  <data name="Status.WaitingStart" xml:space="preserve"><value>待启</value></data>
+  <data name="Status.Scanning" xml:space="preserve"><value>遍检中</value></data>
+  <data name="Status.CountingFiles" xml:space="preserve"><value>正计文卷…</value></data>
+  <data name="Status.ReadingDirectories" xml:space="preserve"><value>正读目录</value></data>
+  <data name="Status.Queued" xml:space="preserve"><value>待启</value></data>
+  <data name="Status.Copying" xml:space="preserve"><value>传写中</value></data>
+  <data name="Status.CopyingFiles" xml:space="preserve"><value>传写文卷</value></data>
+  <data name="Status.Verifying" xml:space="preserve"><value>校验中</value></data>
+  <data name="Status.SHA256Verification" xml:space="preserve"><value>SHA-256 完整性之验</value></data>
+  <data name="Status.WaitingDuplicateChoices" xml:space="preserve"><value>重文待处</value></data>
+  <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>败卷待处</value></data>
+  <data name="Status.Cancelling" xml:space="preserve"><value>撤销中</value></data>
+  <data name="Status.Paused" xml:space="preserve"><value>已暂止</value></data>
+  <data name="Status.ProcessingResumed" xml:space="preserve"><value>续治中</value></data>
+  <data name="Status.WaitingPriorityTasks" xml:space="preserve"><value>候先行之役</value></data>
+  <data name="Status.Preparing" xml:space="preserve"><value>备行</value></data>
+  <data name="Status.PriorityTaskStarting" xml:space="preserve"><value>先行之役将启</value></data>
+  <data name="Status.TaskStarting" xml:space="preserve"><value>役将启</value></data>
+  <data name="Status.OverwritingMismatched" xml:space="preserve"><value>覆写验异之卷</value></data>
+  <data name="Status.RetryingFailedFiles" xml:space="preserve"><value>复试败卷</value></data>
+  <data name="Status.ApplyingIndividualChoices" xml:space="preserve"><value>依逐项之择处之</value></data>
+  <data name="Status.AppliedEachAction" xml:space="preserve"><value>各依所择而处</value></data>
+  <!-- ===== Info ===== -->
+  <data name="Info.Ready" xml:space="preserve"><value>已备。择目录即可始。</value></data>
+  <data name="Info.PrepareNewTask" xml:space="preserve"><value>备新役</value></data>
+  <data name="Info.SelectSourceAndDest" xml:space="preserve"><value>请择源目录与所往目录</value></data>
+  <data name="Info.SourceReady" xml:space="preserve"><value>源目录已备，请择传写所往</value></data>
+  <data name="Info.DirectoriesConfigured" xml:space="preserve"><value>目录既设</value></data>
+  <data name="Info.TaskConfigured" xml:space="preserve"><value>役既设，备检文卷</value></data>
+  <data name="Info.ScanningDescription" xml:space="preserve"><value>方遍检源目录，并计此役之大小。</value></data>
+  <data name="Info.NotSelected" xml:space="preserve"><value>未择</value></data>
+  <data name="Info.SelectTask" xml:space="preserve"><value>请择一役</value></data>
+  <data name="Info.ChooseActionPerFile" xml:space="preserve"><value>请为各重文择处置之法</value></data>
+  <data name="Info.ChooseActionEach" xml:space="preserve"><value>请逐一择其处置</value></data>
+  <data name="Info.OtherFilesContinue" xml:space="preserve"><value>他卷已续传写并验。下列诸项皆择毕，乃续治重文。</value></data>
+  <data name="Info.PriorityTasksRunning" xml:space="preserve"><value>先行之役方行；常役将在安全之处候之。</value></data>
+  <data name="Info.TasksRunningConcurrently" xml:space="preserve"><value>诸役并行。</value></data>
+  <data name="Info.TaskSafelyPaused" xml:space="preserve"><value>此役已安然暂止；诸先行之役皆毕则自续。</value></data>
+  <data name="Info.AutoResumeAfterPriority" xml:space="preserve"><value>先行之役毕则自续</value></data>
+  <data name="Info.WaitingToResume" xml:space="preserve"><value>候君续行</value></data>
+  <data name="Info.TaskPaused" xml:space="preserve"><value>役已暂止。</value></data>
+  <data name="Info.TaskResumed" xml:space="preserve"><value>役已续行。</value></data>
+  <data name="Info.BatchHint" xml:space="preserve"><value>可勾多项而批设；亦可逐行别改。</value></data>
+  <data name="Info.FailedFilesHint" xml:space="preserve"><value>勾卷后可覆写、复试或略之；惟验而不合者可覆写。</value></data>
+  <data name="Info.ChooseRetryOrSkip" xml:space="preserve"><value>请于下择复试或略之</value></data>
+  <data name="Info.OtherFilesProcessed" xml:space="preserve"><value>他卷已续治，此役不因一卷之误而径败。</value></data>
+  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>覆写后复行 SHA-256 之验</value></data>
+  <data name="Info.OnlySelectedFailures" xml:space="preserve"><value>惟治所择败项</value></data>
+  <data name="Info.OverwriteAndReverifyDesc" xml:space="preserve"><value>方以源卷覆写所往之卷，并复验其完整。</value></data>
+  <data name="Info.StillFailedRemain" xml:space="preserve"><value>复试毕，犹败之卷仍列于下。</value></data>
+  <data name="Info.ChooseActionBelow" xml:space="preserve"><value>请于下逐一择其处置</value></data>
+  <data name="Info.FastCopyHint" xml:space="preserve"><value>用原生流水线传写引擎；若不可用，则自退用托管流水线。卷之大小、进度与余时仍如常显示。</value></data>
+  <!-- ===== Language restart ===== -->
+  <data name="Info.LanguageRestartRequired" xml:space="preserve"><value>文辞已易，请重启此器乃生效。</value></data>
+  <!-- ===== Error ===== -->
+  <data name="Error.TaskFailed" xml:space="preserve"><value>传写败</value></data>
+  <data name="Error.FileUnavailable" xml:space="preserve"><value>文卷不可用</value></data>
+  <data name="Error.CannotDeleteTask" xml:space="preserve"><value>惟已终之役录可删。</value></data>
+  <data name="Error.CannotBatchDelete" xml:space="preserve"><value>惟已终之役录可删，请勿择方行或列队之役。</value></data>
+  <data name="Error.DeleteRecordReminder" xml:space="preserve"><value>惟自 EZ DIT 去此已终之役录，诸文卷皆不删。</value></data>
+  <data name="Error.DeleteBatchReminder" xml:space="preserve"><value>惟自 EZ DIT 去已终之役录，源卷、所往之卷及已出之录皆存。</value></data>
+  <data name="Error.SourceDestSame" xml:space="preserve"><value>源目录与所往目录不可同。</value></data>
+  <data name="Error.DestInsideSource" xml:space="preserve"><value>所往目录不可居源目录之内，否则传写循环不已。</value></data>
+  <data name="Error.TaskNotFinished" xml:space="preserve"><value>役未毕。</value></data>
+  <data name="Error.TaskCancelledKept" xml:space="preserve"><value>役已撤，已毕之卷仍存。</value></data>
+  <data name="Error.TaskCancelledKeptShort" xml:space="preserve"><value>役已撤；已毕之卷存</value></data>
+  <data name="Error.TaskExecutionFailed" xml:space="preserve"><value>役行而败</value></data>
+  <data name="Error.VerificationFailed" xml:space="preserve"><value>校验败</value></data>
+  <data name="Error.VerificationMismatch" xml:space="preserve"><value>验得不合之卷。</value></data>
+  <data name="Error.AppExitedBeforeFinish" xml:space="preserve"><value>此器于役毕前已退。</value></data>
+  <data name="Error.AppExitedBeforeFinishShort" xml:space="preserve"><value>此器于役毕前已退</value></data>
+  <data name="Error.InterruptedRecord" xml:space="preserve"><value>上次此器于役终前已退，此录已标为中断。</value></data>
+  <data name="Error.CannotOpenExplorer" xml:space="preserve"><value>不能启文卷司</value></data>
+  <data name="Error.TaskRunning" xml:space="preserve"><value>役方行</value></data>
+  <data name="Error.FinishOrCancelFirst" xml:space="preserve"><value>请先毕或撤当前之役。</value></data>
+  <data name="Error.ReportUnavailable" xml:space="preserve"><value>其录尚不可用</value></data>
+  <data name="Error.ReportNotAvailableRunning" xml:space="preserve"><value>方行或列队之役暂不可出具其录。</value></data>
+  <data name="Error.ReportNotAvailableQueued" xml:space="preserve"><value>方行或列队之役暂不可撰录。</value></data>
+  <data name="Error.ReportExportFailed" xml:space="preserve"><value>出具其录而败</value></data>
+  <data name="Error.BatchReportFailed" xml:space="preserve"><value>批撰其录而败</value></data>
+  <data name="Error.CannotStartVerification" xml:space="preserve"><value>不能始验</value></data>
+  <data name="Error.CannotRestart" xml:space="preserve"><value>不能复始</value></data>
+  <data name="Error.NoCopyOrVerify" xml:space="preserve"><value>原役未启传写或校验。</value></data>
+  <data name="Error.CannotDeleteTaskTitle" xml:space="preserve"><value>不能删役</value></data>
+  <data name="Error.DestinationReparsePoint" xml:space="preserve"><value>所往路径含符号链接或目录联接，故止其写入：{0}</value></data>
+  <data name="Error.DestinationContainsReparsePoint" xml:space="preserve"><value>所往路径含符号链接或目录联接，不可为写入之所。</value></data>
+  <data name="Error.InvalidSubfolderName" xml:space="preserve"><value>所往子目录须为单一相对之名，不得含盘符、路径分隔符、“.”或“..”。</value></data>
+  <data name="Error.InvalidPath" xml:space="preserve"><value>源路径或所往路径之格式有误。</value></data>
+  <data name="Error.CannotStartOverlappingTask" xml:space="preserve"><value>不能启路径相叠之役</value></data>
+  <data name="Error.CannotOpenRepository" xml:space="preserve"><value>不能启项目主页</value></data>
+  <data name="Error.OnlyEndedTaskCanDelete" xml:space="preserve"><value>惟已终之役录可删。</value></data>
+  <data name="Error.CannotCreateNativeCopy" xml:space="preserve"><value>不能立原生传写之作。</value></data>
+  <data name="Error.OnlyVerificationMismatchCanOverwrite" xml:space="preserve"><value>惟验而不合之卷可覆写。</value></data>
+  <data name="Error.CannotBatchDeleteTitle" xml:space="preserve"><value>不能批删</value></data>
+  <data name="Error.UnableToStart" xml:space="preserve"><value>不能启</value></data>
+  <data name="Error.FoldersNotConfigured" xml:space="preserve"><value>目录尚未设</value></data>
+  <data name="Error.SelectSourceAndDest" xml:space="preserve"><value>请择数据源与传写所往。</value></data>
+  <data name="Error.SelectSourceAndDestFirst" xml:space="preserve"><value>请先择源目录与传写所往。</value></data>
+  <!-- ===== Dialog ===== -->
+  <data name="Dialog.NewTaskTitle" xml:space="preserve"><value>立传写之役</value></data>
+  <data name="Dialog.DeleteHistory" xml:space="preserve"><value>删往录乎？</value></data>
+  <data name="Dialog.TaskRecord" xml:space="preserve"><value>役录</value></data>
+  <!-- ===== Result ===== -->
+  <data name="Result.CopiedFailedFilesSkipped" xml:space="preserve"><value>传写已毕，败卷已略</value></data>
+  <data name="Result.VerifiedFailedFilesSkipped" xml:space="preserve"><value>校验已毕，败卷已略</value></data>
+  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>传写与 SHA-256 之验皆毕</value></data>
+  <data name="Result.CopyCompleted" xml:space="preserve"><value>传写已毕</value></data>
+  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>SHA-256 之验已毕</value></data>
+  <data name="Result.CopyCompletedButVerifyFailed" xml:space="preserve"><value>传写既毕，然完整性之验未合</value></data>
+  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>SHA-256 之验未合</value></data>
+  <data name="Result.UnknownStatus" xml:space="preserve"><value>状况未详</value></data>
+  <data name="Result.Interrupted" xml:space="preserve"><value>意外中断</value></data>
+  <data name="Result.Cancelled" xml:space="preserve"><value>已撤</value></data>
+  <data name="Result.TaskFailedStatus" xml:space="preserve"><value>役败</value></data>
+  <data name="Result.CompletedWithErrors" xml:space="preserve"><value>部分既成</value></data>
+  <data name="Result.TaskCompleted" xml:space="preserve"><value>役毕</value></data>
+  <data name="Result.CopyCompletedShort" xml:space="preserve"><value>传写毕</value></data>
+  <data name="Result.VerificationCompleted" xml:space="preserve"><value>校验毕</value></data>
+  <!-- ===== Format ===== -->
+  <data name="Format.SelectedSourcePath" xml:space="preserve"><value>已择源目录：{0}</value></data>
+  <data name="Format.CannotCreateDirectory" xml:space="preserve"><value>不能建目录 {0}：{1}</value></data>
+  <data name="Format.CannotCopyFile" xml:space="preserve"><value>不能传写 {0}：{1}</value></data>
+  <data name="Format.VerificationMismatch" xml:space="preserve"><value>验而不合：{0}</value></data>
+  <data name="Format.CannotVerifyFile" xml:space="preserve"><value>不能验 {0}：{1}</value></data>
+  <data name="Format.InvalidDestinationMapping" xml:space="preserve"><value>文卷 {0} 之所往越出此役所往目录。</value></data>
+  <data name="Format.CannotScanDirectory" xml:space="preserve"><value>不能遍检目录 {0}：{1}</value></data>
+  <data name="Format.CannotReadPath" xml:space="preserve"><value>不能读取 {0}：{1}</value></data>
+  <data name="Format.DestinationCapacityInsufficient" xml:space="preserve"><value>所往磁盘之余地不足：须 {0}，现有 {1}。</value></data>
+  <data name="Format.CannotCreateUniqueCopy" xml:space="preserve"><value>不能为 {0} 作无重名之副本。</value></data>
+  <data name="Format.CannotPreserveTimestamp" xml:space="preserve"><value>文卷 {0} 已传写，然未能保其修改时刻：{1}</value></data>
+  <data name="Format.TaskPathConflict" xml:space="preserve"><value>源目录或所往目录与方行之役“{0}”相叠。请候其毕而复试。</value></data>
+  <data name="Format.VerificationJobName" xml:space="preserve"><value>{0}（验）</value></data>
+  <data name="Format.ReverificationJobName" xml:space="preserve"><value>{0}（复验）</value></data>
+  <data name="Format.RestartedJobName" xml:space="preserve"><value>{0}（复始）</value></data>
+  <data name="Format.NativeCopyFailed" xml:space="preserve"><value>原生传写引擎败：{0}</value></data>
+  <data name="Window.TitleSleepPrevented" xml:space="preserve"><value>EZ DIT-beta - 电脑将不休眠</value></data>
+  <data name="Format.SelectedDestinationPath" xml:space="preserve"><value>已择所往目录：{0}</value></data>
+  <data name="Format.SourcePathLabel" xml:space="preserve"><value>源目录：{0}</value></data>
+  <data name="Format.DestinationPathLabel" xml:space="preserve"><value>所往目录：{0}</value></data>
+  <data name="Format.FileNotFound" xml:space="preserve"><value>今未得此卷：{0}</value></data>
+  <data name="Format.SourceFolderNotExist" xml:space="preserve"><value>源目录无存或不可至：{0}</value></data>
+  <data name="Format.DestinationFolderNotExist" xml:space="preserve"><value>所往目录无存或不可至：{0}</value></data>
+  <data name="Format.HistorySaveFailed" xml:space="preserve"><value>存往录而败：{0}</value></data>
+  <data name="Format.TaskReportSaveFailed" xml:space="preserve"><value>役已终，然存其录而败：{0}</value></data>
+  <data name="Format.TaskReportExported" xml:space="preserve"><value>役录已出：{0}</value></data>
+  <data name="Format.FoundNDuplicates" xml:space="preserve"><value>得重文 {0} 卷</value></data>
+  <data name="Format.SelectedNTasks" xml:space="preserve"><value>已择 {0} 役</value></data>
+  <data name="Format.SelectedNTasksOnlyFinished" xml:space="preserve"><value>已择 {0} 役，惟已终之役可删</value></data>
+  <data name="Format.DeleteNTaskRecords" xml:space="preserve"><value>删 {0} 条役录乎？</value></data>
+  <data name="Format.DeletedNTaskRecords" xml:space="preserve"><value>已删 {0} 条役录，诸文卷皆存。</value></data>
+  <data name="Format.TaskCompletedCopiedVerified" xml:space="preserve"><value>役毕：已传写并验 {0} 卷。</value></data>
+  <data name="Format.CopyCompletedCopied" xml:space="preserve"><value>传写毕：已传写 {0} 卷。</value></data>
+  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>校验毕：{0} 卷皆合 SHA-256 之验。</value></data>
+  <data name="Format.CreatedNReportsInPath" xml:space="preserve"><value>已于 {0} 撰 {1} 份役录。</value></data>
+  <data name="Format.DuplicateFileRecords" xml:space="preserve"><value>重文之录：{0} 卷</value></data>
+  <data name="Format.NFilesAwaitingAction" xml:space="preserve"><value>{0} 卷待处</value></data>
+  <data name="Format.ChoicesMadeNOfMSelectedK" xml:space="preserve"><value>处置已择 {0}/{1}，已勾 {2} 项</value></data>
+  <data name="Format.RecordedNDuplicates" xml:space="preserve"><value>已录重文 {0} 卷</value></data>
+  <data name="Format.SkippedNFailedFiles" xml:space="preserve"><value>已略之败卷：{0}</value></data>
+  <data name="Format.FailedFilesNSelectedK" xml:space="preserve"><value>败卷：{0} 卷，已择 {1} 卷</value></data>
+  <data name="Format.TaskPartiallyCompletedSkipped" xml:space="preserve"><value>役成其部分：已略败卷 {0} 卷。</value></data>
+  <data name="Format.SettingsSaveFailed" xml:space="preserve"><value>存设而败：{0}</value></data>
+  <data name="Format.HandlingAs" xml:space="preserve"><value>依“{0}”处之</value></data>
+  <data name="Format.BatchReportFailedDetail" xml:space="preserve"><value>已撰 {0} 份录，继而有误：{1}</value></data>
+  <!-- ===== Settings page strings (code-behind) ===== -->
+  <data name="Settings.PageTitle" xml:space="preserve"><value>设</value></data>
+  <data name="Settings.Appearance" xml:space="preserve"><value>仪观</value></data>
+  <data name="Settings.General" xml:space="preserve"><value>常设</value></data>
+  <data name="Settings.About" xml:space="preserve"><value>关于</value></data>
+  <data name="Settings.BackToTask" xml:space="preserve"><value>返役</value></data>
+  <data name="Settings.AppearanceDesc" xml:space="preserve"><value>择此器之明暗仪观与强调色。</value></data>
+  <data name="Settings.ColorModeAndAccent" xml:space="preserve"><value>色式与主题色</value></data>
+  <data name="Settings.ColorMode" xml:space="preserve"><value>色式</value></data>
+  <data name="Settings.AccentColor" xml:space="preserve"><value>主题色</value></data>
+  <data name="Settings.GeneralDesc" xml:space="preserve"><value>设界面之文辞及日志、录之默认所存。</value></data>
+  <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>文辞与文卷</value></data>
+  <data name="Settings.Language" xml:space="preserve"><value>文辞</value></data>
+  <data name="Settings.LogPath" xml:space="preserve"><value>日志与录默认所存</value></data>
+  <data name="Settings.AboutDesc" xml:space="preserve"><value>观版本之讯，并访 EZ DIT 项目库。</value></data>
+  <data name="Settings.AppInfo" xml:space="preserve"><value>器之讯</value></data>
+  <data name="Settings.Version" xml:space="preserve"><value>版本</value></data>
+  <data name="Settings.ProjectRepo" xml:space="preserve"><value>项目库</value></data>
+  <data name="Settings.OpenGitHub" xml:space="preserve"><value>于 GitHub 启之</value></data>
+  <data name="Settings.FollowSystem" xml:space="preserve"><value>从系统</value></data>
+  <data name="Settings.LightMode" xml:space="preserve"><value>明色</value></data>
+  <data name="Settings.DarkMode" xml:space="preserve"><value>暗色</value></data>
+  <data name="Settings.WindowsAccent" xml:space="preserve"><value>Windows 主题色</value></data>
+  <data name="Settings.SimplifiedChinese" xml:space="preserve"><value>简体中文</value></data>
+  <data name="Settings.English" xml:space="preserve"><value>English</value></data>
+  <data name="Settings.ClassicalChinese" xml:space="preserve"><value>文言文</value></data>
+  <data name="Settings.Seafoam" xml:space="preserve"><value>海沫绿</value></data>
+  <data name="Settings.BrightRose" xml:space="preserve"><value>明玫红</value></data>
+  <data name="Settings.Gold" xml:space="preserve"><value>金色</value></data>
+  <data name="Settings.LightMint" xml:space="preserve"><value>淡荷色</value></data>
+  <data name="Settings.PurpleShadow" xml:space="preserve"><value>紫影色</value></data>
+  <!-- ===== Picker titles ===== -->
+  <data name="Picker.SourceFolderTitle" xml:space="preserve"><value>择源目录或存储卡</value></data>
+  <data name="Picker.DestinationFolderTitle" xml:space="preserve"><value>择传写所往</value></data>
+  <!-- ===== SettingsView XAML x:Uid keys ===== -->
+  <data name="SidebarSettingsLabel.Text" xml:space="preserve"><value>设</value></data>
+  <data name="SettingsSectionLabel.Text" xml:space="preserve"><value>设</value></data>
+  <data name="AppearanceNavText.Text" xml:space="preserve"><value>仪观</value></data>
+  <data name="GeneralNavText.Text" xml:space="preserve"><value>常设</value></data>
+  <data name="AboutNavText.Text" xml:space="preserve"><value>关于</value></data>
+  <data name="BackToTaskText.Text" xml:space="preserve"><value>返役</value></data>
+  <data name="AppearanceTitle.Text" xml:space="preserve"><value>仪观</value></data>
+  <data name="AppearanceDesc.Text" xml:space="preserve"><value>择此器之明暗仪观与强调色。</value></data>
+  <data name="ColorModeSectionTitle.Text" xml:space="preserve"><value>色式与主题色</value></data>
+  <data name="ColorModeLabel.Text" xml:space="preserve"><value>色式</value></data>
+  <data name="AccentColorLabel.Text" xml:space="preserve"><value>主题色</value></data>
+  <data name="GeneralTitle.Text" xml:space="preserve"><value>常设</value></data>
+  <data name="GeneralDesc.Text" xml:space="preserve"><value>设界面之文辞及日志、录之默认所存。</value></data>
+  <data name="LangFileSectionTitle.Text" xml:space="preserve"><value>文辞与文卷</value></data>
+  <data name="LanguageLabel.Text" xml:space="preserve"><value>文辞</value></data>
+  <data name="LogPathLabel.Text" xml:space="preserve"><value>日志与录默认所存</value></data>
+  <data name="BrowseFolderButton.Content" xml:space="preserve"><value>择目录</value></data>
+  <data name="AboutTitle.Text" xml:space="preserve"><value>关于</value></data>
+  <data name="AboutDesc.Text" xml:space="preserve"><value>观版本之讯，并访 EZ DIT 项目库。</value></data>
+  <data name="AppInfoTitle.Text" xml:space="preserve"><value>器之讯</value></data>
+  <data name="VersionLabel.Text" xml:space="preserve"><value>版本</value></data>
+  <data name="RepoLabel.Text" xml:space="preserve"><value>项目库</value></data>
+  <data name="OpenGitHubText.Text" xml:space="preserve"><value>于 GitHub 启之</value></data>
+  <data name="WinAccentText.Text" xml:space="preserve"><value>Windows 主题色</value></data>
+  <data name="AccentBtnSeafoam.ToolTipService.ToolTip" xml:space="preserve"><value>海沫绿</value></data>
+  <data name="AccentBtnBrightRose.ToolTipService.ToolTip" xml:space="preserve"><value>明玫红</value></data>
+  <data name="AccentBtnGold.ToolTipService.ToolTip" xml:space="preserve"><value>金色</value></data>
+  <data name="AccentBtnMint.ToolTipService.ToolTip" xml:space="preserve"><value>淡荷色</value></data>
+  <data name="AccentBtnPurpleShadow.ToolTipService.ToolTip" xml:space="preserve"><value>紫影色</value></data>
+  <!-- ===== MainWindow XAML x:Uid keys ===== -->
+  <data name="NewJobButtonText.Text" xml:space="preserve"><value>立新役</value></data>
+  <data name="MultiSelectButtonText.Text" xml:space="preserve"><value>多择</value></data>
+  <data name="SettingsToolbarButton.ToolTipService.ToolTip" xml:space="preserve"><value>设</value></data>
+  <data name="BatchDeleteButtonText.Text" xml:space="preserve"><value>批删</value></data>
+  <data name="BatchReportButtonText.Text" xml:space="preserve"><value>批撰其录</value></data>
+  <data name="NewTasksSectionHeader.Text" xml:space="preserve"><value>新役</value></data>
+  <data name="NewJobsEmptyText.Text" xml:space="preserve"><value>今无新役</value></data>
+  <data name="HistorySectionHeader.Text" xml:space="preserve"><value>往役</value></data>
+  <data name="HistoryEmptyText.Text" xml:space="preserve"><value>今无往役</value></data>
+  <data name="HeroNameText.Text" xml:space="preserve"><value>备新役</value></data>
+  <data name="CurrentFileText.Text" xml:space="preserve"><value>请择源目录与所往目录</value></data>
+  <data name="StatusText.Text" xml:space="preserve"><value>待设</value></data>
+  <data name="PhaseText.Text" xml:space="preserve"><value>待启</value></data>
+  <data name="ProgressSectionTitle.Text" xml:space="preserve"><value>役之进度</value></data>
+  <data name="SourcePathLabel.Text" xml:space="preserve"><value>源目录 / 存储卡</value></data>
+  <data name="SourcePathText.Text" xml:space="preserve"><value>未择</value></data>
+  <data name="DestinationPathLabel.Text" xml:space="preserve"><value>传写所往</value></data>
+  <data name="DestinationPathText.Text" xml:space="preserve"><value>未择</value></data>
+  <data name="FileSizeLabel.Text" xml:space="preserve"><value>卷之大小</value></data>
+  <data name="FileCountLabel.Text" xml:space="preserve"><value>卷数</value></data>
+  <data name="CreatedTimeLabel.Text" xml:space="preserve"><value>立役之时</value></data>
+  <data name="EndTimeLabel.Text" xml:space="preserve"><value>终时</value></data>
+  <data name="ElapsedTimeLabel.Text" xml:space="preserve"><value>历时</value></data>
+  <data name="CopySectionLabel.Text" xml:space="preserve"><value>传写</value></data>
+  <data name="CopyCompletedText.Text" xml:space="preserve"><value>已毕</value></data>
+  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>SHA-256 之验</value></data>
+  <data name="VerifyCompletedText.Text" xml:space="preserve"><value>已毕</value></data>
+  <data name="StartButtonText.Text" xml:space="preserve"><value>始传写</value></data>
+  <data name="StartVerificationButtonText.Text" xml:space="preserve"><value>始验</value></data>
+  <data name="ExportReportButtonText.Text" xml:space="preserve"><value>出具其录</value></data>
+  <data name="DeleteJobButtonText.Text" xml:space="preserve"><value>删其录</value></data>
+  <data name="RestartJobButtonText.Text" xml:space="preserve"><value>复始</value></data>
+  <data name="PauseText.Text" xml:space="preserve"><value>暂止</value></data>
+  <data name="CancelButtonText.Text" xml:space="preserve"><value>罢</value></data>
+  <data name="SourcePickerButton.ToolTipService.ToolTip" xml:space="preserve"><value>择源目录</value></data>
+  <data name="DestinationPickerButton.ToolTipService.ToolTip" xml:space="preserve"><value>择所往目录</value></data>
+  <data name="DuplicateSummaryText.Text" xml:space="preserve"><value>得重文</value></data>
+  <data name="DuplicateSelectionHint.Text" xml:space="preserve"><value>请逐一择其处置</value></data>
+  <data name="DuplicateBatchHintText.Text" xml:space="preserve"><value>可勾多项而批设；亦可逐行别改。</value></data>
+  <data name="ApplyDuplicateChoicesButton.Content" xml:space="preserve"><value>施所择而续</value></data>
+  <data name="DuplicateSelectAllCheckBox.Content" xml:space="preserve"><value>悉择</value></data>
+  <data name="BatchOverwriteButton.Content" xml:space="preserve"><value>覆写所择</value></data>
+  <data name="BatchSkipButton.Content" xml:space="preserve"><value>略所择</value></data>
+  <data name="BatchCreateCopyButton.Content" xml:space="preserve"><value>为所择作副本</value></data>
+  <data name="OverwriteFailedFilesButton.Content" xml:space="preserve"><value>覆写所择</value></data>
+  <data name="RetryFailedFilesButton.Content" xml:space="preserve"><value>复试所择</value></data>
+  <data name="SkipFailedFilesButton.Content" xml:space="preserve"><value>略所择</value></data>
+  <data name="FailedFilesSummaryText.Text" xml:space="preserve"><value>败卷</value></data>
+  <data name="FailedFilesHintText.Text" xml:space="preserve"><value>勾卷后可覆写、复试或略之；惟验而不合者可覆写。</value></data>
+  <data name="LogText.Text" xml:space="preserve"><value>已备。择目录即可始。</value></data>
+  <data name="DupFileNameHeader.Text" xml:space="preserve"><value>卷名</value></data>
+  <data name="DupSourceHeader.Text" xml:space="preserve"><value>源所</value></data>
+  <data name="DupConflictHeader.Text" xml:space="preserve"><value>相冲之所</value></data>
+  <!-- ===== NewTaskDialog XAML x:Uid keys ===== -->
+  <data name="DialogSourceLabel.Text" xml:space="preserve"><value>数据源</value></data>
+  <data name="DialogSourcePathText.Text" xml:space="preserve"><value>请择源目录或存储卡</value></data>
+  <data name="DialogCopyLabel.Text" xml:space="preserve"><value>传写</value></data>
+  <data name="DialogCopyDestLabel.Text" xml:space="preserve"><value>传写所往</value></data>
+  <data name="DialogDestinationPathText.Text" xml:space="preserve"><value>请择文卷传写所往</value></data>
+  <data name="EnableCopyToggle.Header" xml:space="preserve"><value>传写文卷</value></data>
+  <data name="EnableCopyToggle.OnContent" xml:space="preserve"><value>启</value></data>
+  <data name="EnableCopyToggle.OffContent" xml:space="preserve"><value>闭</value></data>
+  <data name="DestinationSubfolderNameLabel.Text" xml:space="preserve"><value>所往子目录之名</value></data>
+  <data name="DestinationSubfolderHintText.Text" xml:space="preserve"><value>留空则不建子目录</value></data>
+  <data name="DuplicateHandlingLabel.Text" xml:space="preserve"><value>重文之处置</value></data>
+  <data name="AskExistingRadio.Content" xml:space="preserve"><value>询之</value></data>
+  <data name="OverwriteExistingRadio.Content" xml:space="preserve"><value>覆写</value></data>
+  <data name="SkipExistingRadio.Content" xml:space="preserve"><value>略之</value></data>
+  <data name="CreateCopyRadio.Content" xml:space="preserve"><value>作副本</value></data>
+  <data name="DuplicateAskHintText.Text" xml:space="preserve"><value>若择询之，将先续治他卷，再逐一处所得之重文。</value></data>
+  <data name="FastCopyToggle.Header" xml:space="preserve"><value>用 FastCopy 法</value></data>
+  <data name="FastCopyToggle.OnContent" xml:space="preserve"><value>启</value></data>
+  <data name="FastCopyToggle.OffContent" xml:space="preserve"><value>闭</value></data>
+  <data name="FastCopyHintText.Text" xml:space="preserve"><value>用原生流水线传写引擎；若不可用，则自退用托管流水线。卷之大小、进度与余时仍如常显示。</value></data>
+  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>验文卷（SHA-256）</value></data>
+  <data name="VerifyFilesToggle.OnContent" xml:space="preserve"><value>启</value></data>
+  <data name="VerifyFilesToggle.OffContent" xml:space="preserve"><value>闭</value></data>
+  <data name="PreventSleepToggle.Header" xml:space="preserve"><value>役中禁电脑休眠</value></data>
+  <data name="PreventSleepToggle.OnContent" xml:space="preserve"><value>启</value></data>
+  <data name="PreventSleepToggle.OffContent" xml:space="preserve"><value>闭</value></data>
+  <data name="PriorityExecutionToggle.Header" xml:space="preserve"><value>先行</value></data>
+  <data name="PriorityExecutionToggle.OnContent" xml:space="preserve"><value>启</value></data>
+  <data name="PriorityExecutionToggle.OffContent" xml:space="preserve"><value>闭</value></data>
+  <data name="PriorityHintText.Text" xml:space="preserve"><value>先行之役将并行；他常役在安全之处候之，直至诸先行之役皆毕。</value></data>
+  <data name="NewTaskDialog.Title" xml:space="preserve"><value>立传写之役</value></data>
+  <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>启役</value></data>
+  <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>罢</value></data>
+  <data name="BatchSelectionText.Text" xml:space="preserve"><value>已择 0 役</value></data>
+  <data name="DupOverwriteButton.Content" xml:space="preserve"><value>覆写</value></data>
+  <data name="DupSkipButton.Content" xml:space="preserve"><value>略之</value></data>
+  <data name="DupCreateCopyButton.Content" xml:space="preserve"><value>作副本</value></data>
+  <data name="DupOpenSourceButton.Content" xml:space="preserve"><value>于文卷司中择之</value></data>
+  <data name="DupOpenDestinationButton.Content" xml:space="preserve"><value>于文卷司中择之</value></data>
+  <data name="Report.Title" xml:space="preserve"><value>EZ DIT 役录</value></data>
+  <data name="Report.IncompleteTitle" xml:space="preserve"><value>EZ DIT 未竟役录</value></data>
+  <data name="Report.TaskName" xml:space="preserve"><value>役名：{0}</value></data>
+  <data name="Report.SourceDirectory" xml:space="preserve"><value>源目录：{0}</value></data>
+  <data name="Report.DestinationDirectory" xml:space="preserve"><value>所往目录：{0}</value></data>
+  <data name="Report.StartTime" xml:space="preserve"><value>始时：{0}</value></data>
+  <data name="Report.EndTime" xml:space="preserve"><value>终时：{0}</value></data>
+  <data name="Report.FileCount" xml:space="preserve"><value>卷数：{0}</value></data>
+  <data name="Report.DataSize" xml:space="preserve"><value>数据量：{0}</value></data>
+  <data name="Report.CopyDuration" xml:space="preserve"><value>传写历时：{0}</value></data>
+  <data name="Report.CopyDisabled" xml:space="preserve"><value>传写：未启</value></data>
+  <data name="Report.VerifyDuration" xml:space="preserve"><value>校验历时：{0}</value></data>
+  <data name="Report.CopyAlgorithm" xml:space="preserve"><value>传写之法：{0}</value></data>
+  <data name="Report.ManagedPipeline" xml:space="preserve"><value>托管流水线</value></data>
+  <data name="Report.SequentialCopy" xml:space="preserve"><value>常序传写</value></data>
+  <data name="Report.VerificationAlgorithm" xml:space="preserve"><value>校验之法：{0}</value></data>
+  <data name="Report.FinalResult" xml:space="preserve"><value>终果：{0}</value></data>
+  <data name="Report.CopiedProgress" xml:space="preserve"><value>传写既成：{0}/{1} 卷，{2}</value></data>
+  <data name="Report.VerifiedProgress" xml:space="preserve"><value>校验合格：{0}/{1} 卷</value></data>
+  <data name="Report.VerificationDisabled" xml:space="preserve"><value>校验文卷：未启</value></data>
+  <data name="Report.VerificationDetails" xml:space="preserve"><value>校验文卷之细目：</value></data>
+  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[合] {0} | {1} | SHA-256: {2}</value></data>
+  <data name="Report.FailedVerificationEntry" xml:space="preserve"><value>[败] {0} | 源: {1} | 所往: {2} | {3}</value></data>
+  <data name="Report.TaskStatus" xml:space="preserve"><value>役之状：{0}</value></data>
+  <data name="Report.Details" xml:space="preserve"><value>说：{0}</value></data>
+  <data name="Report.FailedFiles" xml:space="preserve"><value>败卷：{0} 卷</value></data>
+  <data name="Report.FailureEntry" xml:space="preserve"><value>[败] {0} | {1} | {2}</value></data>
+  <data name="Report.Warnings" xml:space="preserve"><value>警示：{0} 条</value></data>
+  <data name="Report.WarningEntry" xml:space="preserve"><value>[警示] {0}</value></data>
+  <data name="Report.DuplicateHandling" xml:space="preserve"><value>重文之处置：{0} 卷</value></data>
+  <data name="Report.DuplicateEntry" xml:space="preserve"><value>[{0}] {1}</value></data>
+  <data name="Report.SourceEntry" xml:space="preserve"><value>  源：{0}</value></data>
+  <data name="Report.ConflictEntry" xml:space="preserve"><value>  相冲：{0}</value></data>
+</root>

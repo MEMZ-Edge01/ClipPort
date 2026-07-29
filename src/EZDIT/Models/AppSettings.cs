@@ -20,7 +20,8 @@ public enum AppAccentMode
 public enum AppLanguage
 {
     SimplifiedChinese,
-    English
+    English,
+    ClassicalChinese
 }
 
 public sealed record AppLanguageDefinition(
@@ -38,7 +39,8 @@ public static class AppLanguages
     public static IReadOnlyList<AppLanguageDefinition> Supported { get; } =
     [
         new(AppLanguage.SimplifiedChinese, "zh-CN", "Settings.SimplifiedChinese"),
-        new(AppLanguage.English, "en-US", "Settings.English")
+        new(AppLanguage.English, "en-US", "Settings.English"),
+        new(AppLanguage.ClassicalChinese, "lzh", "Settings.ClassicalChinese")
     ];
 
     public static AppLanguageDefinition Get(AppLanguage language) =>

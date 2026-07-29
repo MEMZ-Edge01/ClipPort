@@ -55,9 +55,9 @@ public static class ResourceService
     /// <summary>
     /// Returns the localized string for <paramref name="key"/>.
     /// Falls back to the key itself when the resource is missing.
-    /// When the key is not found and contains Chinese text, attempts a
-    /// reverse lookup: treats the Chinese text as a zh-CN value and
-    /// returns the corresponding en-US value (or the original for zh-CN).
+    /// When the key is not found and contains persisted Simplified Chinese
+    /// text, attempts a reverse lookup and returns the matching value from
+    /// the currently selected language.
     /// </summary>
     public static string GetString(string key)
     {

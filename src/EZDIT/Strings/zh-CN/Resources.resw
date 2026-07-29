@@ -27,6 +27,8 @@
   <data name="Button.ExportReport" xml:space="preserve"><value>导出报告</value></data>
   <data name="Button.DeleteRecord" xml:space="preserve"><value>删除记录</value></data>
   <data name="Button.Restart" xml:space="preserve"><value>重新开始</value></data>
+  <data name="Button.RestartLater" xml:space="preserve"><value>稍后重启</value></data>
+  <data name="Button.RestartNow" xml:space="preserve"><value>现在重启</value></data>
   <data name="Button.MultiSelect" xml:space="preserve"><value>多选</value></data>
   <data name="Button.BatchDelete" xml:space="preserve"><value>批量删除</value></data>
   <data name="Button.BatchCreateReports" xml:space="preserve"><value>批量创建报告</value></data>
@@ -231,6 +233,7 @@
   <data name="Settings.WindowsAccent" xml:space="preserve"><value>Windows 主题色</value></data>
   <data name="Settings.SimplifiedChinese" xml:space="preserve"><value>简体中文</value></data>
   <data name="Settings.English" xml:space="preserve"><value>English</value></data>
+  <data name="Settings.ClassicalChinese" xml:space="preserve"><value>文言文</value></data>
   <data name="Settings.Seafoam" xml:space="preserve"><value>海沫绿</value></data>
   <data name="Settings.BrightRose" xml:space="preserve"><value>亮玫红</value></data>
   <data name="Settings.Gold" xml:space="preserve"><value>黄金色</value></data>

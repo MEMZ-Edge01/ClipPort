@@ -1,6 +1,7 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Channels;
 using EZDIT.Models;
 
@@ -185,7 +186,7 @@ public sealed class FileCopyService
                         bytesWritten =>
                         {
                             fileReportedBytes += bytesWritten;
-                            transferredCopyBytes += bytesWritten;
+                            Interlocked.Add(ref transferredCopyBytes, bytesWritten);
                             long now = copyWatch.ElapsedTicks;
                             if (now - lastReportTicks >= Stopwatch.Frequency / 10)
                             {
@@ -251,7 +252,7 @@ public sealed class FileCopyService
                 files.Count,
                 processedCopyFiles,
                 file.RelativePath,
-                transferredCopyBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001),
+                Interlocked.Read(ref transferredCopyBytes) / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001),
                 copyWatch.Elapsed)
             {
                 SuccessfulBytes = copiedBytes,

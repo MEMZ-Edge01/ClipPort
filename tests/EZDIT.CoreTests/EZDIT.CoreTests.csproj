@@ -40,6 +40,9 @@
     <Content Include="..\..\src\EZDIT\Strings\en-US\Resources.resw"
              Link="Strings\en-US\Resources.resw"
              CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\EZDIT\Strings\lzh\Resources.resw"
+             Link="Strings\lzh\Resources.resw"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
