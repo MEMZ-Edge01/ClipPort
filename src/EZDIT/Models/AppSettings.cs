@@ -42,7 +42,8 @@ public static class AppLanguages
     ];
 
     public static AppLanguageDefinition Get(AppLanguage language) =>
-        Supported.First(definition => definition.Language == language);
+        Supported.FirstOrDefault(definition => definition.Language == language) ??
+        Supported[0];
 }
 
 public sealed class AppSettings

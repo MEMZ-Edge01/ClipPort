@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using EZDIT.Services;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using WinRT.Interop;
@@ -17,6 +18,12 @@ public sealed partial class MainWindow
 
     private void UpdateSleepPreventionState()
     {
+        if (!DispatcherQueue.HasThreadAccess)
+        {
+            DispatcherQueue.TryEnqueue(UpdateSleepPreventionState);
+            return;
+        }
+
         bool shouldPreventSleep = !_isClosing &&
             _jobRuntimes.Values.Any(runtime => runtime.Job.PreventSleep);
         if (shouldPreventSleep != _sleepPreventionApplied)
@@ -34,6 +41,12 @@ public sealed partial class MainWindow
 
     private void ReleaseSleepPreventionForShutdown()
     {
+        if (!DispatcherQueue.HasThreadAccess)
+        {
+            DispatcherQueue.TryEnqueue(ReleaseSleepPreventionForShutdown);
+            return;
+        }
+
         _isClosing = true;
         if (_sleepPreventionApplied)
         {
@@ -46,7 +59,7 @@ public sealed partial class MainWindow
     private void UpdateWindowSleepTitle(bool sleepPrevented)
     {
         string title = sleepPrevented
-            ? "EZ DIT-beta - PC将不会进入休眠"
+            ? ResourceService.GetString("Window.TitleSleepPrevented")
             : "EZ DIT-beta";
         AppTitleText.Text = title;
         nint hwnd = WindowNative.GetWindowHandle(this);

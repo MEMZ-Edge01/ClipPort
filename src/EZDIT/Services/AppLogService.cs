@@ -4,7 +4,7 @@ public sealed class AppLogService
 {
     private const long MaxLogSizeBytes = 5 * 1024 * 1024; // 5 MiB
     private readonly SemaphoreSlim _writeGate = new(1, 1);
-    private string _directory;
+    private volatile string _directory;
 
     public AppLogService(string directory)
     {

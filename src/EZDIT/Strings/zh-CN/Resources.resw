@@ -12,6 +12,7 @@
   <data name="Common.Off" xml:space="preserve"><value>关闭</value></data>
   <data name="Common.Done" xml:space="preserve"><value>完成</value></data>
   <data name="Common.Completed" xml:space="preserve"><value>已完成</value></data>
+  <data name="Common.Processed" xml:space="preserve"><value>已处理</value></data>
   <data name="Common.Priority" xml:space="preserve"><value>优先</value></data>
   <data name="Common.Disabled" xml:space="preserve"><value>未启用</value></data>
   <data name="Common.TextReport" xml:space="preserve"><value>文本报告</value></data>
@@ -20,6 +21,7 @@
   <!-- ===== Buttons ===== -->
   <data name="Button.StartTask" xml:space="preserve"><value>开始拷卡</value></data>
   <data name="Button.StartVerification" xml:space="preserve"><value>开始校验</value></data>
+  <data name="Button.Reverify" xml:space="preserve"><value>重新校验</value></data>
   <data name="Button.Pause" xml:space="preserve"><value>暂停</value></data>
   <data name="Button.Resume" xml:space="preserve"><value>继续</value></data>
   <data name="Button.ExportReport" xml:space="preserve"><value>导出报告</value></data>
@@ -44,6 +46,7 @@
   <data name="Status.Scanning" xml:space="preserve"><value>正在扫描</value></data>
   <data name="Status.CountingFiles" xml:space="preserve"><value>正在统计文件…</value></data>
   <data name="Status.ReadingDirectories" xml:space="preserve"><value>正在读取目录</value></data>
+  <data name="Status.Queued" xml:space="preserve"><value>等待开始</value></data>
   <data name="Status.Copying" xml:space="preserve"><value>正在拷贝</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>拷贝文件</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>正在校验</value></data>
@@ -123,6 +126,15 @@
   <data name="Error.CannotRestart" xml:space="preserve"><value>无法重新开始</value></data>
   <data name="Error.NoCopyOrVerify" xml:space="preserve"><value>原任务没有启用拷贝或校验。</value></data>
   <data name="Error.CannotDeleteTaskTitle" xml:space="preserve"><value>无法删除任务</value></data>
+  <data name="Error.DestinationReparsePoint" xml:space="preserve"><value>目标路径包含符号链接或目录联接，已阻止写入：{0}</value></data>
+  <data name="Error.DestinationContainsReparsePoint" xml:space="preserve"><value>目标路径包含符号链接或目录联接，不能作为写入目标。</value></data>
+  <data name="Error.InvalidSubfolderName" xml:space="preserve"><value>目标子文件夹必须是单个相对名称，不能包含盘符、路径分隔符、“.”或“..”。</value></data>
+  <data name="Error.InvalidPath" xml:space="preserve"><value>源路径或目标路径格式无效。</value></data>
+  <data name="Error.CannotStartOverlappingTask" xml:space="preserve"><value>无法启动路径重叠的任务</value></data>
+  <data name="Error.CannotOpenRepository" xml:space="preserve"><value>无法打开项目主页</value></data>
+  <data name="Error.OnlyEndedTaskCanDelete" xml:space="preserve"><value>只能删除已经结束处理的任务记录。</value></data>
+  <data name="Error.CannotCreateNativeCopy" xml:space="preserve"><value>无法创建原生复制操作。</value></data>
+  <data name="Error.OnlyVerificationMismatchCanOverwrite" xml:space="preserve"><value>只能覆盖经过校验且内容不一致的文件。</value></data>
   <data name="Error.CannotBatchDeleteTitle" xml:space="preserve"><value>无法批量删除</value></data>
   <data name="Error.UnableToStart" xml:space="preserve"><value>无法开始</value></data>
   <data name="Error.FoldersNotConfigured" xml:space="preserve"><value>目录尚未设置</value></data>
@@ -150,6 +162,22 @@
   <data name="Result.VerificationCompleted" xml:space="preserve"><value>校验完成</value></data>
   <!-- ===== Format ===== -->
   <data name="Format.SelectedSourcePath" xml:space="preserve"><value>已选择源目录：{0}</value></data>
+  <data name="Format.CannotCreateDirectory" xml:space="preserve"><value>无法创建目录 {0}：{1}</value></data>
+  <data name="Format.CannotCopyFile" xml:space="preserve"><value>无法拷贝 {0}：{1}</value></data>
+  <data name="Format.VerificationMismatch" xml:space="preserve"><value>校验不一致：{0}</value></data>
+  <data name="Format.CannotVerifyFile" xml:space="preserve"><value>无法校验 {0}：{1}</value></data>
+  <data name="Format.InvalidDestinationMapping" xml:space="preserve"><value>文件 {0} 的目标位置超出了任务目标目录。</value></data>
+  <data name="Format.CannotScanDirectory" xml:space="preserve"><value>无法扫描目录 {0}：{1}</value></data>
+  <data name="Format.CannotReadPath" xml:space="preserve"><value>无法读取 {0}：{1}</value></data>
+  <data name="Format.DestinationCapacityInsufficient" xml:space="preserve"><value>目标磁盘空间不足：需要 {0}，可用 {1}。</value></data>
+  <data name="Format.CannotCreateUniqueCopy" xml:space="preserve"><value>无法为 {0} 创建不重名的副本。</value></data>
+  <data name="Format.CannotPreserveTimestamp" xml:space="preserve"><value>文件 {0} 已成功拷贝，但无法保留修改时间：{1}</value></data>
+  <data name="Format.TaskPathConflict" xml:space="preserve"><value>源目录或目标目录与正在运行的任务“{0}”重叠。请等待该任务结束后再试。</value></data>
+  <data name="Format.VerificationJobName" xml:space="preserve"><value>{0}（校验）</value></data>
+  <data name="Format.ReverificationJobName" xml:space="preserve"><value>{0}（重新校验）</value></data>
+  <data name="Format.RestartedJobName" xml:space="preserve"><value>{0}（重新开始）</value></data>
+  <data name="Format.NativeCopyFailed" xml:space="preserve"><value>原生复制引擎复制失败：{0}</value></data>
+  <data name="Window.TitleSleepPrevented" xml:space="preserve"><value>EZ DIT-beta - 电脑将不会进入休眠</value></data>
   <data name="Format.SelectedDestinationPath" xml:space="preserve"><value>已选择目标目录：{0}</value></data>
   <data name="Format.SourcePathLabel" xml:space="preserve"><value>源目录：{0}</value></data>
   <data name="Format.DestinationPathLabel" xml:space="preserve"><value>目标目录：{0}</value></data>
@@ -335,4 +363,37 @@
   <data name="DupCreateCopyButton.Content" xml:space="preserve"><value>创建副本</value></data>
   <data name="DupOpenSourceButton.Content" xml:space="preserve"><value>在资源管理器中选择</value></data>
   <data name="DupOpenDestinationButton.Content" xml:space="preserve"><value>在资源管理器中选择</value></data>
+  <data name="Report.Title" xml:space="preserve"><value>EZ DIT 任务报告</value></data>
+  <data name="Report.IncompleteTitle" xml:space="preserve"><value>EZ DIT 未完成任务报告</value></data>
+  <data name="Report.TaskName" xml:space="preserve"><value>任务名称：{0}</value></data>
+  <data name="Report.SourceDirectory" xml:space="preserve"><value>源目录：{0}</value></data>
+  <data name="Report.DestinationDirectory" xml:space="preserve"><value>目标目录：{0}</value></data>
+  <data name="Report.StartTime" xml:space="preserve"><value>开始时间：{0}</value></data>
+  <data name="Report.EndTime" xml:space="preserve"><value>结束时间：{0}</value></data>
+  <data name="Report.FileCount" xml:space="preserve"><value>文件数量：{0}</value></data>
+  <data name="Report.DataSize" xml:space="preserve"><value>数据大小：{0}</value></data>
+  <data name="Report.CopyDuration" xml:space="preserve"><value>拷贝用时：{0}</value></data>
+  <data name="Report.CopyDisabled" xml:space="preserve"><value>拷贝：未启用</value></data>
+  <data name="Report.VerifyDuration" xml:space="preserve"><value>校验用时：{0}</value></data>
+  <data name="Report.CopyAlgorithm" xml:space="preserve"><value>拷贝算法：{0}</value></data>
+  <data name="Report.ManagedPipeline" xml:space="preserve"><value>托管流水线</value></data>
+  <data name="Report.SequentialCopy" xml:space="preserve"><value>标准顺序复制</value></data>
+  <data name="Report.VerificationAlgorithm" xml:space="preserve"><value>校验算法：{0}</value></data>
+  <data name="Report.FinalResult" xml:space="preserve"><value>最终结果：{0}</value></data>
+  <data name="Report.CopiedProgress" xml:space="preserve"><value>成功拷贝：{0}/{1} 个文件，{2}</value></data>
+  <data name="Report.VerifiedProgress" xml:space="preserve"><value>校验通过：{0}/{1} 个文件</value></data>
+  <data name="Report.VerificationDisabled" xml:space="preserve"><value>文件校验：未启用</value></data>
+  <data name="Report.VerificationDetails" xml:space="preserve"><value>文件校验明细：</value></data>
+  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[通过] {0} | {1} | SHA-256: {2}</value></data>
+  <data name="Report.FailedVerificationEntry" xml:space="preserve"><value>[失败] {0} | 源: {1} | 目标: {2} | {3}</value></data>
+  <data name="Report.TaskStatus" xml:space="preserve"><value>任务状态：{0}</value></data>
+  <data name="Report.Details" xml:space="preserve"><value>说明：{0}</value></data>
+  <data name="Report.FailedFiles" xml:space="preserve"><value>失败文件：{0} 个</value></data>
+  <data name="Report.FailureEntry" xml:space="preserve"><value>[失败] {0} | {1} | {2}</value></data>
+  <data name="Report.Warnings" xml:space="preserve"><value>警告：{0} 条</value></data>
+  <data name="Report.WarningEntry" xml:space="preserve"><value>[警告] {0}</value></data>
+  <data name="Report.DuplicateHandling" xml:space="preserve"><value>重复文件处理：{0} 个</value></data>
+  <data name="Report.DuplicateEntry" xml:space="preserve"><value>[{0}] {1}</value></data>
+  <data name="Report.SourceEntry" xml:space="preserve"><value>  来源：{0}</value></data>
+  <data name="Report.ConflictEntry" xml:space="preserve"><value>  冲突：{0}</value></data>
 </root>

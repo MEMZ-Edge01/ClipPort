@@ -247,7 +247,7 @@
                                         Padding="16,0" Background="{StaticResource ControlSecondaryBrush}" CornerRadius="7">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <FontIcon Glyph="&#xE73E;" FontSize="13" />
-                                        <TextBlock x:Uid="StartVerificationButtonText" Text="开始校验" />
+                                        <TextBlock x:Name="StartVerificationButtonText" x:Uid="StartVerificationButtonText" Text="开始校验" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="ExportReportButton" Click="ConcurrentExportReportButton_Click" Visibility="Collapsed" Height="40"

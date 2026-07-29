@@ -24,7 +24,7 @@ public sealed class DuplicateConflictChoice : INotifyPropertyChanged
     public string FileName => Path.GetFileName(Conflict.RelativePath);
     public string SourcePath => Conflict.SourcePath;
     public string DestinationPath => Conflict.DestinationPath;
-    public string SizeText => FormatBytes(Conflict.Length);
+    public string SizeText => DisplayFormatting.FormatBytes(Conflict.Length);
     public ExistingFilePolicy? Decision => _decision;
     public bool IsDecided => _decision is not null;
     public bool IsSelected
@@ -80,15 +80,4 @@ public sealed class DuplicateConflictChoice : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    private static string FormatBytes(double bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        int unit = 0;
-        while (bytes >= 1024 && unit < units.Length - 1)
-        {
-            bytes /= 1024;
-            unit++;
-        }
-        return unit == 0 ? $"{bytes:F0} {units[unit]}" : $"{bytes:F2} {units[unit]}";
-    }
 }

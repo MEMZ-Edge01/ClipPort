@@ -23,7 +23,7 @@ internal static class NativeCopyEngine
         string sourcePath,
         string destinationPath,
         Action<CancellationToken> waitWhilePaused,
-        Action<int> reportBytesWritten,
+        Action<long> reportBytesWritten,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -32,7 +32,7 @@ internal static class NativeCopyEngine
         if (operation == nint.Zero)
         {
             throw new InvalidOperationException(
-                "无法创建 FastCopy 原生复制操作。");
+                ResourceService.GetString("Error.CannotCreateNativeCopy"));
         }
 
         Exception? callbackError = null;
@@ -42,7 +42,7 @@ internal static class NativeCopyEngine
             {
                 if (bytesWritten > 0)
                 {
-                    reportBytesWritten(checked((int)bytesWritten));
+                    reportBytesWritten(checked((long)bytesWritten));
                 }
 
                 // The native callback runs on a C++ worker thread.
@@ -98,7 +98,7 @@ internal static class NativeCopyEngine
         {
             throw new Win32Exception(
                 unchecked((int)error),
-                $"FastCopy 原生引擎复制失败：{sourcePath}");
+                ResourceService.Format("Format.NativeCopyFailed", sourcePath));
         }
     }
 

@@ -163,11 +163,26 @@ public sealed partial class SettingsView : UserControl
     private void BrowseDirectoryButton_Click(object sender, RoutedEventArgs e) =>
         BrowseDirectoryRequested?.Invoke(this, EventArgs.Empty);
 
-    private void RepositoryButton_Click(object sender, RoutedEventArgs e)
+    private async void RepositoryButton_Click(object sender, RoutedEventArgs e)
     {
-        Process.Start(new ProcessStartInfo("https://github.com/MEMZ-Edge01/EZ-DIT")
+        try
         {
-            UseShellExecute = true
-        });
+            Process.Start(new ProcessStartInfo("https://github.com/MEMZ-Edge01/EZ-DIT")
+            {
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex) when (
+            ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = ResourceService.GetString("Error.CannotOpenRepository"),
+                Content = ex.Message,
+                CloseButtonText = ResourceService.GetString("Common.OK"),
+                XamlRoot = XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
     }
 }

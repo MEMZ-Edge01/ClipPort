@@ -33,9 +33,35 @@ public sealed class AppSettingsService
 
             AppSettings settings = JsonSerializer.Deserialize<AppSettings>(
                 File.ReadAllText(_settingsPath), _jsonOptions) ?? new AppSettings();
-            if (string.IsNullOrWhiteSpace(settings.LogAndReportDirectory))
+            try
+            {
+                if (string.IsNullOrWhiteSpace(settings.LogAndReportDirectory) ||
+                    !Path.IsPathFullyQualified(settings.LogAndReportDirectory))
+                {
+                    settings.LogAndReportDirectory = new AppSettings().LogAndReportDirectory;
+                }
+                else
+                {
+                    settings.LogAndReportDirectory =
+                        Path.GetFullPath(settings.LogAndReportDirectory);
+                }
+            }
+            catch (Exception ex) when (
+                ex is ArgumentException or NotSupportedException or IOException)
             {
                 settings.LogAndReportDirectory = new AppSettings().LogAndReportDirectory;
+            }
+            if (!Enum.IsDefined(settings.Theme))
+            {
+                settings.Theme = AppThemeMode.System;
+            }
+            if (!Enum.IsDefined(settings.Accent))
+            {
+                settings.Accent = AppAccentMode.System;
+            }
+            if (!Enum.IsDefined(settings.Language))
+            {
+                settings.Language = AppLanguage.SimplifiedChinese;
             }
             return settings;
         }

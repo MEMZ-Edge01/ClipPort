@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
@@ -27,7 +29,12 @@ internal static class Program
             ("existing file can create a copy", TestCreateCopyAsync),
             ("verification can be disabled", TestVerificationDisabledAsync),
             ("ask mode supports per-file decisions", TestAskPerFileDecisionsAsync),
+            ("path safety and root-folder naming", TestPathSafetyAsync),
+            ("shared display formatting", TestDisplayFormattingAsync),
+            ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
+            ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
+            ("history isolates malformed records", TestHistoryMalformedRecordIsolationAsync),
             ("priority jobs gate ordinary jobs", TestPrioritySchedulerAsync)
         };
 
@@ -275,13 +282,23 @@ internal static class Program
             Directory.CreateDirectory(Path.Combine(source, "empty-source-folder"));
 
             var events = new List<CopyProgressInfo>();
+            string outsideDestination = Path.Combine(
+                Directory.GetParent(destination)!.FullName,
+                "outside-target.txt");
             CopyResult result = await new FileCopyService().CopyAndVerifyAsync(
                 source,
                 destination,
                 new CopyOptions(
                     ExistingFilePolicy: ExistingFilePolicy.Overwrite,
                     VerifyFiles: true,
-                    SkipCopy: true),
+                    SkipCopy: true)
+                {
+                    DestinationPaths = new Dictionary<string, string>(
+                        StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["same.txt"] = outsideDestination
+                    }
+                },
                 new InlineProgress<CopyProgressInfo>(events.Add),
                 _ => Task.CompletedTask,
                 CancellationToken.None);
@@ -300,6 +317,8 @@ internal static class Program
                 "Verification-only mode must not create destination directories.");
             Assert(result.FailedFiles.All(item => item.Stage == FileOperationStage.Verifying),
                 "Verification-only failures must be reported as verification failures.");
+            Assert(result.FailedFiles.Any(item => item.RelativePath == "same.txt"),
+                "A persisted destination mapping must not escape the recorded destination root.");
         });
     }
 
@@ -329,6 +348,17 @@ internal static class Program
                    result.FailedFiles[0].IsVerificationMismatch,
                 "A hash mismatch should be eligible for overwrite.");
 
+            FileRetryResult retry = await service.RetryFailedFilesAsync(
+                result.FailedFiles,
+                options,
+                new InlineProgress<CopyProgressInfo>(_ => { }),
+                _ => Task.CompletedTask,
+                CancellationToken.None);
+            Assert(retry.FailedFiles.Count == 1,
+                "Retrying a mismatch without overwrite should only reverify it.");
+            Assert(await File.ReadAllTextAsync(destinationFile) == "stale destination",
+                "The ordinary retry action must not overwrite a verification mismatch.");
+
             var overwriteEvents = new List<CopyProgressInfo>();
             FileRetryResult overwrite = await service.OverwriteVerificationMismatchesAsync(
                 result.FailedFiles,
@@ -339,6 +369,8 @@ internal static class Program
 
             Assert(overwrite.FailedFiles.Count == 0,
                 "Overwrite should clear a verification mismatch after copying the source file.");
+            Assert(overwrite.CopiedFiles == 1 && overwrite.CopiedBytes > 0,
+                "Overwrite should report one genuinely copied file.");
             Assert(await File.ReadAllTextAsync(destinationFile) == "authoritative source",
                 "Overwrite should replace the destination with the source file.");
             Assert(overwriteEvents.Any(item => item.Phase == CopyPhase.Copying),
@@ -419,7 +451,10 @@ internal static class Program
             Assert(cancelled, "Cancellation should propagate to the caller.");
             Assert(await File.ReadAllTextAsync(destinationFile) == "keep-existing-file",
                 "Cancellation must not overwrite an existing completed file.");
-            Assert(!File.Exists(destinationFile + ".ezdit-partial"),
+            Assert(!Directory.EnumerateFiles(
+                    destination,
+                    "*.ezdit-partial",
+                    SearchOption.AllDirectories).Any(),
                 "The partial file must be cleaned up after cancellation.");
         });
     }
@@ -445,6 +480,8 @@ internal static class Program
             Assert(corrupted, "The test must alter the copied file before verification.");
             Assert(!result.Success, "A corrupted destination must fail verification.");
             Assert(result.Errors.Count == 1, "The mismatched file must be listed once.");
+            Assert(result.VerifiedFileCount == 0,
+                "A mismatched file must not be counted as successfully verified.");
         });
     }
 
@@ -476,6 +513,8 @@ internal static class Program
                 _ => Task.CompletedTask, CancellationToken.None);
             Assert(result.Success && !result.VerificationPerformed,
                 "Skipping an existing file should complete without verification.");
+            Assert(result.CopiedFiles == 0 && result.CopiedBytes == 0,
+                "A skipped existing file must not be counted as copied.");
             Assert(await File.ReadAllTextAsync(destinationFile) == "existing archive data",
                 "Skip must preserve the existing destination file.");
         });
@@ -501,6 +540,24 @@ internal static class Program
             Assert(File.Exists(duplicateFile), "Create-copy should use the '(1)' suffix.");
             Assert(await HashAsync(sourceFile) == await HashAsync(duplicateFile),
                 "The created copy must match the source.");
+            Assert(result.DestinationPaths["clip.mov"] == duplicateFile,
+                "The actual create-copy destination should be returned for later verification.");
+
+            CopyResult reverify = await new FileCopyService().CopyAndVerifyAsync(
+                source,
+                destination,
+                new CopyOptions(
+                    ExistingFilePolicy.Overwrite,
+                    VerifyFiles: true,
+                    SkipCopy: true)
+                {
+                    DestinationPaths = result.DestinationPaths
+                },
+                new InlineProgress<CopyProgressInfo>(_ => { }),
+                _ => Task.CompletedTask,
+                CancellationToken.None);
+            Assert(reverify.Success && reverify.VerifiedFileCount == 1,
+                "Reverification should use the persisted create-copy destination.");
         });
     }
 
@@ -601,6 +658,14 @@ internal static class Program
             Assert(!result.Success, "A blocked destination should be reported as a file failure.");
             Assert(result.FailedFiles.Count == 1 && result.FailedFiles[0].RelativePath == "blocked.txt",
                 "The blocked file should be returned as a structured failure.");
+            Assert(result.CopiedFiles == 1,
+                "Only the successfully copied file should be counted as copied.");
+            Assert(result.CopiedBytes == new FileInfo(Path.Combine(source, "good.txt")).Length,
+                "Failed-file bytes must not be added to the successful copied-byte count.");
+            CopyProgressInfo completed = events.Last();
+            Assert(completed.ProcessedFiles == result.FileCount &&
+                   completed.SuccessfulFiles == result.CopiedFiles,
+                "Terminal progress should distinguish processed files from successful copies.");
             Assert(File.Exists(Path.Combine(destination, "good.txt")),
                 "Files after an individual failure must continue copying.");
             Assert(events.Last().Phase == CopyPhase.Completed,
@@ -667,9 +732,9 @@ internal static class Program
             Assert(!loaded[0].CopyEnabled,
                 "The copy setting should round-trip.");
             Assert(loaded[0].StatusText == "Result.VerificationCompleted" &&
-                   !loaded[0].CanStartVerification &&
+                   loaded[0].CanStartVerification &&
                    loaded[0].CanExportReport,
-                "A verification-only job should not offer starting verification again.");
+                "A completed verification job should offer reverification.");
             var copyOnly = new JobHistoryItem
                 {
                     Status = JobStatus.Completed,
@@ -774,6 +839,182 @@ internal static class Program
 
         using CopyJobScheduler.CopyJobScheduleRegistration laterOrdinary = scheduler.Register(false);
         await scheduler.WaitForTurnAsync(false).WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    private static Task TestPathSafetyAsync()
+    {
+        string parent = Path.Combine(Path.GetTempPath(), "EZDIT-PathSafety");
+        Assert(PathSafety.TryResolveSubfolder(parent, "Card_01", out string resolved) &&
+               resolved == Path.GetFullPath(Path.Combine(parent, "Card_01")),
+            "A simple subfolder name should stay under its selected parent.");
+        Assert(!PathSafety.TryResolveSubfolder(parent, @"..\escape", out _),
+            "Parent traversal must not escape the selected destination.");
+        Assert(!PathSafety.TryResolveSubfolder(parent, Path.GetPathRoot(parent), out _),
+            "An absolute subfolder value must be rejected.");
+        Assert(PathSafety.PathsOverlap(
+                Path.Combine(parent, "A"),
+                Path.Combine(parent, "A", "child")),
+            "Nested destination roots should be treated as overlapping.");
+        Assert(!PathSafety.PathsOverlap(
+                Path.Combine(parent, "A"),
+                Path.Combine(parent, "AB")),
+            "Sibling paths with a common text prefix must not be treated as overlapping.");
+        Assert(!PathSafety.TryValidateSourceAndDestination(
+                "\0invalid",
+                parent,
+                out PathValidationError invalidPathError) &&
+               invalidPathError == PathValidationError.InvalidPath,
+            "TryValidateSourceAndDestination should reject malformed paths without throwing.");
+
+        string root = Path.GetPathRoot(parent)!;
+        string suggested = PathSafety.GetSuggestedSubfolderName(
+            root,
+            new DateTime(2026, 7, 28, 12, 34, 56));
+        Assert(!Path.IsPathRooted(suggested) &&
+               suggested.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 &&
+               suggested.EndsWith("20260728123456", StringComparison.Ordinal),
+            "A drive root should produce a valid relative subfolder suggestion.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestDisplayFormattingAsync()
+    {
+        Assert(DisplayFormatting.FormatBytes(1024) == "1.00 KB",
+            "Every view should use the same byte-unit formatter.");
+        Assert(DisplayFormatting.FormatDuration(TimeSpan.FromHours(54.5)) == "2:06:30:00",
+            "Durations over 24 hours should show an unambiguous day and hour count.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestInvalidSettingsEnumsAsync()
+    {
+        string root = Path.Combine(
+            Path.GetTempPath(),
+            "EZDIT-SettingsTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(root, "settings.json"),
+                """
+                {
+                  "theme": 999,
+                  "accent": -7,
+                  "language": 42,
+                  "logAndReportDirectory": "relative-output"
+                }
+                """);
+            AppSettings loaded = new AppSettingsService(root).Load();
+            Assert(loaded.Theme == AppThemeMode.System &&
+                   loaded.Accent == AppAccentMode.System &&
+                   loaded.Language == AppLanguage.SimplifiedChinese,
+                "Undefined numeric enum values should fall back instead of crashing startup.");
+            Assert(Path.IsPathFullyQualified(loaded.LogAndReportDirectory),
+                "An invalid or relative output directory should return to the absolute default.");
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestLocalizedTaskReportAsync()
+    {
+        var job = new JobHistoryItem
+        {
+            DisplayName = "Card A",
+            SourcePath = @"F:\",
+            DestinationPath = @"D:\Archive",
+            StartedAt = new DateTimeOffset(2026, 7, 28, 10, 0, 0, TimeSpan.Zero),
+            FinishedAt = new DateTimeOffset(2026, 7, 28, 10, 1, 0, TimeSpan.Zero),
+            Status = JobStatus.Completed,
+            CopyEnabled = true,
+            VerificationEnabled = true,
+            FileCount = 1,
+            CopiedFiles = 1,
+            CopiedBytes = 4,
+            VerifiedFiles = 1
+        };
+        var result = new CopyResult(
+            true,
+            1,
+            4,
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1),
+            true,
+            [],
+            [new FileVerificationResult("a.txt", 4, "AA", "AA", true, null)],
+            [],
+            [])
+        {
+            CopiedFiles = 1,
+            CopiedBytes = 4,
+            VerifiedFileCount = 1,
+            VerifiedBytes = 4
+        };
+
+        ResourceService.SetLanguage(AppLanguage.English);
+        string english = TaskReportBuilder.Build(result, job);
+        Assert(english.Contains("Task name: Card A", StringComparison.Ordinal) &&
+               english.Contains("Copied successfully: 1/1 files", StringComparison.Ordinal) &&
+               !english.Contains("任务名称", StringComparison.Ordinal),
+            "English reports should not contain hard-coded Chinese labels.");
+
+        ResourceService.SetLanguage(AppLanguage.SimplifiedChinese);
+        string chinese = TaskReportBuilder.Build(result, job);
+        Assert(chinese.Contains("任务名称：Card A", StringComparison.Ordinal),
+            "Chinese reports should use the Chinese report resources.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task TestHistoryMalformedRecordIsolationAsync()
+    {
+        string root = Path.Combine(
+            Path.GetTempPath(),
+            "EZDIT-HistoryIsolationTests",
+            Guid.NewGuid().ToString("N"));
+        string reportsA = Path.Combine(root, "reports-a");
+        string reportsB = Path.Combine(root, "reports-b");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Converters = { new JsonStringEnumConverter() }
+            };
+            var valid = new JobHistoryItem
+            {
+                Id = "valid",
+                DisplayName = "Valid task",
+                Status = JobStatus.Completed,
+                StartedAt = DateTimeOffset.Now
+            };
+            string validJson = JsonSerializer.Serialize(valid, jsonOptions);
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "history.json"),
+                $"[{validJson},{{\"id\":\"bad\",\"status\":\"NotARealStatus\"}}]");
+
+            var service = new JobHistoryService(root, reportsA);
+            List<JobHistoryItem> loaded = await service.LoadAsync();
+            Assert(loaded.Count == 1 && loaded[0].Id == "valid",
+                "One malformed history entry must not discard valid entries.");
+
+            string reportPath = await service.SaveReportAsync("valid", "old-directory-report");
+            service.SetReportsDirectory(reportsB);
+            Assert(await service.ReadReportAsync(reportPath) == "old-directory-report",
+                "An absolute saved report path should remain readable after changing directories.");
+            await service.DeleteReportAsync(reportPath);
+            Assert(!File.Exists(reportPath),
+                "Deleting a report should remove its recorded absolute path.");
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
     }
 
     private static async Task WithTempFoldersAsync(Func<string, string, Task> test)

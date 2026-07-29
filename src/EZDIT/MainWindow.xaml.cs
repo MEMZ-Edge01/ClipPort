@@ -1,7 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Text;
 using EZDIT.Models;
 using EZDIT.Services;
 using Microsoft.UI;
@@ -28,40 +27,27 @@ public sealed partial class MainWindow : Window
     private readonly ObservableCollection<JobHistoryItem> _history = [];
     private readonly ObservableCollection<DuplicateConflictChoice> _duplicateChoices = [];
     private readonly ObservableCollection<FailedFileChoice> _failedFileChoices = [];
-    private CancellationTokenSource? _cancellation;
-    private TaskCompletionSource<IReadOnlyDictionary<string, ExistingFilePolicy>>? _duplicateDecisionSource;
     private string? _sourcePath;
     private string? _destinationPath;
     private string? _destinationParentPath;
     private string? _dialogSourcePath;
     private string? _dialogDestinationParentPath;
     private CopyOptions _copyOptions = new();
-    private bool _isRunning;
     private bool _historyLoaded;
     private AppLanguage _previousLanguage;
+    private AppSettings _lastSavedSettings = null!;
     private bool _isMultiSelectMode;
     private bool _isChangingMultiSelectMode;
     private bool _updatingDuplicateSelection;
     private bool _isApplyingAppearance;
-    private volatile bool _isPaused;
-    private DateTimeOffset? _startedAt;
-    private DateTimeOffset? _finishedAt;
-    private CopyResult? _lastResult;
-    private CopyProgressInfo? _lastProgress;
-    private JobHistoryItem? _activeJob;
     private JobHistoryItem? _selectedJob;
-    private long _copiedBytes;
-    private int _copiedFiles;
-    private int _verifiedFiles;
-    private long _verifiedBytes;
-    private TimeSpan _copyElapsed;
-    private TimeSpan _verifyElapsed;
 
     public MainWindow()
     {
         _historyService = new JobHistoryService(reportsDirectory: _appSettings.LogAndReportDirectory);
         _logService = new AppLogService(_appSettings.LogAndReportDirectory);
         _previousLanguage = _appSettings.Language;
+        _lastSavedSettings = CloneSettings(_appSettings);
         InitializeComponent();
         NewJobsList.ItemsSource = _newJobs;
         HistoryList.ItemsSource = _visibleHistory;
@@ -80,7 +66,7 @@ public sealed partial class MainWindow : Window
             TextBlock.TextProperty,
             (_, _) => _ = _logService.WriteAsync(LogText.Text));
         ApplyTheme();
-        Closed += ConcurrentMainWindow_Closed;
+        AppWindow.Closing += ConcurrentAppWindow_Closing;
     }
 
     private void ConfigureWindow()
@@ -118,7 +104,10 @@ public sealed partial class MainWindow : Window
     {
         List<JobHistoryItem> items = await _historyService.LoadAsync();
         bool repairedInterruptedJobs = false;
-        foreach (JobHistoryItem item in items.OrderByDescending(item => item.StartedAt).Take(200))
+        JobHistoryItem[] ordered = items
+            .OrderByDescending(item => item.StartedAt)
+            .ToArray();
+        foreach (JobHistoryItem item in ordered.Take(200))
         {
             if (item.Status is JobStatus.Running or JobStatus.Queued)
             {
@@ -128,7 +117,12 @@ public sealed partial class MainWindow : Window
                 item.ErrorMessage = ResourceService.GetString("Error.AppExitedBeforeFinish");
                 repairedInterruptedJobs = true;
             }
+            item.ReportPath ??= _historyService.ResolveReportPath(item.ReportFileName);
             _history.Add(item);
+        }
+        foreach (JobHistoryItem discarded in ordered.Skip(200))
+        {
+            await _historyService.DeleteReportAsync(GetReportReference(discarded));
         }
 
         RebuildTaskSections();
@@ -194,14 +188,6 @@ public sealed partial class MainWindow : Window
         return folder?.Path;
     }
 
-    private async void StartButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (await ConfigureNewTaskAsync())
-        {
-            await StartCopyAsync();
-        }
-    }
-
     private async void DialogSourceButton_Click(object sender, RoutedEventArgs e)
     {
         string? path = await PickFolderAsync(ResourceService.GetString("Picker.SourceFolderTitle"));
@@ -215,9 +201,10 @@ public sealed partial class MainWindow : Window
 
         if (EnableCopyToggle.IsOn)
         {
-            // 自动填入子文件夹名：源目录名 + 时间戳
-            string dirName = new DirectoryInfo(path).Name;
-            DialogDestinationSubfolderName.Text = dirName + DateTime.Now.ToString("yyyyMMddHHmmss");
+            // Always generate a relative, filesystem-safe folder name,
+            // including when the selected source is a drive root.
+            DialogDestinationSubfolderName.Text =
+                PathSafety.GetSuggestedSubfolderName(path, DateTime.Now);
         }
     }
 
@@ -241,11 +228,11 @@ public sealed partial class MainWindow : Window
         DialogSourcePathText.Text = _dialogSourcePath ?? ResourceService.GetString("DialogSourcePathText.Text");
         DialogDestinationPathText.Text = _dialogDestinationParentPath ?? ResourceService.GetString("DialogDestinationPathText.Text");
 
-        // 默认子文件夹名称：源目录名 + 时间戳
+        // Default to a relative, filesystem-safe folder name.
         if (_dialogSourcePath is not null)
         {
-            string sourceDirName = new DirectoryInfo(_dialogSourcePath).Name;
-            DialogDestinationSubfolderName.Text = sourceDirName + DateTime.Now.ToString("yyyyMMddHHmmss");
+            DialogDestinationSubfolderName.Text =
+                PathSafety.GetSuggestedSubfolderName(_dialogSourcePath, DateTime.Now);
         }
         else
         {
@@ -271,11 +258,16 @@ public sealed partial class MainWindow : Window
                     continue;
                 }
 
-                string destination = _dialogDestinationParentPath;
                 string subfolderName = (DialogDestinationSubfolderName.Text ?? "").Trim();
-                if (!string.IsNullOrWhiteSpace(subfolderName))
+                if (!PathSafety.TryResolveSubfolder(
+                        _dialogDestinationParentPath,
+                        subfolderName,
+                        out string destination))
                 {
-                    destination = Path.Combine(destination, subfolderName);
+                    await ShowMessageAsync(
+                        "Error.UnableToStart",
+                        "Error.InvalidSubfolderName");
+                    continue;
                 }
                 if (!ValidatePaths(_dialogSourcePath, destination, out string validationMessage))
                 {
@@ -315,294 +307,14 @@ public sealed partial class MainWindow : Window
             EnableCopyToggle.Toggled -= OnEnableCopyToggled;
         }
     }
-    private async Task StartCopyAsync()
-    {
-        if (_isRunning)
-        {
-            return;
-        }
-
-        if (_sourcePath is null || _destinationPath is null)
-        {
-            await ShowMessageAsync("Error.FoldersNotConfigured", "Error.SelectSourceAndDestFirst");
-            return;
-        }
-
-        if (!ValidatePaths(_sourcePath, _destinationPath, out string validationMessage))
-        {
-            await ShowMessageAsync("Error.UnableToStart", validationMessage);
-            return;
-        }
-
-        ResetProgress();
-        CopyProgressRow.Visibility = _copyOptions.SkipCopy
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        VerifyProgressRow.Visibility = _copyOptions.VerifyFiles
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        _isRunning = true;
-        _isPaused = false;
-        _cancellation = new CancellationTokenSource();
-        _startedAt = DateTimeOffset.Now;
-        _finishedAt = null;
-        _lastResult = null;
-        _lastProgress = null;
-        _copiedBytes = 0;
-        _copiedFiles = 0;
-        _verifiedFiles = 0;
-        _verifiedBytes = 0;
-        _copyElapsed = TimeSpan.Zero;
-        _verifyElapsed = TimeSpan.Zero;
-
-        _activeJob = new JobHistoryItem
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            DisplayName = GetDisplayName(_sourcePath),
-            SourcePath = _sourcePath,
-            DestinationPath = _destinationPath,
-            StartedAt = _startedAt.Value,
-            Status = JobStatus.Running,
-            CopyEnabled = !_copyOptions.SkipCopy,
-            VerificationEnabled = _copyOptions.VerifyFiles,
-            UseFastCopyAlgorithm = _copyOptions.UseFastCopyAlgorithm
-        };
-        _selectedJob = _activeJob;
-        _history.Insert(0, _activeJob);
-        TrimHistory();
-        UpdateHistoryEmptyState();
-        HistoryList.SelectedItem = _activeJob;
-        await SaveHistorySafeAsync();
-
-        StartTimeText.Text = _startedAt.Value.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
-        StatusText.Text = ResourceService.GetString("Status.Scanning");
-        StatusText.Foreground = (SolidColorBrush)Application.Current.Resources["MutedTextBrush"];
-        PhaseText.Text = ResourceService.GetString("Status.CountingFiles");
-        LogText.Text = ResourceService.GetString("Info.ScanningDescription");
-        SetRunningUi(true);
-
-        try
-        {
-            var progress = new Progress<CopyProgressInfo>(UpdateProgress);
-            var duplicateProgress = new Progress<DuplicateFileConflict>(RecordDuplicateConflict);
-            CopyResult result = await _copyService.CopyAndVerifyAsync(
-                _sourcePath, _destinationPath, _copyOptions, progress, duplicateProgress,
-                WaitForDuplicateChoicesAsync, WaitWhilePausedAsync, _cancellation.Token);
-
-            _lastResult = result;
-            _finishedAt = DateTimeOffset.Now;
-            JobStatus outcome = result.Success ? JobStatus.Completed : JobStatus.VerificationFailed;
-            await FinalizeActiveJobAsync(outcome, result, result.Errors.FirstOrDefault());
-        }
-        catch (OperationCanceledException)
-        {
-            _finishedAt = DateTimeOffset.Now;
-            await FinalizeActiveJobAsync(JobStatus.Cancelled, null, "任务已由用户取消，已完成的文件予以保留。");
-        }
-        catch (Exception ex)
-        {
-            _finishedAt = DateTimeOffset.Now;
-            await FinalizeActiveJobAsync(JobStatus.Failed, null, ex.Message);
-            await ShowMessageAsync("拷卡失败", ex.Message);
-        }
-        finally
-        {
-            _isRunning = false;
-            _isPaused = false;
-            _cancellation?.Dispose();
-            _cancellation = null;
-            SetRunningUi(false);
-            if (_activeJob is not null)
-            {
-                _selectedJob = _activeJob;
-                HistoryList.SelectedItem = _activeJob;
-                ShowHistoryJob(_activeJob);
-            }
-        }
-    }
-
-    private async Task FinalizeActiveJobAsync(JobStatus status, CopyResult? result, string? error)
-    {
-        if (_activeJob is null)
-        {
-            return;
-        }
-
-        JobHistoryItem job = _activeJob;
-        job.Status = status;
-        job.FinishedAt = _finishedAt ?? DateTimeOffset.Now;
-        job.TotalBytes = result?.TotalBytes ?? _lastProgress?.TotalBytes ?? job.TotalBytes;
-        job.FileCount = result?.FileCount ?? _lastProgress?.TotalFiles ?? job.FileCount;
-        job.CopiedBytes = result is not null && !_copyOptions.SkipCopy ? result.TotalBytes : _copiedBytes;
-        job.CopiedFiles = result is not null && !_copyOptions.SkipCopy ? result.FileCount : _copiedFiles;
-        job.VerifiedFiles = result?.VerifiedFiles.Count ?? _verifiedFiles;
-        job.CopySeconds = result?.CopyDuration.TotalSeconds ?? _copyElapsed.TotalSeconds;
-        job.VerifySeconds = result?.VerifyDuration.TotalSeconds ?? _verifyElapsed.TotalSeconds;
-        job.VerificationEnabled = result?.VerificationPerformed ?? _copyOptions.VerifyFiles;
-        if (result is not null)
-        {
-            job.DuplicateFiles = result.DuplicateFiles.ToList();
-            foreach (DuplicateFileConflict conflict in result.DuplicateFiles)
-            {
-                if (!job.DuplicateDecisions.ContainsKey(conflict.RelativePath))
-                {
-                    job.DuplicateDecisions[conflict.RelativePath] =
-                        _copyOptions.ExistingFilePolicy == ExistingFilePolicy.Ask
-                            ? ExistingFilePolicy.Skip
-                            : _copyOptions.ExistingFilePolicy;
-                }
-            }
-        }
-        job.ErrorMessage = error;
-
-        string report = result is not null ? BuildReport(result, job) : BuildIncompleteReport(job);
-        try
-        {
-            job.ReportFileName = await _historyService.SaveReportAsync(job.Id, report);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            LogText.Text = ResourceService.Format("Format.TaskReportSaveFailed", ex.Message);
-        }
-
-        RefreshHistoryItem(job);
-        await SaveHistorySafeAsync();
-    }
-
-    private void RecordDuplicateConflict(DuplicateFileConflict conflict)
-    {
-        if (_duplicateChoices.Any(item =>
-            string.Equals(item.RelativePath, conflict.RelativePath, StringComparison.OrdinalIgnoreCase)))
-        {
-            return;
-        }
-
-        ExistingFilePolicy? initialDecision = _copyOptions.ExistingFilePolicy == ExistingFilePolicy.Ask
-            ? null
-            : _copyOptions.ExistingFilePolicy;
-        var choice = new DuplicateConflictChoice(
-            conflict, initialDecision,
-            _isRunning && initialDecision is null);
-        _duplicateChoices.Add(choice);
-        if (_activeJob is not null)
-        {
-            _activeJob.DuplicateFiles.Add(conflict);
-            if (initialDecision is ExistingFilePolicy decision)
-            {
-                _activeJob.DuplicateDecisions[conflict.RelativePath] = decision;
-            }
-        }
-
-        DuplicatePanel.Visibility = Visibility.Visible;
-        DuplicateList.IsEnabled = true;
-        ApplyDuplicateChoicesButton.Visibility = _copyOptions.ExistingFilePolicy == ExistingFilePolicy.Ask
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        UpdateDuplicateChoiceUi();
-    }
-
-    private async Task<IReadOnlyDictionary<string, ExistingFilePolicy>> WaitForDuplicateChoicesAsync(
-        IReadOnlyList<DuplicateFileConflict> conflicts,
-        CancellationToken cancellationToken)
-    {
-        foreach (DuplicateFileConflict conflict in conflicts)
-        {
-            RecordDuplicateConflict(conflict);
-        }
-
-        _duplicateDecisionSource = new TaskCompletionSource<IReadOnlyDictionary<string, ExistingFilePolicy>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        DuplicatePanel.Visibility = Visibility.Visible;
-        DuplicateList.IsEnabled = true;
-        foreach (DuplicateConflictChoice choice in _duplicateChoices)
-        {
-            choice.SetCanChoose(true);
-        }
-        StatusText.Text = ResourceService.GetString("Status.WaitingDuplicateChoices");
-        PhaseText.Text = ResourceService.GetString("Info.ChooseActionPerFile");
-        LogText.Text = ResourceService.GetString("Info.OtherFilesContinue");
-        UpdateDuplicateChoiceUi();
-
-        using CancellationTokenRegistration registration = cancellationToken.Register(
-            () => _duplicateDecisionSource?.TrySetCanceled(cancellationToken));
-        try
-        {
-            return await _duplicateDecisionSource.Task;
-        }
-        finally
-        {
-            _duplicateDecisionSource = null;
-        }
-    }
-
     private void DuplicateOverwrite_Click(object sender, RoutedEventArgs e) =>
-        SetDuplicateDecision(sender, ExistingFilePolicy.Overwrite);
+        ConcurrentDuplicateOverwrite_Click(sender, e);
 
     private void DuplicateSkip_Click(object sender, RoutedEventArgs e) =>
-        SetDuplicateDecision(sender, ExistingFilePolicy.Skip);
+        ConcurrentDuplicateSkip_Click(sender, e);
 
     private void DuplicateCreateCopy_Click(object sender, RoutedEventArgs e) =>
-        SetDuplicateDecision(sender, ExistingFilePolicy.CreateCopy);
-
-    private void SetDuplicateDecision(object sender, ExistingFilePolicy decision)
-    {
-        if (TryGetSelectedRuntime(out CopyJobRuntime runtime))
-        {
-            SetConcurrentDuplicateDecision(sender, decision);
-            return;
-        }
-        if (sender is not Button { Tag: DuplicateConflictChoice choice } || !_isRunning)
-        {
-            return;
-        }
-
-        choice.SetDecision(decision);
-        if (_activeJob is not null)
-        {
-            _activeJob.DuplicateDecisions[choice.RelativePath] = decision;
-        }
-        UpdateDuplicateChoiceUi();
-    }
-
-    private void DuplicateSelectionCheckBox_Click(object sender, RoutedEventArgs e) =>
-        UpdateDuplicateChoiceUi();
-
-    private void DuplicateSelectAllCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_updatingDuplicateSelection)
-        {
-            return;
-        }
-
-        bool selected = DuplicateSelectAllCheckBox.IsChecked == true;
-        foreach (DuplicateConflictChoice choice in _duplicateChoices.Where(item => item.CanChoose))
-        {
-            choice.IsSelected = selected;
-        }
-        UpdateDuplicateChoiceUi();
-    }
-
-    private void BatchDuplicateOverwrite_Click(object sender, RoutedEventArgs e) =>
-        SetSelectedDuplicateDecisions(ExistingFilePolicy.Overwrite);
-
-    private void BatchDuplicateSkip_Click(object sender, RoutedEventArgs e) =>
-        SetSelectedDuplicateDecisions(ExistingFilePolicy.Skip);
-
-    private void BatchDuplicateCreateCopy_Click(object sender, RoutedEventArgs e) =>
-        SetSelectedDuplicateDecisions(ExistingFilePolicy.CreateCopy);
-
-    private void SetSelectedDuplicateDecisions(ExistingFilePolicy decision)
-    {
-        foreach (DuplicateConflictChoice choice in _duplicateChoices.Where(item => item.CanChoose && item.IsSelected))
-        {
-            choice.SetDecision(decision);
-            if (_activeJob is not null)
-            {
-                _activeJob.DuplicateDecisions[choice.RelativePath] = decision;
-            }
-        }
-        UpdateDuplicateChoiceUi();
-    }
+        ConcurrentDuplicateCreateCopy_Click(sender, e);
 
     private async void OpenDuplicateSource_Click(object sender, RoutedEventArgs e)
     {
@@ -643,69 +355,7 @@ public sealed partial class MainWindow : Window
         }
     }
     private void ApplyDuplicateChoicesButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (TryGetSelectedRuntime(out CopyJobRuntime runtime))
-        {
-            ConcurrentApplyDuplicateChoicesButton_Click(sender, e);
-            return;
-        }
-        if (_duplicateDecisionSource is null || _duplicateChoices.Count == 0 ||
-            _duplicateChoices.Any(item => !item.IsDecided))
-        {
-            return;
-        }
-
-        Dictionary<string, ExistingFilePolicy> decisions = _duplicateChoices.ToDictionary(
-            item => item.RelativePath,
-            item => item.Decision ?? ExistingFilePolicy.Skip,
-            StringComparer.OrdinalIgnoreCase);
-        foreach (DuplicateConflictChoice choice in _duplicateChoices)
-        {
-            choice.SetCanChoose(false);
-        }
-        ApplyDuplicateChoicesButton.IsEnabled = false;
-        UpdateDuplicateChoiceUi();
-        DuplicateSelectionHint.Text = ResourceService.GetString("Status.ApplyingIndividualChoices");
-        _duplicateDecisionSource.TrySetResult(decisions);
-    }
-
-    private void UpdateDuplicateChoiceUi()
-    {
-        if (TryGetSelectedRuntime(out CopyJobRuntime runtime))
-        {
-            ShowRuntimeDuplicateChoices(runtime);
-            return;
-        }
-        int decided = _duplicateChoices.Count(item => item.IsDecided);
-        int selectable = _duplicateChoices.Count(item => item.CanChoose);
-        int selected = _duplicateChoices.Count(item => item.CanChoose && item.IsSelected);
-        DuplicateSummaryText.Text = ResourceService.Format("Format.FoundNDuplicates", _duplicateChoices.Count.ToString("N0"));
-        DuplicateSelectionHint.Text = _copyOptions.ExistingFilePolicy == ExistingFilePolicy.Ask
-            ? ResourceService.Format("Format.ChoicesMadeNOfMSelectedK", decided.ToString(), _duplicateChoices.Count.ToString(), selected.ToString())
-            : ResourceService.Format("Format.HandlingAs", GetDuplicatePolicyText(_copyOptions.ExistingFilePolicy));
-
-        _updatingDuplicateSelection = true;
-        DuplicateSelectAllCheckBox.IsEnabled = selectable > 0;
-        DuplicateSelectAllCheckBox.IsChecked = selectable == 0 || selected == 0
-            ? false
-            : selected == selectable ? true : null;
-        _updatingDuplicateSelection = false;
-
-        bool canBatch = _isRunning && _copyOptions.ExistingFilePolicy == ExistingFilePolicy.Ask && selected > 0;
-        BatchOverwriteButton.IsEnabled = canBatch;
-        BatchSkipButton.IsEnabled = canBatch;
-        BatchCreateCopyButton.IsEnabled = canBatch;
-        ApplyDuplicateChoicesButton.IsEnabled = _duplicateDecisionSource is not null &&
-            _duplicateChoices.Count > 0 && decided == _duplicateChoices.Count;
-    }
-
-    private static string GetDuplicatePolicyText(ExistingFilePolicy policy) => policy switch
-    {
-        ExistingFilePolicy.Overwrite => ResourceService.GetString("Button.OverwriteSelected"),
-        ExistingFilePolicy.Skip => ResourceService.GetString("Button.SkipSelected"),
-        ExistingFilePolicy.CreateCopy => ResourceService.GetString("Button.CopySelected"),
-        _ => ResourceService.GetString("Button.AskEachFile")
-    };
+        => ConcurrentApplyDuplicateChoicesButton_Click(sender, e);
 
     private void ShowDuplicateHistory(JobHistoryItem job)
     {
@@ -720,170 +370,17 @@ public sealed partial class MainWindow : Window
         DuplicatePanel.Visibility = _duplicateChoices.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         DuplicateList.IsEnabled = true;
         ApplyDuplicateChoicesButton.Visibility = Visibility.Collapsed;
-        UpdateDuplicateChoiceUi();
+        DuplicateSelectAllCheckBox.IsChecked = false;
+        DuplicateSelectAllCheckBox.IsEnabled = false;
+        BatchOverwriteButton.IsEnabled = false;
+        BatchSkipButton.IsEnabled = false;
+        BatchCreateCopyButton.IsEnabled = false;
         if (_duplicateChoices.Count > 0)
         {
             DuplicateSummaryText.Text = ResourceService.Format("Format.DuplicateFileRecords", _duplicateChoices.Count.ToString("N0"));
             DuplicateSelectionHint.Text = ResourceService.GetString("Status.AppliedEachAction");
         }
     }
-    private void UpdateProgress(CopyProgressInfo info)
-    {
-        _lastProgress = info;
-        TotalSizeText.Text = FormatBytes(info.TotalBytes);
-        TotalCountText.Text = info.TotalFiles.ToString("N0", CultureInfo.InvariantCulture);
-        DurationText.Text = FormatDuration(info.Elapsed);
-        CurrentFileText.Text = string.IsNullOrEmpty(info.CurrentFile) ? PhaseText.Text : info.CurrentFile;
-
-        if (_activeJob is not null && _activeJob.TotalBytes == 0 && (info.TotalBytes > 0 || info.TotalFiles > 0))
-        {
-            _activeJob.TotalBytes = info.TotalBytes;
-            _activeJob.FileCount = info.TotalFiles;
-            RefreshHistoryItem(_activeJob);
-        }
-
-        double GetPercent(long bytes, int processedFiles)
-        {
-            if (info.TotalBytes > 0)
-            {
-                return Math.Clamp(bytes * 100d / info.TotalBytes, 0, 100);
-            }
-            if (info.TotalFiles > 0)
-            {
-                return Math.Clamp(processedFiles * 100d / info.TotalFiles, 0, 100);
-            }
-            return info.Phase is CopyPhase.Completed ? 100 : 0;
-        }
-
-        void UpdateOverallProgress()
-        {
-            double copyPercent = GetPercent(_copiedBytes, _copiedFiles);
-            double verifyPercent = _copyOptions.VerifyFiles ? GetPercent(_verifiedBytes, _verifiedFiles) : 100;
-            double overall = _copyOptions.SkipCopy
-                ? verifyPercent
-                : _copyOptions.VerifyFiles
-                ? copyPercent * 0.8 + verifyPercent * 0.2
-                : copyPercent;
-            OverallProgress.Value = overall;
-            PercentText.Text = $"{overall:F2}%";
-        }
-
-        switch (info.Phase)
-        {
-            case CopyPhase.Scanning:
-                StatusText.Text = ResourceService.GetString("Status.Scanning");
-                PhaseText.Text = ResourceService.GetString("Status.ReadingDirectories");
-                break;
-
-            case CopyPhase.Copying:
-                _copiedBytes = info.ProcessedBytes;
-                _copiedFiles = info.ProcessedFiles;
-                _copyElapsed = info.Elapsed;
-                StatusText.Text = _isPaused ? ResourceService.GetString("Status.Paused") : ResourceService.GetString("Status.Copying");
-                PhaseText.Text = ResourceService.GetString("Status.CopyingFiles");
-                double copyPercent = GetPercent(_copiedBytes, _copiedFiles);
-                CopyProgress.Value = copyPercent;
-                bool copyFinished = _copiedFiles >= info.TotalFiles;
-                CopyProgress.Visibility = copyFinished ? Visibility.Collapsed : Visibility.Visible;
-                CopyCompletedBadge.Visibility = copyFinished ? Visibility.Visible : Visibility.Collapsed;
-                CopyCompletedText.Text = ResourceService.GetString("Common.Completed");
-                CopySpeedText.Text = $"{FormatBytes(info.BytesPerSecond)}/s";
-                CopyTimeText.Text = FormatDuration(info.Elapsed);
-                CopyCountText.Text = $"{info.ProcessedFiles}/{info.TotalFiles}";
-                UpdateOverallProgress();
-                break;
-
-            case CopyPhase.Verifying:
-                _verifiedFiles = info.ProcessedFiles;
-                _verifiedBytes = info.ProcessedBytes;
-                _verifyElapsed = info.Elapsed;
-                StatusText.Text = _isPaused ? ResourceService.GetString("Status.Paused") : ResourceService.GetString("Status.Verifying");
-                PhaseText.Text = ResourceService.GetString("Status.SHA256Verification");
-                double verifyPercent = GetPercent(info.ProcessedBytes, info.ProcessedFiles);
-                VerifyProgress.Value = verifyPercent;
-                bool verificationFinished = _verifiedFiles >= info.TotalFiles;
-                VerifyProgress.Visibility = verificationFinished ? Visibility.Collapsed : Visibility.Visible;
-                VerifyCompletedBadge.Visibility = verificationFinished ? Visibility.Visible : Visibility.Collapsed;
-                VerifyCompletedText.Text = ResourceService.GetString("Common.Completed");
-                VerifySpeedText.Text = $"{FormatBytes(info.BytesPerSecond)}/s";
-                VerifyTimeText.Text = FormatDuration(info.Elapsed);
-                VerifyCountText.Text = $"{info.ProcessedFiles}/{info.TotalFiles}";
-                UpdateOverallProgress();
-                break;
-
-            case CopyPhase.WaitingForDuplicateDecision:
-                StatusText.Text = ResourceService.GetString("Status.WaitingDuplicateChoices");
-                PhaseText.Text = ResourceService.GetString("Info.ChooseActionBelow");
-                CurrentFileText.Text = ResourceService.Format("Format.RecordedNDuplicates", _duplicateChoices.Count.ToString("N0"));
-                UpdateOverallProgress();
-                break;
-
-            case CopyPhase.Completed:
-                if (!_copyOptions.SkipCopy)
-                {
-                    _copiedBytes = info.TotalBytes;
-                    _copiedFiles = info.TotalFiles;
-                }
-                if (_copyOptions.VerifyFiles)
-                {
-                    _verifiedFiles = info.TotalFiles;
-                    _verifiedBytes = info.TotalBytes;
-                }
-                CopyProgress.Visibility = Visibility.Collapsed;
-                CopyCompletedBadge.Visibility = Visibility.Visible;
-                CopyCompletedText.Text = _copyOptions.SkipCopy ? ResourceService.GetString("Common.Disabled") : ResourceService.GetString("Common.Completed");
-                VerifyProgress.Visibility = Visibility.Collapsed;
-                VerifyCompletedBadge.Visibility = Visibility.Visible;
-                VerifyCompletedText.Text = _copyOptions.VerifyFiles ? ResourceService.GetString("Common.Completed") : ResourceService.GetString("Common.Disabled");
-                OverallProgress.Value = 100;
-                PercentText.Text = "100.00%";
-                break;
-        }
-    }
-
-    private void PauseButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (!_isRunning)
-        {
-            return;
-        }
-
-        _isPaused = !_isPaused;
-        PauseText.Text = _isPaused ? ResourceService.GetString("Button.Resume") : ResourceService.GetString("Button.Pause");
-        PauseIcon.Glyph = _isPaused ? "\uE768" : "\uE769";
-        StatusText.Text = _isPaused ? ResourceService.GetString("Status.Paused") : ResourceService.GetString("Status.ProcessingResumed");
-        LogText.Text = _isPaused ? ResourceService.GetString("Info.TaskPaused") : ResourceService.GetString("Info.TaskResumed");
-    }
-
-    private void CancelButton_Click(object sender, RoutedEventArgs e)
-    {
-        CancelButton.IsEnabled = false;
-        StatusText.Text = ResourceService.GetString("Status.Cancelling");
-        _cancellation?.Cancel();
-    }
-
-    private async Task WaitWhilePausedAsync(CancellationToken cancellationToken)
-    {
-        while (_isPaused)
-        {
-            await Task.Delay(120, cancellationToken);
-        }
-    }
-
-    private async void NewJobButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isRunning)
-        {
-            await ShowMessageAsync("Error.TaskRunning", "Error.FinishOrCancelFirst");
-            return;
-        }
-        PrepareNewJobView();
-        if (await ConfigureNewTaskAsync())
-        {
-            await StartCopyAsync();
-        }
-    }
-
     private void PrepareNewJobView()
     {
         if (_isMultiSelectMode)
@@ -893,7 +390,6 @@ public sealed partial class MainWindow : Window
         HistoryList.SelectedItem = null;
         _selectedJob = null;
         NewJobsList.SelectedItem = null;
-        _activeJob = null;
         _sourcePath = null;
         _destinationPath = null;
         _destinationParentPath = null;
@@ -909,24 +405,6 @@ public sealed partial class MainWindow : Window
         ResetProgress();
         StartButton.Visibility = Visibility.Visible;
         UpdateStartButton();
-    }
-
-    private void HistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isMultiSelectMode)
-        {
-            if (!_isChangingMultiSelectMode)
-            {
-                UpdateBatchSelectionUi();
-            }
-            return;
-        }
-        if (_isRunning || HistoryList.SelectedItem is not JobHistoryItem item)
-        {
-            return;
-        }
-        _selectedJob = item;
-        ShowHistoryJob(item);
     }
 
     private void ShowHistoryJob(JobHistoryItem job)
@@ -971,7 +449,11 @@ public sealed partial class MainWindow : Window
             : Visibility.Collapsed;
         CopyProgress.Visibility = copyFinished ? Visibility.Collapsed : Visibility.Visible;
         CopyCompletedBadge.Visibility = copyFinished ? Visibility.Visible : Visibility.Collapsed;
-        CopyCompletedText.Text = job.CopyEnabled ? ResourceService.GetString("Common.Completed") : ResourceService.GetString("Common.Disabled");
+        CopyCompletedText.Text = !job.CopyEnabled
+            ? ResourceService.GetString("Common.Disabled")
+            : job.Status == JobStatus.CompletedWithErrors
+                ? ResourceService.GetString("Result.CompletedWithErrors")
+                : ResourceService.GetString("Common.Completed");
         VerifyProgress.Visibility = verificationFinished || !job.VerificationEnabled
             ? Visibility.Collapsed
             : Visibility.Visible;
@@ -980,7 +462,11 @@ public sealed partial class MainWindow : Window
             : Visibility.Collapsed;
         VerifyCompletedText.Text = !job.VerificationEnabled
             ? ResourceService.GetString("Common.Disabled")
-            : job.Status == JobStatus.VerificationFailed ? ResourceService.GetString("Error.VerificationFailed") : ResourceService.GetString("Common.Completed");
+            : job.Status == JobStatus.VerificationFailed
+                ? ResourceService.GetString("Error.VerificationFailed")
+                : job.Status == JobStatus.CompletedWithErrors
+                    ? ResourceService.GetString("Result.CompletedWithErrors")
+                    : ResourceService.GetString("Common.Completed");
         VerifyCompletedBadge.Background = new SolidColorBrush(
             job.Status == JobStatus.VerificationFailed
                 ? ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A) // Error surface
@@ -995,7 +481,7 @@ public sealed partial class MainWindow : Window
                     ? copyPercent
                     : copyPercent * 0.8 + verifyPercent * 0.2;
         CopySpeedText.Text = job.CopyEnabled && job.CopySeconds > 0
-            ? $"{FormatBytes(job.TotalBytes / job.CopySeconds)}/s"
+            ? $"{FormatBytes(job.CopiedBytes / job.CopySeconds)}/s"
             : "--";
         VerifySpeedText.Text = job.VerifySeconds > 0 ? $"{FormatBytes(job.TotalBytes / job.VerifySeconds)}/s" : "--";
         CopyTimeText.Text = job.CopyEnabled ? FormatDuration(TimeSpan.FromSeconds(job.CopySeconds)) : "--";
@@ -1016,6 +502,10 @@ public sealed partial class MainWindow : Window
         StartVerificationButton.Visibility = CanStartVerification(job)
             ? Visibility.Visible
             : Visibility.Collapsed;
+        StartVerificationButtonText.Text = ResourceService.GetString(
+            job.VerificationEnabled
+                ? "Button.Reverify"
+                : "Button.StartVerification");
         ExportReportButton.Visibility = IsReportable(job)
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -1064,52 +554,6 @@ public sealed partial class MainWindow : Window
             JobStatus.Interrupted => ResourceService.GetString("Error.InterruptedRecord"),
             _ => job.ErrorMessage ?? ResourceService.GetString("Error.TaskNotFinished")
         };
-    }
-
-    private async void DeleteJobButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isRunning || _selectedJob is null)
-        {
-            return;
-        }
-        if (!IsBatchDeletable(_selectedJob))
-        {
-            await ShowMessageAsync("无法删除任务", "只能删除已经结束处理的任务记录。");
-            return;
-        }
-
-        var dialog = new ContentDialog
-        {
-            Title = ResourceService.GetString("Dialog.DeleteHistory"),
-            Content = ResourceService.GetString("Error.DeleteRecordReminder"),
-            PrimaryButtonText = ResourceService.GetString("Button.DeleteRecord"),
-            CloseButtonText = ResourceService.GetString("Common.Cancel"),
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = Content.XamlRoot
-        };
-        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
-        {
-            return;
-        }
-
-        JobHistoryItem deleting = _selectedJob;
-        _history.Remove(deleting);
-        await SaveHistorySafeAsync();
-        UpdateHistoryEmptyState();
-        _selectedJob = null;
-        if (_activeJob?.Id == deleting.Id)
-        {
-            _activeJob = null;
-        }
-
-        if (_history.Count > 0)
-        {
-            HistoryList.SelectedIndex = 0;
-        }
-        else
-        {
-            PrepareNewJobView();
-        }
     }
 
     private void MultiSelectButton_Click(object sender, RoutedEventArgs e)
@@ -1256,10 +700,6 @@ public sealed partial class MainWindow : Window
             {
                 _selectedJob = null;
             }
-            if (_activeJob?.Id == job.Id)
-            {
-                _activeJob = null;
-            }
         }
 
         await SaveHistorySafeAsync();
@@ -1299,7 +739,7 @@ public sealed partial class MainWindow : Window
         {
             foreach (JobHistoryItem job in selected)
             {
-                string? report = await _historyService.ReadReportAsync(job.ReportFileName);
+                string? report = await _historyService.ReadReportAsync(GetReportReference(job));
                 report ??= BuildIncompleteReport(job);
                 string displayName = SanitizeReportFileName(job.DisplayName);
                 string fileName = $"EZDIT_Report_{job.StartedAt:yyyyMMdd_HHmmss}_{displayName}.txt";
@@ -1335,38 +775,13 @@ public sealed partial class MainWindow : Window
         return safeName.Length <= 60 ? safeName : safeName[..60];
     }
 
-    private void SetRunningUi(bool running)
-    {
-        PauseButton.Visibility = Visibility.Visible;
-        CancelButton.Visibility = Visibility.Visible;
-        DeleteJobButton.Visibility = Visibility.Collapsed;
-        StartVerificationButton.Visibility = Visibility.Collapsed;
-        ExportReportButton.Visibility = Visibility.Collapsed;
-        RestartJobButton.Visibility = Visibility.Collapsed;
-        CompletionIcon.Visibility = Visibility.Collapsed;
-        PercentText.Visibility = Visibility.Visible;
-        StatusText.FontSize = 15;
-        PauseButton.IsEnabled = running;
-        CancelButton.IsEnabled = running;
-        if (running)
-        {
-            StartButton.Visibility = Visibility.Collapsed;
-        }
-        NewJobButton.IsEnabled = !running;
-        MultiSelectButton.IsEnabled = !running;
-        SourcePickerButton.IsEnabled = !running;
-        DestinationPickerButton.IsEnabled = !running;
-        HistoryList.IsEnabled = !running;
-    }
-
     private void UpdateStartButton()
     {
-        StartButton.IsEnabled = !_isRunning && _selectedJob is null;
+        StartButton.IsEnabled = _selectedJob is null;
     }
 
     private void ResetProgress()
     {
-        _duplicateDecisionSource = null;
         _duplicateChoices.Clear();
         DuplicatePanel.Visibility = Visibility.Collapsed;
         _failedFileChoices.Clear();
@@ -1426,7 +841,12 @@ public sealed partial class MainWindow : Window
 
     private void RefreshHistoryItem(JobHistoryItem item)
     {
-        int index = _history.IndexOf(item);
+        int index = _history
+            .Select((candidate, candidateIndex) => (candidate, candidateIndex))
+            .Where(entry => entry.candidate.Id == item.Id)
+            .Select(entry => entry.candidateIndex)
+            .DefaultIfEmpty(-1)
+            .First();
         if (index >= 0 && !ReferenceEquals(_history[index], item))
         {
             _history[index] = item;
@@ -1440,7 +860,7 @@ public sealed partial class MainWindow : Window
         {
             JobHistoryItem removed = _history[^1];
             _history.RemoveAt(_history.Count - 1);
-            _ = _historyService.DeleteReportAsync(removed.ReportFileName);
+            _ = _historyService.DeleteReportAsync(GetReportReference(removed));
             RemoveTaskFromSections(removed);
         }
     }
@@ -1462,112 +882,35 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private string BuildReport(CopyResult result, JobHistoryItem job)
-    {
-        var report = new StringBuilder();
-        report.AppendLine("EZ DIT 任务报告");
-        report.AppendLine(new string('=', 42));
-        report.AppendLine($"任务名称：{job.DisplayName}");
-        report.AppendLine($"源目录：{job.SourcePath}");
-        report.AppendLine($"目标目录：{job.DestinationPath}");
-        report.AppendLine($"开始时间：{job.StartedAt:yyyy-MM-dd HH:mm:ss}");
-        report.AppendLine($"结束时间：{job.FinishedAt:yyyy-MM-dd HH:mm:ss}");
-        report.AppendLine($"文件数量：{result.FileCount:N0}");
-        report.AppendLine($"数据大小：{FormatBytes(result.TotalBytes)}");
-        report.AppendLine(job.CopyEnabled
-            ? $"拷贝用时：{FormatDuration(result.CopyDuration)}"
-            : "拷贝：未启用");
-        report.AppendLine($"校验用时：{FormatDuration(result.VerifyDuration)}");
-        if (job.CopyEnabled)
-        {
-            report.AppendLine($"拷贝算法：{(job.UseFastCopyAlgorithm ? "FastCopy 流水线" : "标准顺序复制")}");
-        }
-        report.AppendLine($"校验算法：{(result.VerificationPerformed ? "SHA-256" : ResourceService.GetString("Common.Disabled"))}");
-        report.AppendLine($"最终结果：{(result.Success ? "通过" : "失败")}");
-        report.AppendLine();
-        report.AppendLine("文件校验明细：");
-        foreach (FileVerificationResult file in result.VerifiedFiles)
-        {
-            if (file.IsMatch)
-            {
-                report.AppendLine($"[通过] {file.RelativePath} | {FormatBytes(file.Length)} | SHA-256: {file.SourceSha256}");
-            }
-            else
-            {
-                report.AppendLine($"[失败] {file.RelativePath} | 源: {file.SourceSha256} | 目标: {file.DestinationSha256} | {file.Error}");
-            }
-        }
-        AppendDuplicateReport(report, job);
-        return report.ToString();
-    }
+    private static string? GetReportReference(JobHistoryItem job) =>
+        !string.IsNullOrWhiteSpace(job.ReportPath)
+            ? job.ReportPath
+            : job.ReportFileName;
 
-    private string BuildIncompleteReport(JobHistoryItem job)
-    {
-        var report = new StringBuilder();
-        report.AppendLine("EZ DIT 拷卡任务报告");
-        report.AppendLine(new string('=', 42));
-        report.AppendLine($"任务名称：{job.DisplayName}");
-        report.AppendLine($"源目录：{job.SourcePath}");
-        report.AppendLine($"目标目录：{job.DestinationPath}");
-        report.AppendLine($"开始时间：{job.StartedAt:yyyy-MM-dd HH:mm:ss}");
-        report.AppendLine($"结束时间：{job.FinishedAt:yyyy-MM-dd HH:mm:ss}");
-        report.AppendLine($"任务状态：{job.StatusText}");
-        if (job.CopyEnabled)
-        {
-            report.AppendLine($"拷贝算法：{(job.UseFastCopyAlgorithm ? "FastCopy 流水线" : "标准顺序复制")}");
-            report.AppendLine($"已拷贝：{job.CopiedFiles}/{job.FileCount} 个文件，{FormatBytes(job.CopiedBytes)}");
-        }
-        else
-        {
-            report.AppendLine("拷贝：未启用");
-        }
-        report.AppendLine(job.VerificationEnabled
-            ? $"已校验：{job.VerifiedFiles}/{job.FileCount} 个文件"
-            : "文件校验：未启用");
-        if (!string.IsNullOrWhiteSpace(job.ErrorMessage))
-        {
-            report.AppendLine($"说明：{job.ErrorMessage}");
-        }
-        AppendDuplicateReport(report, job);
-        return report.ToString();
-    }
+    private static string BuildReport(CopyResult result, JobHistoryItem job) =>
+        TaskReportBuilder.Build(result, job);
 
-    private static void AppendDuplicateReport(StringBuilder report, JobHistoryItem job)
-    {
-        if (job.DuplicateFiles.Count == 0)
-        {
-            return;
-        }
-
-        report.AppendLine();
-        report.AppendLine($"重复文件处理：{job.DuplicateFiles.Count:N0} 个");
-        foreach (DuplicateFileConflict conflict in job.DuplicateFiles)
-        {
-            ExistingFilePolicy decision = job.DuplicateDecisions.TryGetValue(
-                conflict.RelativePath, out ExistingFilePolicy selected)
-                ? selected
-                : ExistingFilePolicy.Ask;
-            report.AppendLine($"[{GetDuplicatePolicyText(decision)}] {conflict.RelativePath}");
-            report.AppendLine($"  来源：{conflict.SourcePath}");
-            report.AppendLine($"  冲突：{conflict.DestinationPath}");
-        }
-    }
+    private static string BuildIncompleteReport(JobHistoryItem job) =>
+        TaskReportBuilder.BuildIncomplete(job);
     private static bool ValidatePaths(string source, string destination, out string message)
     {
-        string normalizedSource = Path.GetFullPath(source).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        string normalizedDestination = Path.GetFullPath(destination).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var comparison = StringComparison.OrdinalIgnoreCase;
+        if (!PathSafety.TryValidateSourceAndDestination(
+                source,
+                destination,
+                out PathValidationError error))
+        {
+            message = ResourceService.GetString(error switch
+            {
+                PathValidationError.SourceAndDestinationAreSame => "Error.SourceDestSame",
+                PathValidationError.DestinationIsInsideSource => "Error.DestInsideSource",
+                PathValidationError.InvalidSubfolderName => "Error.InvalidSubfolderName",
+                PathValidationError.DestinationContainsReparsePoint => "Error.DestinationContainsReparsePoint",
+                PathValidationError.InvalidPath => "Error.InvalidPath",
+                _ => "Error.UnableToStart"
+            });
+            return false;
+        }
 
-        if (string.Equals(normalizedSource, normalizedDestination, comparison))
-        {
-            message = ResourceService.GetString("Error.SourceDestSame");
-            return false;
-        }
-        if (normalizedDestination.StartsWith(normalizedSource + Path.DirectorySeparatorChar, comparison))
-        {
-            message = ResourceService.GetString("Error.DestInsideSource");
-            return false;
-        }
         message = string.Empty;
         return true;
     }
@@ -1590,22 +933,11 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private static string FormatBytes(double bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        int unit = 0;
-        while (bytes >= 1024 && unit < units.Length - 1)
-        {
-            bytes /= 1024;
-            unit++;
-        }
-        return unit == 0 ? $"{bytes:F0} {units[unit]}" : $"{bytes:F2} {units[unit]}";
-    }
+    private static string FormatBytes(double bytes) =>
+        DisplayFormatting.FormatBytes(bytes);
 
     private static string FormatDuration(TimeSpan value) =>
-        value.TotalHours >= 24
-            ? $"{(int)value.TotalDays}.{value:hh\\:mm\\:ss}"
-            : value.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
+        DisplayFormatting.FormatDuration(value);
 
     private async Task ShowMessageAsync(string title, string message)
     {
@@ -1623,8 +955,6 @@ public sealed partial class MainWindow : Window
     {
         return await dialog.ShowAsync();
     }
-
-    private void MainWindow_Closed(object sender, WindowEventArgs args) => _cancellation?.Cancel();
 
     private void OnEnableCopyToggled(object sender, RoutedEventArgs e)
     {

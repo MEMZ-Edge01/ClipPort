@@ -3,6 +3,7 @@ using System.Globalization;
 using EZDIT.Models;
 using EZDIT.Services;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -16,12 +17,14 @@ public sealed partial class MainWindow
 {
     private readonly CopyJobScheduler _jobScheduler = new();
     private readonly Dictionary<string, CopyJobRuntime> _jobRuntimes = new(StringComparer.Ordinal);
+    private bool _shutdownInProgress;
+    private bool _shutdownCompleted;
 
     private async void ConcurrentStartButton_Click(object sender, RoutedEventArgs e)
     {
         if (await ConfigureNewTaskAsync())
         {
-            EnqueueConfiguredJob();
+            await EnqueueConfiguredJobAsync();
         }
     }
 
@@ -30,36 +33,59 @@ public sealed partial class MainWindow
         PrepareConcurrentNewJobView();
         if (await ConfigureNewTaskAsync())
         {
-            EnqueueConfiguredJob();
+            await EnqueueConfiguredJobAsync();
         }
     }
 
-    private void EnqueueConfiguredJob()
+    private async Task EnqueueConfiguredJobAsync()
     {
         if (_sourcePath is null || _destinationPath is null)
         {
             return;
         }
 
-        EnqueueJob(
-            _sourcePath,
-            _destinationPath,
-            _copyOptions,
-            PriorityExecutionToggle.IsOn,
-            PreventSleepToggle.IsOn);
+        if (!EnqueueJob(
+                _sourcePath,
+                _destinationPath,
+                _copyOptions,
+                PriorityExecutionToggle.IsOn,
+                PreventSleepToggle.IsOn,
+                displayName: null,
+                out string? enqueueError))
+        {
+            await ShowMessageAsync(
+                "Error.CannotStartOverlappingTask",
+                enqueueError!);
+        }
     }
 
-    private void EnqueueJob(
+    private bool EnqueueJob(
         string sourcePath,
         string destinationPath,
         CopyOptions options,
         bool isPriority,
-        bool preventSleep)
+        bool preventSleep,
+        string? displayName,
+        out string? error)
     {
+        if (TryFindPathConflict(
+                sourcePath,
+                destinationPath,
+                options.SkipCopy,
+                out JobHistoryItem? conflictingJob))
+        {
+            error = ResourceService.Format(
+                "Format.TaskPathConflict",
+                conflictingJob?.DisplayName ?? string.Empty);
+            return false;
+        }
+
         var job = new JobHistoryItem
         {
             Id = Guid.NewGuid().ToString("N"),
-            DisplayName = GetDisplayName(sourcePath),
+            DisplayName = string.IsNullOrWhiteSpace(displayName)
+                ? GetDisplayName(sourcePath)
+                : displayName,
             SourcePath = sourcePath,
             DestinationPath = destinationPath,
             StartedAt = DateTimeOffset.Now,
@@ -70,6 +96,11 @@ public sealed partial class MainWindow
             IsPriority = isPriority,
             PreventSleep = preventSleep,
             IsAcknowledged = false,
+            DestinationFiles = options.DestinationPaths is null
+                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, string>(
+                    options.DestinationPaths,
+                    StringComparer.OrdinalIgnoreCase),
         };
         var runtime = new CopyJobRuntime(job, options);
         runtime.ScheduleRegistration = _jobScheduler.Register(isPriority);
@@ -85,6 +116,36 @@ public sealed partial class MainWindow
         _ = SaveHistorySafeAsync();
         runtime.ExecutionTask = RunCopyJobAsync(runtime);
         RefreshSelectedRuntime();
+        error = null;
+        return true;
+    }
+
+    private bool TryFindPathConflict(
+        string sourcePath,
+        string destinationPath,
+        bool skipCopy,
+        out JobHistoryItem? conflictingJob)
+    {
+        foreach (CopyJobRuntime existing in _jobRuntimes.Values)
+        {
+            bool newWrites = !skipCopy;
+            bool existingWrites = !existing.Options.SkipCopy;
+            bool conflicts =
+                newWrites &&
+                (PathSafety.PathsOverlap(destinationPath, existing.Job.SourcePath) ||
+                 PathSafety.PathsOverlap(destinationPath, existing.Job.DestinationPath)) ||
+                existingWrites &&
+                (PathSafety.PathsOverlap(existing.Job.DestinationPath, sourcePath) ||
+                 PathSafety.PathsOverlap(existing.Job.DestinationPath, destinationPath));
+            if (conflicts)
+            {
+                conflictingJob = existing.Job;
+                return true;
+            }
+        }
+
+        conflictingJob = null;
+        return false;
     }
 
     private async Task RunCopyJobAsync(CopyJobRuntime runtime)
@@ -113,12 +174,12 @@ public sealed partial class MainWindow
             runtime.Result = result;
             await ResolveFailedFilesAsync(runtime, result.FailedFiles, runtime.Cancellation.Token);
             CopyResult finalResult = runtime.Result ?? result;
-            bool hasSkippedFiles = runtime.SkippedFailures.Count > 0;
+            bool completedSuccessfully = finalResult.Success;
             await FinalizeJobAsync(
                 runtime,
-                hasSkippedFiles ? JobStatus.CompletedWithErrors : JobStatus.Completed,
+                completedSuccessfully ? JobStatus.Completed : JobStatus.CompletedWithErrors,
                 finalResult,
-                hasSkippedFiles ? finalResult.Errors.FirstOrDefault() : null);
+                completedSuccessfully ? null : finalResult.Errors.FirstOrDefault());
         }
         catch (OperationCanceledException)
         {
@@ -133,7 +194,7 @@ public sealed partial class MainWindow
             await FinalizeJobAsync(runtime, JobStatus.Failed, null, ex.Message);
             if (ReferenceEquals(_selectedJob, runtime.Job))
             {
-                await ShowMessageAsync("拷卡失败", ex.Message);
+                await ShowMessageAsync("Error.TaskExecutionFailed", ex.Message);
             }
         }
         finally
@@ -161,20 +222,30 @@ public sealed partial class MainWindow
 
         TimeSpan retryCopyDuration = TimeSpan.Zero;
         TimeSpan retryVerifyDuration = TimeSpan.Zero;
+        long retryCopiedBytes = 0;
+        int retryCopiedFiles = 0;
+        var retryVerifications = new Dictionary<string, FileVerificationResult>(
+            StringComparer.OrdinalIgnoreCase);
+        var retryDestinationPaths = new Dictionary<string, string>(
+            StringComparer.OrdinalIgnoreCase);
         while (runtime.FailedFileChoices.Count > 0)
         {
             runtime.IsAwaitingFailureDecision = true;
-            runtime.FailureActionSource = new TaskCompletionSource<FailureResolutionAction>(
+            var actionSource = new TaskCompletionSource<FailureResolutionAction>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
+            runtime.FailureActionSource = actionSource;
             RefreshSelectedRuntime();
 
             FailureResolutionAction action;
             using (cancellationToken.Register(() =>
-                runtime.FailureActionSource?.TrySetCanceled(cancellationToken)))
+                actionSource.TrySetCanceled(cancellationToken)))
             {
-                action = await runtime.FailureActionSource.Task;
+                action = await actionSource.Task;
             }
-            runtime.FailureActionSource = null;
+            if (ReferenceEquals(runtime.FailureActionSource, actionSource))
+            {
+                runtime.FailureActionSource = null;
+            }
             runtime.IsAwaitingFailureDecision = false;
 
             List<FailedFileChoice> actedChoices = runtime.FailedFileChoices
@@ -205,6 +276,16 @@ public sealed partial class MainWindow
                         cancellationToken);
                 retryCopyDuration += retryResult.CopyDuration;
                 retryVerifyDuration += retryResult.VerifyDuration;
+                retryCopiedBytes += retryResult.CopiedBytes;
+                retryCopiedFiles += retryResult.CopiedFiles;
+                foreach (FileVerificationResult verification in retryResult.VerificationResults)
+                {
+                    retryVerifications[verification.RelativePath] = verification;
+                }
+                foreach (var (relativePath, destinationPath) in retryResult.DestinationPaths)
+                {
+                    retryDestinationPaths[relativePath] = destinationPath;
+                }
                 foreach (FailedFileChoice choice in actedChoices)
                 {
                     runtime.FailedFileChoices.Remove(choice);
@@ -231,13 +312,49 @@ public sealed partial class MainWindow
         if (runtime.Result is CopyResult original)
         {
             FileOperationFailure[] skipped = runtime.SkippedFailures.ToArray();
+            HashSet<string> fileFailureErrors = original.FailedFiles
+                .Select(item => item.Error)
+                .ToHashSet(StringComparer.Ordinal);
+            string[] unresolvedErrors = original.Errors
+                .Where(error => !fileFailureErrors.Contains(error))
+                .Concat(skipped.Select(item => item.Error))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            var verifications = original.VerifiedFiles
+                .ToDictionary(
+                    item => item.RelativePath,
+                    StringComparer.OrdinalIgnoreCase);
+            foreach (var (relativePath, verification) in retryVerifications)
+            {
+                verifications[relativePath] = verification;
+            }
+            var destinationPaths = new Dictionary<string, string>(
+                original.DestinationPaths,
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var (relativePath, destinationPath) in retryDestinationPaths)
+            {
+                destinationPaths[relativePath] = destinationPath;
+            }
+            FileVerificationResult[] finalVerifications = verifications.Values.ToArray();
             runtime.Result = original with
             {
-                Success = skipped.Length == 0,
+                Success = unresolvedErrors.Length == 0,
                 CopyDuration = original.CopyDuration + retryCopyDuration,
                 VerifyDuration = original.VerifyDuration + retryVerifyDuration,
                 FailedFiles = skipped,
-                Errors = skipped.Select(item => item.Error).ToArray()
+                Errors = unresolvedErrors,
+                CopiedBytes = Math.Min(
+                    original.TotalBytes,
+                    original.CopiedBytes + retryCopiedBytes),
+                CopiedFiles = Math.Min(
+                    original.FileCount,
+                    original.CopiedFiles + retryCopiedFiles),
+                VerifiedBytes = finalVerifications
+                    .Where(item => item.IsMatch)
+                    .Sum(item => item.Length),
+                VerifiedFileCount = finalVerifications.Count(item => item.IsMatch),
+                VerifiedFiles = finalVerifications,
+                DestinationPaths = destinationPaths
             };
         }
     }
@@ -273,34 +390,37 @@ public sealed partial class MainWindow
         switch (info.Phase)
         {
             case CopyPhase.Copying:
-                runtime.CopiedBytes = info.ProcessedBytes;
-                runtime.CopiedFiles = info.ProcessedFiles;
+                runtime.ProcessedCopyBytes = info.ProcessedBytes;
+                runtime.ProcessedCopyFiles = info.ProcessedFiles;
+                runtime.CopiedBytes = info.SuccessfulBytes;
+                runtime.CopiedFiles = info.SuccessfulFiles;
                 runtime.CopyElapsed = info.Elapsed;
-                runtime.Job.CopiedBytes = info.ProcessedBytes;
-                runtime.Job.CopiedFiles = info.ProcessedFiles;
+                runtime.Job.CopiedBytes = info.SuccessfulBytes;
+                runtime.Job.CopiedFiles = info.SuccessfulFiles;
                 runtime.Job.CopySeconds = info.Elapsed.TotalSeconds;
                 break;
             case CopyPhase.Verifying:
-                runtime.VerifiedBytes = info.ProcessedBytes;
-                runtime.VerifiedFiles = info.ProcessedFiles;
+                runtime.ProcessedVerifyBytes = info.ProcessedBytes;
+                runtime.ProcessedVerifyFiles = info.ProcessedFiles;
+                runtime.VerifiedBytes = info.SuccessfulBytes;
+                runtime.VerifiedFiles = info.SuccessfulFiles;
                 runtime.VerifyElapsed = info.Elapsed;
-                runtime.Job.VerifiedFiles = info.ProcessedFiles;
+                runtime.Job.VerifiedFiles = info.SuccessfulFiles;
                 runtime.Job.VerifySeconds = info.Elapsed.TotalSeconds;
                 break;
             case CopyPhase.Completed:
-                if (!runtime.Options.SkipCopy)
-                {
-                    runtime.CopiedBytes = info.TotalBytes;
-                    runtime.CopiedFiles = info.TotalFiles;
-                    runtime.Job.CopiedBytes = info.TotalBytes;
-                    runtime.Job.CopiedFiles = info.TotalFiles;
-                }
-                if (runtime.Options.VerifyFiles)
-                {
-                    runtime.VerifiedBytes = info.TotalBytes;
-                    runtime.VerifiedFiles = info.TotalFiles;
-                    runtime.Job.VerifiedFiles = info.TotalFiles;
-                }
+                runtime.ProcessedCopyBytes = runtime.Options.SkipCopy
+                    ? runtime.ProcessedCopyBytes
+                    : info.TotalBytes;
+                runtime.ProcessedCopyFiles = runtime.Options.SkipCopy
+                    ? runtime.ProcessedCopyFiles
+                    : info.TotalFiles;
+                runtime.ProcessedVerifyBytes = runtime.Options.VerifyFiles
+                    ? info.TotalBytes
+                    : runtime.ProcessedVerifyBytes;
+                runtime.ProcessedVerifyFiles = runtime.Options.VerifyFiles
+                    ? info.TotalFiles
+                    : runtime.ProcessedVerifyFiles;
                 break;
         }
 
@@ -375,12 +495,12 @@ public sealed partial class MainWindow
         job.TotalBytes = result?.TotalBytes ?? runtime.LastProgress?.TotalBytes ?? job.TotalBytes;
         job.FileCount = result?.FileCount ?? runtime.LastProgress?.TotalFiles ?? job.FileCount;
         job.CopiedBytes = result is not null && !runtime.Options.SkipCopy
-            ? result.TotalBytes
+            ? result.CopiedBytes
             : runtime.CopiedBytes;
         job.CopiedFiles = result is not null && !runtime.Options.SkipCopy
-            ? result.FileCount
+            ? result.CopiedFiles
             : runtime.CopiedFiles;
-        job.VerifiedFiles = result?.VerifiedFiles.Count ?? runtime.VerifiedFiles;
+        job.VerifiedFiles = result?.VerifiedFileCount ?? runtime.VerifiedFiles;
         job.CopySeconds = result?.CopyDuration.TotalSeconds ?? runtime.CopyElapsed.TotalSeconds;
         job.VerifySeconds = result?.VerifyDuration.TotalSeconds ?? runtime.VerifyElapsed.TotalSeconds;
         job.VerificationEnabled = result?.VerificationPerformed ?? runtime.Options.VerifyFiles;
@@ -390,6 +510,9 @@ public sealed partial class MainWindow
         {
             job.DuplicateFiles = result.DuplicateFiles.ToList();
             job.FailedFiles = result.FailedFiles.ToList();
+            job.DestinationFiles = new Dictionary<string, string>(
+                result.DestinationPaths,
+                StringComparer.OrdinalIgnoreCase);
             foreach (DuplicateFileConflict conflict in result.DuplicateFiles)
             {
                 if (!job.DuplicateDecisions.ContainsKey(conflict.RelativePath))
@@ -405,7 +528,8 @@ public sealed partial class MainWindow
         runtime.Report = result is not null ? BuildReport(result, job) : BuildIncompleteReport(job);
         try
         {
-            job.ReportFileName = await _historyService.SaveReportAsync(job.Id, runtime.Report);
+            job.ReportPath = await _historyService.SaveReportAsync(job.Id, runtime.Report);
+            job.ReportFileName = Path.GetFileName(job.ReportPath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -455,7 +579,9 @@ public sealed partial class MainWindow
         TotalSizeText.Text = info is null ? "--" : FormatBytes(info.TotalBytes);
         TotalCountText.Text = info?.TotalFiles.ToString("N0", CultureInfo.InvariantCulture) ?? "--";
         StartTimeText.Text = job.StartedAt.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
-        EndTimeText.Text = "--";
+        EndTimeText.Text = job.FinishedAt?.ToString(
+            "MM/dd HH:mm:ss",
+            CultureInfo.InvariantCulture) ?? "--";
         DurationText.Text = FormatDuration(info?.Elapsed ?? TimeSpan.Zero);
         CurrentFileText.Text = string.IsNullOrWhiteSpace(info?.CurrentFile)
             ? $"{job.SourcePath} → {job.DestinationPath}"
@@ -463,9 +589,17 @@ public sealed partial class MainWindow
 
         int totalFiles = info?.TotalFiles ?? job.FileCount;
         long totalBytes = info?.TotalBytes ?? job.TotalBytes;
-        double copyPercent = GetJobPercent(totalBytes, totalFiles, runtime.CopiedBytes, runtime.CopiedFiles);
+        double copyPercent = GetJobPercent(
+            totalBytes,
+            totalFiles,
+            runtime.ProcessedCopyBytes,
+            runtime.ProcessedCopyFiles);
         double verifyPercent = runtime.Options.VerifyFiles
-            ? GetJobPercent(totalBytes, totalFiles, runtime.VerifiedBytes, runtime.VerifiedFiles)
+            ? GetJobPercent(
+                totalBytes,
+                totalFiles,
+                runtime.ProcessedVerifyBytes,
+                runtime.ProcessedVerifyFiles)
             : 100;
         double overall = runtime.Options.SkipCopy
             ? verifyPercent
@@ -489,14 +623,26 @@ public sealed partial class MainWindow
         VerifyTimeText.Text = FormatDuration(runtime.VerifyElapsed);
         CopyCountText.Text = runtime.Options.SkipCopy ? "--" : $"{runtime.CopiedFiles}/{totalFiles}";
         VerifyCountText.Text = $"{runtime.VerifiedFiles}/{totalFiles}";
-        bool copyDone = runtime.Options.SkipCopy || totalFiles > 0 && runtime.CopiedFiles >= totalFiles;
-        bool verifyDone = runtime.Options.VerifyFiles && totalFiles > 0 && runtime.VerifiedFiles >= totalFiles;
+        bool copyDone = runtime.Options.SkipCopy ||
+            totalFiles > 0 && runtime.ProcessedCopyFiles >= totalFiles ||
+            totalFiles == 0 && info?.Phase == CopyPhase.Completed;
+        bool verifyDone = runtime.Options.VerifyFiles &&
+            (totalFiles > 0 && runtime.ProcessedVerifyFiles >= totalFiles ||
+             totalFiles == 0 && info?.Phase == CopyPhase.Completed);
         CopyProgress.Visibility = copyDone ? Visibility.Collapsed : Visibility.Visible;
         CopyCompletedBadge.Visibility = copyDone ? Visibility.Visible : Visibility.Collapsed;
-        CopyCompletedText.Text = runtime.Options.SkipCopy ? ResourceService.GetString("Common.Disabled") : ResourceService.GetString("Common.Completed");
+        CopyCompletedText.Text = runtime.Options.SkipCopy
+            ? ResourceService.GetString("Common.Disabled")
+            : runtime.FailedFileChoices.Count > 0
+                ? ResourceService.GetString("Common.Processed")
+                : ResourceService.GetString("Common.Completed");
         VerifyProgress.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Collapsed : Visibility.Visible;
         VerifyCompletedBadge.Visibility = verifyDone || !runtime.Options.VerifyFiles ? Visibility.Visible : Visibility.Collapsed;
-        VerifyCompletedText.Text = runtime.Options.VerifyFiles ? ResourceService.GetString("Common.Completed") : ResourceService.GetString("Common.Disabled");
+        VerifyCompletedText.Text = !runtime.Options.VerifyFiles
+            ? ResourceService.GetString("Common.Disabled")
+            : runtime.FailedFileChoices.Count > 0
+                ? ResourceService.GetString("Common.Processed")
+                : ResourceService.GetString("Common.Completed");
 
         CompletionIcon.Visibility = Visibility.Collapsed;
         PercentText.Visibility = Visibility.Visible;
@@ -546,11 +692,18 @@ public sealed partial class MainWindow
             PhaseText.Text = ResourceService.GetString("Info.WaitingToResume");
             LogText.Text = ResourceService.GetString("Info.TaskPaused");
         }
-        else if (runtime.IsWaitingForPriority || job.Status == JobStatus.Queued)
+        else if (runtime.IsWaitingForPriority)
         {
             StatusText.Text = ResourceService.GetString("Status.WaitingPriorityTasks");
             PhaseText.Text = ResourceService.GetString("Info.AutoResumeAfterPriority");
             LogText.Text = ResourceService.GetString("Info.TaskSafelyPaused");
+        }
+        else if (job.Status == JobStatus.Queued)
+        {
+            StatusText.Text = ResourceService.GetString(
+                job.IsPriority ? "Status.PriorityTaskStarting" : "Status.Queued");
+            PhaseText.Text = ResourceService.GetString("Status.TaskStarting");
+            LogText.Text = ResourceService.GetString("Info.TasksRunningConcurrently");
         }
         else
         {
@@ -589,11 +742,7 @@ public sealed partial class MainWindow
 
     private void ShowRuntimeDuplicateChoices(CopyJobRuntime runtime)
     {
-        _duplicateChoices.Clear();
-        foreach (DuplicateConflictChoice choice in runtime.DuplicateChoices)
-        {
-            _duplicateChoices.Add(choice);
-        }
+        SyncDisplayedChoices(_duplicateChoices, runtime.DuplicateChoices);
         DuplicatePanel.Visibility = _duplicateChoices.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ApplyDuplicateChoicesButton.Visibility = runtime.Options.ExistingFilePolicy == ExistingFilePolicy.Ask
             ? Visibility.Visible
@@ -619,11 +768,7 @@ public sealed partial class MainWindow
 
     private void ShowRuntimeFailedFiles(CopyJobRuntime runtime)
     {
-        _failedFileChoices.Clear();
-        foreach (FailedFileChoice choice in runtime.FailedFileChoices)
-        {
-            _failedFileChoices.Add(choice);
-        }
+        SyncDisplayedChoices(_failedFileChoices, runtime.FailedFileChoices);
 
         FailedFilesPanel.Visibility = _failedFileChoices.Count > 0
             ? Visibility.Visible
@@ -701,11 +846,36 @@ public sealed partial class MainWindow
             .Select(item => item.Failure)
             .ToArray();
 
-        runtime.FailureActionSource = null;
-        OverwriteFailedFilesButton.IsEnabled = false;
-        RetryFailedFilesButton.IsEnabled = false;
-        SkipFailedFilesButton.IsEnabled = false;
-        source.TrySetResult(new FailureResolutionAction(mode, selected));
+        if (source.TrySetResult(new FailureResolutionAction(mode, selected)))
+        {
+            runtime.FailureActionSource = null;
+            OverwriteFailedFilesButton.IsEnabled = false;
+            RetryFailedFilesButton.IsEnabled = false;
+            SkipFailedFilesButton.IsEnabled = false;
+        }
+    }
+
+    private static void SyncDisplayedChoices<T>(
+        ObservableCollection<T> displayed,
+        IReadOnlyList<T> runtimeChoices)
+        where T : class
+    {
+        bool alreadySynchronized = displayed.Count == runtimeChoices.Count;
+        for (int index = 0; alreadySynchronized && index < displayed.Count; index++)
+        {
+            alreadySynchronized = ReferenceEquals(displayed[index], runtimeChoices[index]);
+        }
+
+        if (alreadySynchronized)
+        {
+            return;
+        }
+
+        displayed.Clear();
+        foreach (T choice in runtimeChoices)
+        {
+            displayed.Add(choice);
+        }
     }
 
     private void ConcurrentDuplicateOverwrite_Click(object sender, RoutedEventArgs e) =>
@@ -823,7 +993,9 @@ public sealed partial class MainWindow
         }
         if (!IsBatchDeletable(_selectedJob))
         {
-            await ShowMessageAsync("无法删除任务", "只能删除已经结束处理的任务记录。");
+            await ShowMessageAsync(
+                "Error.CannotDeleteTaskTitle",
+                "Error.OnlyEndedTaskCanDelete");
             return;
         }
         var dialog = new ContentDialog
@@ -876,21 +1048,37 @@ public sealed partial class MainWindow
         }
         if (!ValidatePaths(originalJob.SourcePath, originalJob.DestinationPath, out string validationMessage))
         {
-            await ShowMessageAsync("无法开始校验", validationMessage);
+            await ShowMessageAsync("Error.CannotStartVerification", validationMessage);
             return;
         }
 
+        bool reverification = originalJob.VerificationEnabled;
         var options = new CopyOptions(
             ExistingFilePolicy: ExistingFilePolicy.Overwrite,
             VerifyFiles: true,
             UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
-            SkipCopy: true);
-        EnqueueJob(
-            originalJob.SourcePath,
-            originalJob.DestinationPath,
-            options,
-            originalJob.IsPriority,
-            originalJob.PreventSleep);
+            SkipCopy: true)
+        {
+            DestinationPaths = originalJob.DestinationFiles
+        };
+        string displayName = ResourceService.Format(
+            reverification
+                ? "Format.ReverificationJobName"
+                : "Format.VerificationJobName",
+            originalJob.DisplayName);
+        if (!EnqueueJob(
+                originalJob.SourcePath,
+                originalJob.DestinationPath,
+                options,
+                originalJob.IsPriority,
+                originalJob.PreventSleep,
+                displayName,
+                out string? enqueueError))
+        {
+            await ShowMessageAsync(
+                "Error.CannotStartOverlappingTask",
+                enqueueError!);
+        }
     }
 
     private async void ConcurrentExportReportButton_Click(object sender, RoutedEventArgs e)
@@ -898,7 +1086,9 @@ public sealed partial class MainWindow
         JobHistoryItem? job = _selectedJob;
         if (job is null || _jobRuntimes.ContainsKey(job.Id) || !IsReportable(job))
         {
-            await ShowMessageAsync("报告尚不可用", "运行中或排队中的任务暂时不能导出报告。");
+            await ShowMessageAsync(
+                "Error.ReportUnavailable",
+                "Error.ReportNotAvailableRunning");
             return;
         }
 
@@ -918,14 +1108,14 @@ public sealed partial class MainWindow
         ExportReportButton.IsEnabled = false;
         try
         {
-            string? report = await _historyService.ReadReportAsync(job.ReportFileName);
+            string? report = await _historyService.ReadReportAsync(GetReportReference(job));
             report ??= BuildIncompleteReport(job);
             await FileIO.WriteTextAsync(file, report);
             LogText.Text = ResourceService.Format("Format.TaskReportExported", file.Path);
         }
         catch (Exception ex)
         {
-            await ShowMessageAsync("导出报告失败", ex.Message);
+            await ShowMessageAsync("Error.ReportExportFailed", ex.Message);
         }
         finally
         {
@@ -948,19 +1138,20 @@ public sealed partial class MainWindow
             await ShowMessageAsync(ResourceService.GetString("Error.CannotRestart"), ResourceService.Format("Format.SourceFolderNotExist", originalJob.SourcePath));
             return;
         }
-        if (!Directory.Exists(originalJob.DestinationPath))
+        if (!originalJob.CopyEnabled &&
+            !Directory.Exists(originalJob.DestinationPath))
         {
             await ShowMessageAsync(ResourceService.GetString("Error.CannotRestart"), ResourceService.Format("Format.DestinationFolderNotExist", originalJob.DestinationPath));
             return;
         }
         if (!ValidatePaths(originalJob.SourcePath, originalJob.DestinationPath, out string validationMessage))
         {
-            await ShowMessageAsync("无法重新开始", validationMessage);
+            await ShowMessageAsync("Error.CannotRestart", validationMessage);
             return;
         }
         if (!originalJob.CopyEnabled && !originalJob.VerificationEnabled)
         {
-            await ShowMessageAsync("无法重新开始", "原任务没有启用拷贝或校验。");
+            await ShowMessageAsync("Error.CannotRestart", "Error.NoCopyOrVerify");
             return;
         }
 
@@ -970,13 +1161,28 @@ public sealed partial class MainWindow
                 : ExistingFilePolicy.Overwrite,
             VerifyFiles: originalJob.VerificationEnabled,
             UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
-            SkipCopy: !originalJob.CopyEnabled);
-        EnqueueJob(
-            originalJob.SourcePath,
-            originalJob.DestinationPath,
-            options,
-            originalJob.IsPriority,
-            originalJob.PreventSleep);
+            SkipCopy: !originalJob.CopyEnabled)
+        {
+            DestinationPaths = !originalJob.CopyEnabled
+                ? originalJob.DestinationFiles
+                : null
+        };
+        string displayName = ResourceService.Format(
+            "Format.RestartedJobName",
+            originalJob.DisplayName);
+        if (!EnqueueJob(
+                originalJob.SourcePath,
+                originalJob.DestinationPath,
+                options,
+                originalJob.IsPriority,
+                originalJob.PreventSleep,
+                displayName,
+                out string? enqueueError))
+        {
+            await ShowMessageAsync(
+                "Error.CannotStartOverlappingTask",
+                enqueueError!);
+        }
     }
 
     private void PrepareConcurrentNewJobView()
@@ -1030,21 +1236,55 @@ public sealed partial class MainWindow
         }
     }
 
-    private void ConcurrentMainWindow_Closed(object sender, WindowEventArgs args)
+    private async void ConcurrentAppWindow_Closing(
+        AppWindow sender,
+        AppWindowClosingEventArgs args)
     {
+        if (_shutdownCompleted)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        if (_shutdownInProgress)
+        {
+            return;
+        }
+
+        _shutdownInProgress = true;
         _uiSettings.ColorValuesChanged -= SystemColorValuesChanged;
-        foreach (CopyJobRuntime runtime in _jobRuntimes.Values.ToList())
+        CopyJobRuntime[] runtimes = _jobRuntimes.Values.ToArray();
+        foreach (CopyJobRuntime runtime in runtimes)
         {
             runtime.Cancellation.Cancel();
         }
-        ReleaseSleepPreventionForShutdown();
+
         try
         {
-            App.SettingsService.Save(_appSettings);
+            Task[] executionTasks = runtimes
+                .Select(runtime => runtime.ExecutionTask)
+                .Where(task => task is not null)
+                .Cast<Task>()
+                .ToArray();
+            if (executionTasks.Length > 0)
+            {
+                await Task.WhenAll(executionTasks);
+            }
+            await SaveHistorySafeAsync();
+            await App.SettingsService.SaveAsync(_appSettings);
         }
-        catch
+        catch (Exception ex) when (
+            ex is OperationCanceledException or IOException or UnauthorizedAccessException)
         {
-            // Best-effort save on exit; ignore failures
+            // Copy tasks already preserve committed files and clean their
+            // unique partial files; shutdown should still be allowed.
+        }
+        finally
+        {
+            ReleaseSleepPreventionForShutdown();
+            _shutdownCompleted = true;
+            _shutdownInProgress = false;
+            sender.Destroy();
         }
     }
 
@@ -1082,6 +1322,8 @@ public sealed partial class MainWindow
         public bool IsPaused { get; set; }
         public bool IsWaitingForPriority { get; set; }
         public long CopiedBytes { get; set; }
+        public long ProcessedCopyBytes { get; set; }
+        public int ProcessedCopyFiles { get; set; }
         public bool IsAwaitingFailureDecision { get; set; }
         public bool IsRetryingFailures { get; set; }
         public FailureResolutionMode? ActiveFailureAction { get; set; }
@@ -1090,6 +1332,8 @@ public sealed partial class MainWindow
         public int CopiedFiles { get; set; }
         public long VerifiedBytes { get; set; }
         public int VerifiedFiles { get; set; }
+        public long ProcessedVerifyBytes { get; set; }
+        public int ProcessedVerifyFiles { get; set; }
         public TimeSpan CopyElapsed { get; set; }
         public TimeSpan VerifyElapsed { get; set; }
         public string Report { get; set; } = string.Empty;

@@ -26,6 +26,11 @@ public static class ResourceService
                 "Resources.resw")));
 
         Dictionary<string, string> defaultResources = _resources[AppLanguage.SimplifiedChinese];
+        if (defaultResources.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "The default localization resources could not be loaded.");
+        }
         foreach (var (key, defaultValue) in defaultResources)
         {
             if (_defaultValueToKey.TryGetValue(defaultValue, out string? previousKey) &&
@@ -114,9 +119,10 @@ public static class ResourceService
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Missing or malformed resource file — return empty dict.
+            System.Diagnostics.Trace.TraceError(
+                $"Failed to load localization resource '{relativePath}': {ex}");
         }
 
         return dict;

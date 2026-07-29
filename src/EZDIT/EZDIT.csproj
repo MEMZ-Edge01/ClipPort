@@ -57,4 +57,9 @@
       </ResolvedFileToPublish>
     </ItemGroup>
   </Target>
+
+  <Target Name="RequireNativeCopyEngineForPublish" BeforeTargets="ComputeFilesToPublish"
+          Condition="'$(RequireNativeCopyEngine)' == 'true' and !Exists('$(NativeCopyOutput)')">
+    <Error Text="Required native copy engine was not built: $(NativeCopyOutput)" />
+  </Target>
 </Project>

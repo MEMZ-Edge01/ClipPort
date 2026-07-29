@@ -44,9 +44,13 @@ public sealed partial class MainWindow
         {
             target.Insert(desiredIndex, item);
         }
-        else if (currentIndex != desiredIndex && desiredIndex < target.Count)
+        else
         {
-            target.Move(currentIndex, desiredIndex);
+            int existingTargetIndex = Math.Clamp(desiredIndex, 0, target.Count - 1);
+            if (currentIndex != existingTargetIndex)
+            {
+                target.Move(currentIndex, existingTargetIndex);
+            }
         }
         UpdateTaskSectionEmptyStates();
     }

@@ -30,7 +30,8 @@ public sealed partial class MainWindow
 
     private async void SettingsPage_SettingsChanged(object? sender, EventArgs e)
     {
-        AppLanguage requestedLanguage = _appSettings.Language;
+        AppSettings requestedSettings = CloneSettings(_appSettings);
+        AppLanguage requestedLanguage = requestedSettings.Language;
         AppLanguage previousLanguage = _previousLanguage;
         bool languageChanged = requestedLanguage != previousLanguage;
 
@@ -40,25 +41,43 @@ public sealed partial class MainWindow
 
         try
         {
-            await App.SettingsService.SaveAsync(_appSettings);
+            await App.SettingsService.SaveAsync(requestedSettings);
         }
         catch (Exception ex)
         {
-            if (languageChanged)
-            {
-                // Keep the UI and persisted state aligned when saving fails.
-                _appSettings.Language = previousLanguage;
-                SettingsPage.Initialize(_appSettings);
-            }
+            // A failed save must not leave the visible settings ahead of
+            // what will actually be restored on the next launch.
+            ApplySettingsSnapshot(_lastSavedSettings);
+            _historyService.SetReportsDirectory(_appSettings.LogAndReportDirectory);
+            _logService.SetDirectory(_appSettings.LogAndReportDirectory);
+            SettingsPage.Initialize(_appSettings);
+            ApplyTheme();
             LogText.Text = ResourceService.Format("Format.SettingsSaveFailed", ex.Message);
             return;
         }
 
+        _lastSavedSettings = requestedSettings;
         if (languageChanged)
         {
             _previousLanguage = requestedLanguage;
             await ShowLanguageRestartDialogAsync();
         }
+    }
+
+    private static AppSettings CloneSettings(AppSettings settings) => new()
+    {
+        Theme = settings.Theme,
+        Accent = settings.Accent,
+        Language = settings.Language,
+        LogAndReportDirectory = settings.LogAndReportDirectory
+    };
+
+    private void ApplySettingsSnapshot(AppSettings settings)
+    {
+        _appSettings.Theme = settings.Theme;
+        _appSettings.Accent = settings.Accent;
+        _appSettings.Language = settings.Language;
+        _appSettings.LogAndReportDirectory = settings.LogAndReportDirectory;
     }
 
     private async Task ShowLanguageRestartDialogAsync()

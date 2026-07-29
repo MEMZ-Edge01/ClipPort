@@ -25,7 +25,7 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
-    public string DisplayName { get; set; } = "拷卡任务";
+    public string DisplayName { get; set; } = string.Empty;
     public string SourcePath { get; set; } = string.Empty;
     public string DestinationPath { get; set; } = string.Empty;
     public DateTimeOffset StartedAt
@@ -85,14 +85,17 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     }
     public string? ErrorMessage { get; set; }
     public string? ReportFileName { get; set; }
+    public string? ReportPath { get; set; }
+    public Dictionary<string, string> DestinationFiles { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
 
     [JsonIgnore]
-    public string MetaText => $"{FormatBytes(TotalBytes)} · {StartedAt:MM/dd HH:mm:ss}";
+    public string MetaText => $"{DisplayFormatting.FormatBytes(TotalBytes)} · {StartedAt:MM/dd HH:mm:ss}";
 
     [JsonIgnore]
     public string StatusText => Status == JobStatus.CompletedWithErrors ? "Result.CompletedWithErrors" : Status switch
     {
-        JobStatus.Queued => "Status.WaitingPriorityTasks",
+        JobStatus.Queued => IsPriority ? "Status.PriorityTaskStarting" : "Status.Queued",
         JobStatus.Running => CopyEnabled ? "Status.Copying" : "Status.Verifying",
         JobStatus.Completed => CopyEnabled && VerificationEnabled
             ? "Result.TaskCompleted"
@@ -124,11 +127,11 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
         Status is not JobStatus.Queued and not JobStatus.Running;
 
     [JsonIgnore]
-    public string DurationText => TimeSpan.FromSeconds(CopySeconds + VerifySeconds).ToString(@"hh\:mm\:ss");
+    public string DurationText => DisplayFormatting.FormatDuration(
+        TimeSpan.FromSeconds(CopySeconds + VerifySeconds));
 
     [JsonIgnore]
-    public bool CanStartVerification =>
-        Status == JobStatus.Completed && CopyEnabled && !VerificationEnabled;
+    public bool CanStartVerification => Status == JobStatus.Completed;
 
     [JsonIgnore]
     public bool CanRestart =>
@@ -137,18 +140,6 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
             or JobStatus.Failed
             or JobStatus.Cancelled
             or JobStatus.Interrupted;
-
-    private static string FormatBytes(double bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        int unit = 0;
-        while (bytes >= 1024 && unit < units.Length - 1)
-        {
-            bytes /= 1024;
-            unit++;
-        }
-        return unit == 0 ? $"{bytes:F0} {units[unit]}" : $"{bytes:F2} {units[unit]}";
-    }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

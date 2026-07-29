@@ -9,7 +9,7 @@ public sealed class JobHistoryService
     private readonly string _dataDirectory;
     private readonly string _historyPath;
     private readonly string _defaultReportsDirectory;
-    private string _reportsDirectory;
+    private volatile string _reportsDirectory;
     private readonly SemaphoreSlim _saveGate = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -43,10 +43,42 @@ public sealed class JobHistoryService
 
         try
         {
-            await using FileStream stream = File.OpenRead(_historyPath);
-            return await JsonSerializer.DeserializeAsync<List<JobHistoryItem>>(stream, _jsonOptions, cancellationToken) ?? [];
+            string json = await File.ReadAllTextAsync(_historyPath, cancellationToken);
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                BackupCorruptHistory();
+                return [];
+            }
+
+            var items = new List<JobHistoryItem>();
+            foreach (JsonElement element in document.RootElement.EnumerateArray())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    JobHistoryItem? item = element.Deserialize<JobHistoryItem>(_jsonOptions);
+                    if (item is null || !Enum.IsDefined(item.Status))
+                    {
+                        continue;
+                    }
+
+                    Normalize(item);
+                    items.Add(item);
+                }
+                catch (JsonException)
+                {
+                    // Preserve every valid record even when one entry is malformed.
+                }
+            }
+            return items;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        catch (JsonException)
+        {
+            BackupCorruptHistory();
+            return [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return [];
         }
@@ -85,42 +117,95 @@ public sealed class JobHistoryService
 
     public async Task<string> SaveReportAsync(string jobId, string report, CancellationToken cancellationToken = default)
     {
-        Directory.CreateDirectory(_reportsDirectory);
+        string reportsDirectory = _reportsDirectory;
+        Directory.CreateDirectory(reportsDirectory);
         string fileName = SafeReportName(jobId);
-        await File.WriteAllTextAsync(Path.Combine(_reportsDirectory, fileName), report, cancellationToken);
-        return fileName;
+        string path = Path.Combine(reportsDirectory, fileName);
+        await File.WriteAllTextAsync(path, report, cancellationToken);
+        return path;
     }
 
-    public async Task<string?> ReadReportAsync(string? fileName, CancellationToken cancellationToken = default)
+    public async Task<string?> ReadReportAsync(string? reportReference, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(fileName))
+        string? path = ResolveReportPath(reportReference);
+        return path is not null
+            ? await File.ReadAllTextAsync(path, cancellationToken)
+            : null;
+    }
+
+    public string? ResolveReportPath(string? reportReference)
+    {
+        if (string.IsNullOrWhiteSpace(reportReference))
         {
             return null;
         }
 
-        string path = Path.Combine(_reportsDirectory, Path.GetFileName(fileName));
-        if (!File.Exists(path) && !string.Equals(
-                _reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+        if (Path.IsPathFullyQualified(reportReference) && File.Exists(reportReference))
         {
-            path = Path.Combine(_defaultReportsDirectory, Path.GetFileName(fileName));
+            return Path.GetFullPath(reportReference);
         }
-        return File.Exists(path) ? await File.ReadAllTextAsync(path, cancellationToken) : null;
+
+        string fileName = Path.GetFileName(reportReference);
+        string reportsDirectory = _reportsDirectory;
+        string path = Path.Combine(reportsDirectory, fileName);
+        if (!File.Exists(path) && !string.Equals(
+                reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            path = Path.Combine(_defaultReportsDirectory, fileName);
+        }
+        return File.Exists(path) ? path : null;
     }
 
-    public Task DeleteReportAsync(string? fileName)
+    public Task DeleteReportAsync(string? reportReference)
     {
-        if (!string.IsNullOrWhiteSpace(fileName))
+        if (!string.IsNullOrWhiteSpace(reportReference))
         {
-            TryDelete(Path.Combine(_reportsDirectory, Path.GetFileName(fileName)));
-            if (!string.Equals(_reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+            if (Path.IsPathFullyQualified(reportReference))
             {
-                TryDelete(Path.Combine(_defaultReportsDirectory, Path.GetFileName(fileName)));
+                TryDelete(Path.GetFullPath(reportReference));
+            }
+
+            string fileName = Path.GetFileName(reportReference);
+            string reportsDirectory = _reportsDirectory;
+            TryDelete(Path.Combine(reportsDirectory, fileName));
+            if (!string.Equals(reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                TryDelete(Path.Combine(_defaultReportsDirectory, fileName));
             }
         }
         return Task.CompletedTask;
     }
 
     private static string SafeReportName(string jobId) => $"{Path.GetFileName(jobId)}.txt";
+
+    private static void Normalize(JobHistoryItem item)
+    {
+        item.DisplayName ??= string.Empty;
+        item.SourcePath ??= string.Empty;
+        item.DestinationPath ??= string.Empty;
+        item.FailedFiles ??= [];
+        item.DuplicateFiles ??= [];
+        item.DuplicateDecisions ??= new Dictionary<string, ExistingFilePolicy>(
+            StringComparer.OrdinalIgnoreCase);
+        item.DestinationFiles ??= new Dictionary<string, string>(
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void BackupCorruptHistory()
+    {
+        try
+        {
+            string backupPath = Path.Combine(
+                _dataDirectory,
+                $"history.corrupt-{DateTimeOffset.Now:yyyyMMdd-HHmmss-fff}.json");
+            File.Copy(_historyPath, backupPath, overwrite: false);
+        }
+        catch (Exception ex) when (
+            ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // Loading still returns safely; never destroy the original file.
+        }
+    }
 
     private static void TryDelete(string path)
     {

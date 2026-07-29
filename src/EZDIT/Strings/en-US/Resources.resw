@@ -12,6 +12,7 @@
   <data name="Common.Off" xml:space="preserve"><value>Off</value></data>
   <data name="Common.Done" xml:space="preserve"><value>Done</value></data>
   <data name="Common.Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="Common.Processed" xml:space="preserve"><value>Processed</value></data>
   <data name="Common.Priority" xml:space="preserve"><value>Priority</value></data>
   <data name="Common.Disabled" xml:space="preserve"><value>Disabled</value></data>
   <data name="Common.TextReport" xml:space="preserve"><value>Text report</value></data>
@@ -20,6 +21,7 @@
   <!-- ===== Buttons ===== -->
   <data name="Button.StartTask" xml:space="preserve"><value>Start copy</value></data>
   <data name="Button.StartVerification" xml:space="preserve"><value>Start verification</value></data>
+  <data name="Button.Reverify" xml:space="preserve"><value>Reverify</value></data>
   <data name="Button.Pause" xml:space="preserve"><value>Pause</value></data>
   <data name="Button.Resume" xml:space="preserve"><value>Resume</value></data>
   <data name="Button.ExportReport" xml:space="preserve"><value>Export report</value></data>
@@ -44,6 +46,7 @@
   <data name="Status.Scanning" xml:space="preserve"><value>Scanning</value></data>
   <data name="Status.CountingFiles" xml:space="preserve"><value>Counting files…</value></data>
   <data name="Status.ReadingDirectories" xml:space="preserve"><value>Reading folders</value></data>
+  <data name="Status.Queued" xml:space="preserve"><value>Waiting to start</value></data>
   <data name="Status.Copying" xml:space="preserve"><value>Copying</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>Copying files</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>Verifying</value></data>
@@ -123,6 +126,15 @@
   <data name="Error.CannotRestart" xml:space="preserve"><value>Unable to restart</value></data>
   <data name="Error.NoCopyOrVerify" xml:space="preserve"><value>The original task did not enable copy or verification.</value></data>
   <data name="Error.CannotDeleteTaskTitle" xml:space="preserve"><value>Unable to delete task</value></data>
+  <data name="Error.DestinationReparsePoint" xml:space="preserve"><value>The destination path contains a symbolic link or junction, so writing was blocked: {0}</value></data>
+  <data name="Error.DestinationContainsReparsePoint" xml:space="preserve"><value>The destination path contains a symbolic link or junction and cannot be used as a write target.</value></data>
+  <data name="Error.InvalidSubfolderName" xml:space="preserve"><value>The destination subfolder must be one relative name without a drive, path separator, “.”, or “..”.</value></data>
+  <data name="Error.InvalidPath" xml:space="preserve"><value>The source or destination path is invalid.</value></data>
+  <data name="Error.CannotStartOverlappingTask" xml:space="preserve"><value>Cannot start a task with overlapping paths</value></data>
+  <data name="Error.CannotOpenRepository" xml:space="preserve"><value>Unable to open the project page</value></data>
+  <data name="Error.OnlyEndedTaskCanDelete" xml:space="preserve"><value>Only finished task records can be deleted.</value></data>
+  <data name="Error.CannotCreateNativeCopy" xml:space="preserve"><value>Unable to create a native copy operation.</value></data>
+  <data name="Error.OnlyVerificationMismatchCanOverwrite" xml:space="preserve"><value>Only files confirmed as verification mismatches can be overwritten.</value></data>
   <data name="Error.CannotBatchDeleteTitle" xml:space="preserve"><value>Unable to delete selected tasks</value></data>
   <data name="Error.UnableToStart" xml:space="preserve"><value>Unable to start</value></data>
   <data name="Error.FoldersNotConfigured" xml:space="preserve"><value>Folders not configured</value></data>
@@ -150,6 +162,22 @@
   <data name="Result.VerificationCompleted" xml:space="preserve"><value>Verification completed</value></data>
   <!-- ===== Format ===== -->
   <data name="Format.SelectedSourcePath" xml:space="preserve"><value>Selected source: {0}</value></data>
+  <data name="Format.CannotCreateDirectory" xml:space="preserve"><value>Could not create directory {0}: {1}</value></data>
+  <data name="Format.CannotCopyFile" xml:space="preserve"><value>Could not copy {0}: {1}</value></data>
+  <data name="Format.VerificationMismatch" xml:space="preserve"><value>Verification mismatch: {0}</value></data>
+  <data name="Format.CannotVerifyFile" xml:space="preserve"><value>Could not verify {0}: {1}</value></data>
+  <data name="Format.InvalidDestinationMapping" xml:space="preserve"><value>The saved destination for {0} is outside the task destination folder.</value></data>
+  <data name="Format.CannotScanDirectory" xml:space="preserve"><value>Could not scan directory {0}: {1}</value></data>
+  <data name="Format.CannotReadPath" xml:space="preserve"><value>Could not read {0}: {1}</value></data>
+  <data name="Format.DestinationCapacityInsufficient" xml:space="preserve"><value>Not enough destination space: {0} required, {1} available.</value></data>
+  <data name="Format.CannotCreateUniqueCopy" xml:space="preserve"><value>Could not create a unique copy name for {0}.</value></data>
+  <data name="Format.CannotPreserveTimestamp" xml:space="preserve"><value>{0} was copied successfully, but its modified time could not be preserved: {1}</value></data>
+  <data name="Format.TaskPathConflict" xml:space="preserve"><value>The source or destination overlaps the running task “{0}”. Wait for that task to finish and try again.</value></data>
+  <data name="Format.VerificationJobName" xml:space="preserve"><value>{0} (verification)</value></data>
+  <data name="Format.ReverificationJobName" xml:space="preserve"><value>{0} (reverification)</value></data>
+  <data name="Format.RestartedJobName" xml:space="preserve"><value>{0} (restart)</value></data>
+  <data name="Format.NativeCopyFailed" xml:space="preserve"><value>The native copy engine failed to copy: {0}</value></data>
+  <data name="Window.TitleSleepPrevented" xml:space="preserve"><value>EZ DIT-beta - PC sleep is prevented</value></data>
   <data name="Format.SelectedDestinationPath" xml:space="preserve"><value>Selected destination: {0}</value></data>
   <data name="Format.SourcePathLabel" xml:space="preserve"><value>Source: {0}</value></data>
   <data name="Format.DestinationPathLabel" xml:space="preserve"><value>Destination: {0}</value></data>
@@ -335,4 +363,37 @@
   <data name="DupCreateCopyButton.Content" xml:space="preserve"><value>Create a copy</value></data>
   <data name="DupOpenSourceButton.Content" xml:space="preserve"><value>Show in File Explorer</value></data>
   <data name="DupOpenDestinationButton.Content" xml:space="preserve"><value>Show in File Explorer</value></data>
+  <data name="Report.Title" xml:space="preserve"><value>EZ DIT Task Report</value></data>
+  <data name="Report.IncompleteTitle" xml:space="preserve"><value>EZ DIT Incomplete Task Report</value></data>
+  <data name="Report.TaskName" xml:space="preserve"><value>Task name: {0}</value></data>
+  <data name="Report.SourceDirectory" xml:space="preserve"><value>Source folder: {0}</value></data>
+  <data name="Report.DestinationDirectory" xml:space="preserve"><value>Destination folder: {0}</value></data>
+  <data name="Report.StartTime" xml:space="preserve"><value>Start time: {0}</value></data>
+  <data name="Report.EndTime" xml:space="preserve"><value>End time: {0}</value></data>
+  <data name="Report.FileCount" xml:space="preserve"><value>File count: {0}</value></data>
+  <data name="Report.DataSize" xml:space="preserve"><value>Data size: {0}</value></data>
+  <data name="Report.CopyDuration" xml:space="preserve"><value>Copy duration: {0}</value></data>
+  <data name="Report.CopyDisabled" xml:space="preserve"><value>Copy: disabled</value></data>
+  <data name="Report.VerifyDuration" xml:space="preserve"><value>Verification duration: {0}</value></data>
+  <data name="Report.CopyAlgorithm" xml:space="preserve"><value>Copy algorithm: {0}</value></data>
+  <data name="Report.ManagedPipeline" xml:space="preserve"><value>Managed pipeline</value></data>
+  <data name="Report.SequentialCopy" xml:space="preserve"><value>Standard sequential copy</value></data>
+  <data name="Report.VerificationAlgorithm" xml:space="preserve"><value>Verification algorithm: {0}</value></data>
+  <data name="Report.FinalResult" xml:space="preserve"><value>Final result: {0}</value></data>
+  <data name="Report.CopiedProgress" xml:space="preserve"><value>Copied successfully: {0}/{1} files, {2}</value></data>
+  <data name="Report.VerifiedProgress" xml:space="preserve"><value>Verification passed: {0}/{1} files</value></data>
+  <data name="Report.VerificationDisabled" xml:space="preserve"><value>File verification: disabled</value></data>
+  <data name="Report.VerificationDetails" xml:space="preserve"><value>File verification details:</value></data>
+  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[Passed] {0} | {1} | SHA-256: {2}</value></data>
+  <data name="Report.FailedVerificationEntry" xml:space="preserve"><value>[Failed] {0} | source: {1} | destination: {2} | {3}</value></data>
+  <data name="Report.TaskStatus" xml:space="preserve"><value>Task status: {0}</value></data>
+  <data name="Report.Details" xml:space="preserve"><value>Details: {0}</value></data>
+  <data name="Report.FailedFiles" xml:space="preserve"><value>Failed files: {0}</value></data>
+  <data name="Report.FailureEntry" xml:space="preserve"><value>[Failed] {0} | {1} | {2}</value></data>
+  <data name="Report.Warnings" xml:space="preserve"><value>Warnings: {0}</value></data>
+  <data name="Report.WarningEntry" xml:space="preserve"><value>[Warning] {0}</value></data>
+  <data name="Report.DuplicateHandling" xml:space="preserve"><value>Duplicate-file handling: {0}</value></data>
+  <data name="Report.DuplicateEntry" xml:space="preserve"><value>[{0}] {1}</value></data>
+  <data name="Report.SourceEntry" xml:space="preserve"><value>  Source: {0}</value></data>
+  <data name="Report.ConflictEntry" xml:space="preserve"><value>  Conflict: {0}</value></data>
 </root>

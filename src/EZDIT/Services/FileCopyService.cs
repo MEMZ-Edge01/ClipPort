@@ -63,33 +63,37 @@ public sealed class FileCopyService
 
         progress.Report(new CopyProgressInfo(CopyPhase.Scanning, 0, 0, 0, 0, string.Empty, 0, TimeSpan.Zero));
 
-        var enumerationOptions = new EnumerationOptions
-        {
-            RecurseSubdirectories = true,
-            IgnoreInaccessible = false,
-            AttributesToSkip = FileAttributes.ReparsePoint,
-            ReturnSpecialDirectories = false
-        };
-        ScanResult scan = await Task.Run(() =>
-        {
-            var files = Directory.EnumerateFiles(sourceRoot, "*", enumerationOptions)
-                .Select(path => new SourceFile(path, Path.GetRelativePath(sourceRoot, path), new FileInfo(path).Length))
-                .ToList();
-            var directories = Directory.EnumerateDirectories(sourceRoot, "*", enumerationOptions)
-                .Select(path => Path.GetRelativePath(sourceRoot, path))
-                .ToList();
-            return new ScanResult(files, directories);
-        }, cancellationToken);
+        ScanResult scan = await ScanSourceAsync(
+            sourceRoot,
+            waitWhilePaused,
+            cancellationToken);
 
         List<SourceFile> files = scan.Files;
         long totalBytes = files.Sum(file => file.Length);
+        var errors = new List<string>(scan.Errors);
+        var warnings = new List<string>();
+        var failedFiles = new List<FileOperationFailure>();
         if (!options.SkipCopy)
         {
+            PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationRoot);
             Directory.CreateDirectory(destinationRoot);
-            EnsureDestinationCapacity(destinationRoot, totalBytes);
             foreach (string relativeDirectory in scan.Directories)
             {
-                Directory.CreateDirectory(Path.Combine(destinationRoot, relativeDirectory));
+                cancellationToken.ThrowIfCancellationRequested();
+                await waitWhilePaused(cancellationToken);
+                string destinationDirectory = Path.Combine(destinationRoot, relativeDirectory);
+                try
+                {
+                    PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationDirectory);
+                    Directory.CreateDirectory(destinationDirectory);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    errors.Add(ResourceService.Format(
+                        "Format.CannotCreateDirectory",
+                        relativeDirectory,
+                        ex.Message));
+                }
             }
         }
 
@@ -121,13 +125,16 @@ public sealed class FileCopyService
         }
 
         var destinationPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var errors = new List<string>();
-        var failedFiles = new List<FileOperationFailure>();
         var verifications = new List<FileVerificationResult>(files.Count);
         var copyWatch = new Stopwatch();
         var verifyWatch = new Stopwatch();
+        long processedCopyBytes = 0;
+        int processedCopyFiles = 0;
         long copiedBytes = 0;
         int copiedFiles = 0;
+        long transferredCopyBytes = 0;
+        long processedVerifyBytes = 0;
+        int processedVerifyFiles = 0;
         long verifiedBytes = 0;
         int verifiedFiles = 0;
         long lastReportTicks = 0;
@@ -146,8 +153,8 @@ public sealed class FileCopyService
                     if (policy == ExistingFilePolicy.Skip)
                     {
                         destinationPaths[file.RelativePath] = destinationPath;
-                        copiedBytes += file.Length;
-                        copiedFiles++;
+                        processedCopyBytes += file.Length;
+                        processedCopyFiles++;
                         ReportCopyProgress(file);
                         continue;
                     }
@@ -158,15 +165,17 @@ public sealed class FileCopyService
                     }
                 }
 
-                string partialPath = destinationPath + ".ezdit-partial";
+                string partialPath = CreatePartialPath(destinationPath);
                 long fileReportedBytes = 0;
                 try
                 {
                     string? destinationDirectory = Path.GetDirectoryName(destinationPath);
                     if (!string.IsNullOrEmpty(destinationDirectory))
                     {
+                        PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationDirectory);
                         Directory.CreateDirectory(destinationDirectory);
                     }
+                    EnsureDestinationCapacity(destinationRoot, file.Length);
 
                     await CopyFileAsync(
                         file.FullPath,
@@ -176,43 +185,50 @@ public sealed class FileCopyService
                         bytesWritten =>
                         {
                             fileReportedBytes += bytesWritten;
-                            copiedBytes += bytesWritten;
+                            transferredCopyBytes += bytesWritten;
                             long now = copyWatch.ElapsedTicks;
                             if (now - lastReportTicks >= Stopwatch.Frequency / 10)
                             {
-                                ReportCopyProgress(file);
+                                ReportCopyProgress(file, Math.Min(fileReportedBytes, file.Length));
                                 lastReportTicks = now;
                             }
                         },
                         cancellationToken);
 
-                    // Guard against TOCTOU: if another process created the
-                    // destination while we were copying and the policy is Skip,
-                    // discard the partial file and leave the existing file intact.
-                    if (policy == ExistingFilePolicy.Skip && File.Exists(destinationPath))
+                    string? committedPath = CommitPartialFile(
+                        partialPath,
+                        destinationPath,
+                        policy);
+                    if (committedPath is null)
                     {
-                        TryDeletePartialFile(partialPath);
-                        // The copy callback already reported every byte written;
-                        // no additional byte counting is needed.
                         destinationPaths[file.RelativePath] = destinationPath;
-                        copiedFiles++;
+                        processedCopyBytes += file.Length;
+                        processedCopyFiles++;
                         ReportCopyProgress(file);
                         continue;
                     }
 
-                    File.Move(partialPath, destinationPath, true);
-                    File.SetLastWriteTimeUtc(destinationPath, File.GetLastWriteTimeUtc(file.FullPath));
-                    destinationPaths[file.RelativePath] = destinationPath;
+                    destinationPath = committedPath;
+                    destinationPaths[file.RelativePath] = committedPath;
+                    copiedBytes += file.Length;
+                    copiedFiles++;
+                    TryPreserveLastWriteTime(file, committedPath, warnings);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
                     TryDeletePartialFile(partialPath);
-                    copiedBytes += Math.Max(0, file.Length - fileReportedBytes);
-                    string error = $"\u65E0\u6CD5\u62F7\u8D1D {file.RelativePath}\uFF1A{ex.Message}";
+                    processedCopyBytes += file.Length;
+                    processedCopyFiles++;
+                    string error = ResourceService.Format(
+                        "Format.CannotCopyFile",
+                        file.RelativePath,
+                        ex.Message);
                     errors.Add(error);
                     failedFiles.Add(new FileOperationFailure(
                         file.RelativePath, file.FullPath, destinationPath, file.Length,
-                        FileOperationStage.Copying, error));
+                        FileOperationStage.Copying, error, FileOperationFailureReason.CopyIo));
+                    ReportCopyProgress(file);
+                    continue;
                 }
                 catch
                 {
@@ -220,16 +236,27 @@ public sealed class FileCopyService
                     throw;
                 }
 
-                copiedFiles++;
+                processedCopyBytes += file.Length;
+                processedCopyFiles++;
                 ReportCopyProgress(file);
             }
             copyWatch.Stop();
         }
 
-        void ReportCopyProgress(SourceFile file) =>
+        void ReportCopyProgress(SourceFile file, long inFlightBytes = 0) =>
             progress.Report(new CopyProgressInfo(
-                CopyPhase.Copying, totalBytes, copiedBytes, files.Count, copiedFiles,
-                file.RelativePath, copiedBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001), copyWatch.Elapsed));
+                CopyPhase.Copying,
+                totalBytes,
+                Math.Min(totalBytes, processedCopyBytes + inFlightBytes),
+                files.Count,
+                processedCopyFiles,
+                file.RelativePath,
+                transferredCopyBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001),
+                copyWatch.Elapsed)
+            {
+                SuccessfulBytes = copiedBytes,
+                SuccessfulFiles = copiedFiles
+            });
 
         async Task VerifyGroupAsync(IReadOnlyList<SourceFile> group)
         {
@@ -246,11 +273,9 @@ public sealed class FileCopyService
 
                 if (!destinationPaths.TryGetValue(file.RelativePath, out string? destinationPath))
                 {
-                    verifiedBytes += file.Length;
-                    verifiedFiles++;
-                    progress.Report(new CopyProgressInfo(
-                        CopyPhase.Verifying, totalBytes, verifiedBytes, files.Count, verifiedFiles,
-                        file.RelativePath, verifiedBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001), verifyWatch.Elapsed));
+                    processedVerifyBytes += file.Length;
+                    processedVerifyFiles++;
+                    ReportVerifyProgress(file);
                     continue;
                 }
                 try
@@ -276,37 +301,98 @@ public sealed class FileCopyService
                         Convert.ToHexString(destinationHash), isMatch, null));
                     if (!isMatch)
                     {
-                        errors.Add($"校验不一致：{file.RelativePath}");
+                        errors.Add(ResourceService.Format(
+                            "Format.VerificationMismatch",
+                            file.RelativePath));
                         failedFiles.Add(new FileOperationFailure(
                             file.RelativePath, file.FullPath, destinationPath, file.Length,
-                            FileOperationStage.Verifying, errors[^1]));
+                            FileOperationStage.Verifying,
+                            errors[^1],
+                            FileOperationFailureReason.VerificationMismatch));
+                    }
+                    else
+                    {
+                        verifiedBytes += file.Length;
+                        verifiedFiles++;
                     }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    string error = $"无法校验 {file.RelativePath}：{ex.Message}";
+                    string error = ResourceService.Format(
+                        "Format.CannotVerifyFile",
+                        file.RelativePath,
+                        ex.Message);
                     errors.Add(error);
                     failedFiles.Add(new FileOperationFailure(
                         file.RelativePath, file.FullPath, destinationPath, file.Length,
-                        FileOperationStage.Verifying, error));
+                        FileOperationStage.Verifying,
+                        error,
+                        FileOperationFailureReason.VerificationIo));
                     verifications.Add(new FileVerificationResult(
                         file.RelativePath, file.Length, string.Empty, string.Empty, false, error));
                 }
 
-                verifiedBytes += file.Length;
-                verifiedFiles++;
-                progress.Report(new CopyProgressInfo(
-                    CopyPhase.Verifying, totalBytes, verifiedBytes, files.Count, verifiedFiles,
-                    file.RelativePath, verifiedBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001), verifyWatch.Elapsed));
+                processedVerifyBytes += file.Length;
+                processedVerifyFiles++;
+                ReportVerifyProgress(file);
             }
             verifyWatch.Stop();
         }
+
+        void ReportVerifyProgress(SourceFile file) =>
+            progress.Report(new CopyProgressInfo(
+                CopyPhase.Verifying,
+                totalBytes,
+                processedVerifyBytes,
+                files.Count,
+                processedVerifyFiles,
+                file.RelativePath,
+                processedVerifyBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001),
+                verifyWatch.Elapsed)
+            {
+                SuccessfulBytes = verifiedBytes,
+                SuccessfulFiles = verifiedFiles
+            });
 
         if (options.SkipCopy)
         {
             foreach (SourceFile file in files)
             {
-                destinationPaths[file.RelativePath] = Path.Combine(destinationRoot, file.RelativePath);
+                string destinationPath =
+                    options.DestinationPaths?.TryGetValue(
+                        file.RelativePath,
+                        out string? mappedPath) == true
+                        ? mappedPath
+                        : Path.Combine(destinationRoot, file.RelativePath);
+                try
+                {
+                    if (!PathSafety.IsSameOrDescendantPath(destinationPath, destinationRoot))
+                    {
+                        throw new IOException(ResourceService.Format(
+                            "Format.InvalidDestinationMapping",
+                            file.RelativePath));
+                    }
+                    PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationPath);
+                }
+                catch (Exception ex) when (
+                    ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                {
+                    string error = ResourceService.Format(
+                        "Format.CannotVerifyFile",
+                        file.RelativePath,
+                        ex.Message);
+                    errors.Add(error);
+                    failedFiles.Add(new FileOperationFailure(
+                        file.RelativePath,
+                        file.FullPath,
+                        destinationPath,
+                        file.Length,
+                        FileOperationStage.Verifying,
+                        error,
+                        FileOperationFailureReason.VerificationIo));
+                    continue;
+                }
+                destinationPaths[file.RelativePath] = destinationPath;
             }
             await VerifyGroupAsync(files);
         }
@@ -321,8 +407,18 @@ public sealed class FileCopyService
             if (duplicateFiles.Count > 0)
             {
                 progress.Report(new CopyProgressInfo(
-                    CopyPhase.WaitingForDuplicateDecision, totalBytes, copiedBytes, files.Count, copiedFiles,
-                    string.Empty, 0, copyWatch.Elapsed + verifyWatch.Elapsed));
+                    CopyPhase.WaitingForDuplicateDecision,
+                    totalBytes,
+                    processedCopyBytes,
+                    files.Count,
+                    processedCopyFiles,
+                    string.Empty,
+                    0,
+                    copyWatch.Elapsed + verifyWatch.Elapsed)
+                {
+                    SuccessfulBytes = copiedBytes,
+                    SuccessfulFiles = copiedFiles
+                });
                 IReadOnlyList<DuplicateFileConflict> conflicts = duplicateFiles
                     .Select(file => new DuplicateFileConflict(
                         file.RelativePath, file.FullPath,
@@ -347,12 +443,29 @@ public sealed class FileCopyService
 
         progress.Report(new CopyProgressInfo(
             CopyPhase.Completed,
-            totalBytes, totalBytes, files.Count, files.Count, string.Empty, 0,
-            copyWatch.Elapsed + verifyWatch.Elapsed));
+            totalBytes,
+            totalBytes,
+            files.Count,
+            files.Count,
+            string.Empty,
+            0,
+            copyWatch.Elapsed + verifyWatch.Elapsed)
+        {
+            SuccessfulBytes = options.VerifyFiles ? verifiedBytes : copiedBytes,
+            SuccessfulFiles = options.VerifyFiles ? verifiedFiles : copiedFiles
+        });
 
         return new CopyResult(
             errors.Count == 0, files.Count, totalBytes, copyWatch.Elapsed, verifyWatch.Elapsed,
-            options.VerifyFiles, detectedConflicts, verifications, failedFiles, errors);
+            options.VerifyFiles, detectedConflicts, verifications, failedFiles, errors)
+        {
+            CopiedBytes = copiedBytes,
+            CopiedFiles = copiedFiles,
+            VerifiedBytes = verifiedBytes,
+            VerifiedFileCount = verifiedFiles,
+            DestinationPaths = destinationPaths,
+            Warnings = warnings
+        };
     }
 
     public async Task<FileRetryResult> RetryFailedFilesAsync(
@@ -360,131 +473,14 @@ public sealed class FileCopyService
         CopyOptions options,
         IProgress<CopyProgressInfo> progress,
         Func<CancellationToken, Task> waitWhilePaused,
-        CancellationToken cancellationToken)
-    {
-        var remaining = new List<FileOperationFailure>();
-        long totalBytes = failures.Sum(item => item.Length);
-        long processedBytes = 0;
-        int processedFiles = 0;
-
-        if (options.SkipCopy)
-        {
-            var verifyWatch = Stopwatch.StartNew();
-            foreach (FileOperationFailure failure in failures)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await waitWhilePaused(cancellationToken);
-                try
-                {
-                    byte[] sourceHash = await ComputeHashAsync(
-                        failure.SourcePath, waitWhilePaused, cancellationToken);
-                    byte[] destinationHash = await ComputeHashAsync(
-                        failure.DestinationPath, waitWhilePaused, cancellationToken);
-                    if (!CryptographicOperations.FixedTimeEquals(sourceHash, destinationHash))
-                    {
-                        string error = $"\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF1A{failure.RelativePath}";
-                        remaining.Add(failure with { Stage = FileOperationStage.Verifying, Error = error });
-                    }
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    string error = $"\u65E0\u6CD5\u6821\u9A8C {failure.RelativePath}\uFF1A{ex.Message}";
-                    remaining.Add(failure with { Stage = FileOperationStage.Verifying, Error = error });
-                }
-
-                processedBytes += failure.Length;
-                processedFiles++;
-                progress.Report(new CopyProgressInfo(
-                    CopyPhase.Verifying, totalBytes, processedBytes, failures.Count, processedFiles,
-                    failure.RelativePath,
-                    processedBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001),
-                    verifyWatch.Elapsed));
-            }
-            verifyWatch.Stop();
-            return new FileRetryResult(remaining, TimeSpan.Zero, verifyWatch.Elapsed);
-        }
-
-        var copyWatch = Stopwatch.StartNew();
-
-        foreach (FileOperationFailure failure in failures)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await waitWhilePaused(cancellationToken);
-            string partialPath = failure.DestinationPath + ".ezdit-partial";
-            bool copied = false;
-            long fileReportedBytes = 0;
-            try
-            {
-                string? destinationDirectory = Path.GetDirectoryName(failure.DestinationPath);
-                if (!string.IsNullOrEmpty(destinationDirectory))
-                {
-                    Directory.CreateDirectory(destinationDirectory);
-                }
-
-                long lastRetryReportTicks = copyWatch.ElapsedTicks;
-                await CopyFileAsync(
-                    failure.SourcePath,
-                    partialPath,
-                    options.UseFastCopyAlgorithm,
-                    waitWhilePaused,
-                    written =>
-                    {
-                        fileReportedBytes += written;
-                        processedBytes += written;
-                        long now = copyWatch.ElapsedTicks;
-                        if (now - lastRetryReportTicks >= Stopwatch.Frequency / 10)
-                        {
-                            progress.Report(new CopyProgressInfo(
-                                CopyPhase.Copying, totalBytes, processedBytes,
-                                failures.Count, processedFiles, failure.RelativePath,
-                                processedBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001),
-                                copyWatch.Elapsed));
-                            lastRetryReportTicks = now;
-                        }
-                    },
-                    cancellationToken);
-                File.Move(partialPath, failure.DestinationPath, true);
-                File.SetLastWriteTimeUtc(failure.DestinationPath, File.GetLastWriteTimeUtc(failure.SourcePath));
-                copied = true;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                TryDeletePartialFile(partialPath);
-                processedBytes += Math.Max(0, failure.Length - fileReportedBytes);
-                string error = $"\u65E0\u6CD5\u62F7\u8D1D {failure.RelativePath}\uFF1A{ex.Message}";
-                remaining.Add(failure with { Stage = FileOperationStage.Copying, Error = error });
-            }
-
-            processedFiles++;
-            progress.Report(new CopyProgressInfo(
-                CopyPhase.Copying, totalBytes, processedBytes, failures.Count, processedFiles,
-                failure.RelativePath, processedBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001), copyWatch.Elapsed));
-
-            if (!copied || !options.VerifyFiles)
-            {
-                continue;
-            }
-
-            try
-            {
-                byte[] sourceHash = await ComputeHashAsync(failure.SourcePath, waitWhilePaused, cancellationToken);
-                byte[] destinationHash = await ComputeHashAsync(failure.DestinationPath, waitWhilePaused, cancellationToken);
-                if (!CryptographicOperations.FixedTimeEquals(sourceHash, destinationHash))
-                {
-                    string error = $"\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF1A{failure.RelativePath}";
-                    remaining.Add(failure with { Stage = FileOperationStage.Verifying, Error = error });
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                string error = $"\u65E0\u6CD5\u6821\u9A8C {failure.RelativePath}\uFF1A{ex.Message}";
-                remaining.Add(failure with { Stage = FileOperationStage.Verifying, Error = error });
-            }
-        }
-
-        copyWatch.Stop();
-        return new FileRetryResult(remaining, copyWatch.Elapsed, TimeSpan.Zero);
-    }
+        CancellationToken cancellationToken) =>
+        await RetryFailedFilesCoreAsync(
+            failures,
+            options,
+            overwriteVerificationMismatches: false,
+            progress,
+            waitWhilePaused,
+            cancellationToken);
 
     public Task<FileRetryResult> OverwriteVerificationMismatchesAsync(
         IReadOnlyList<FileOperationFailure> failures,
@@ -496,16 +492,241 @@ public sealed class FileCopyService
         if (failures.Count == 0 || failures.Any(failure => !failure.IsVerificationMismatch))
         {
             throw new ArgumentException(
-                "\u53EA\u80FD\u8986\u76D6\u6821\u9A8C\u4E0D\u4E00\u81F4\u7684\u6587\u4EF6\u3002",
+                ResourceService.GetString("Error.OnlyVerificationMismatchCanOverwrite"),
                 nameof(failures));
         }
 
-        return RetryFailedFilesAsync(
+        return RetryFailedFilesCoreAsync(
             failures,
             options with { SkipCopy = false, VerifyFiles = true },
+            overwriteVerificationMismatches: true,
             progress,
             waitWhilePaused,
             cancellationToken);
+    }
+
+    private static async Task<FileRetryResult> RetryFailedFilesCoreAsync(
+        IReadOnlyList<FileOperationFailure> failures,
+        CopyOptions options,
+        bool overwriteVerificationMismatches,
+        IProgress<CopyProgressInfo> progress,
+        Func<CancellationToken, Task> waitWhilePaused,
+        CancellationToken cancellationToken)
+    {
+        var remaining = new List<FileOperationFailure>();
+        var verificationResults = new List<FileVerificationResult>();
+        var destinationPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        long totalBytes = failures.Sum(item => item.Length);
+        long processedCopyBytes = 0;
+        int processedCopyFiles = 0;
+        long copiedBytes = 0;
+        int copiedFiles = 0;
+        long transferredBytes = 0;
+        long processedVerifyBytes = 0;
+        int processedVerifyFiles = 0;
+        long verifiedBytes = 0;
+        int verifiedFiles = 0;
+        var copyWatch = new Stopwatch();
+        var verifyWatch = new Stopwatch();
+
+        foreach (FileOperationFailure failure in failures)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await waitWhilePaused(cancellationToken);
+
+            bool shouldCopy = failure.Stage == FileOperationStage.Copying ||
+                              overwriteVerificationMismatches;
+            if (!shouldCopy)
+            {
+                await VerifyFailureAsync(failure);
+                continue;
+            }
+
+            copyWatch.Start();
+            string partialPath = CreatePartialPath(failure.DestinationPath);
+            bool copySucceeded = false;
+            long fileReportedBytes = 0;
+            try
+            {
+                string? destinationDirectory = Path.GetDirectoryName(failure.DestinationPath);
+                if (!string.IsNullOrEmpty(destinationDirectory))
+                {
+                    PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationDirectory);
+                    Directory.CreateDirectory(destinationDirectory);
+                    EnsureDestinationCapacity(destinationDirectory, failure.Length);
+                }
+
+                long lastRetryReportTicks = copyWatch.ElapsedTicks;
+                await CopyFileAsync(
+                    failure.SourcePath,
+                    partialPath,
+                    options.UseFastCopyAlgorithm,
+                    waitWhilePaused,
+                    written =>
+                    {
+                        fileReportedBytes += written;
+                        transferredBytes += written;
+                        long now = copyWatch.ElapsedTicks;
+                        if (now - lastRetryReportTicks >= Stopwatch.Frequency / 10)
+                        {
+                            progress.Report(new CopyProgressInfo(
+                                CopyPhase.Copying,
+                                totalBytes,
+                                Math.Min(
+                                    totalBytes,
+                                    processedCopyBytes + Math.Min(fileReportedBytes, failure.Length)),
+                                failures.Count,
+                                processedCopyFiles,
+                                failure.RelativePath,
+                                transferredBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001),
+                                copyWatch.Elapsed)
+                            {
+                                SuccessfulBytes = copiedBytes,
+                                SuccessfulFiles = copiedFiles
+                            });
+                            lastRetryReportTicks = now;
+                        }
+                    },
+                    cancellationToken);
+                File.Move(partialPath, failure.DestinationPath, true);
+                TryPreserveLastWriteTime(
+                    new SourceFile(failure.SourcePath, failure.RelativePath, failure.Length),
+                    failure.DestinationPath,
+                    warnings: null);
+                destinationPaths[failure.RelativePath] = failure.DestinationPath;
+                copiedBytes += failure.Length;
+                copiedFiles++;
+                copySucceeded = true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                TryDeletePartialFile(partialPath);
+                string error = ResourceService.Format(
+                    "Format.CannotCopyFile",
+                    failure.RelativePath,
+                    ex.Message);
+                remaining.Add(failure with
+                {
+                    Stage = FileOperationStage.Copying,
+                    Error = error,
+                    Reason = FileOperationFailureReason.CopyIo
+                });
+            }
+            catch
+            {
+                TryDeletePartialFile(partialPath);
+                throw;
+            }
+
+            processedCopyBytes += failure.Length;
+            processedCopyFiles++;
+            progress.Report(new CopyProgressInfo(
+                CopyPhase.Copying,
+                totalBytes,
+                processedCopyBytes,
+                failures.Count,
+                processedCopyFiles,
+                failure.RelativePath,
+                transferredBytes / Math.Max(copyWatch.Elapsed.TotalSeconds, 0.001),
+                copyWatch.Elapsed)
+            {
+                SuccessfulBytes = copiedBytes,
+                SuccessfulFiles = copiedFiles
+            });
+            copyWatch.Stop();
+
+            if (!copySucceeded || !options.VerifyFiles)
+            {
+                continue;
+            }
+
+            await VerifyFailureAsync(failure);
+        }
+
+        return new FileRetryResult(
+            remaining,
+            copyWatch.Elapsed,
+            verifyWatch.Elapsed)
+        {
+            CopiedBytes = copiedBytes,
+            CopiedFiles = copiedFiles,
+            VerificationResults = verificationResults,
+            DestinationPaths = destinationPaths
+        };
+
+        async Task VerifyFailureAsync(FileOperationFailure failure)
+        {
+            verifyWatch.Start();
+            try
+            {
+                byte[] sourceHash = await ComputeHashAsync(failure.SourcePath, waitWhilePaused, cancellationToken);
+                byte[] destinationHash = await ComputeHashAsync(failure.DestinationPath, waitWhilePaused, cancellationToken);
+                bool isMatch = CryptographicOperations.FixedTimeEquals(sourceHash, destinationHash);
+                string? error = isMatch
+                    ? null
+                    : ResourceService.Format(
+                        "Format.VerificationMismatch",
+                        failure.RelativePath);
+                verificationResults.Add(new FileVerificationResult(
+                    failure.RelativePath,
+                    failure.Length,
+                    Convert.ToHexString(sourceHash),
+                    Convert.ToHexString(destinationHash),
+                    isMatch,
+                    error));
+                if (!isMatch)
+                {
+                    remaining.Add(failure with
+                    {
+                        Stage = FileOperationStage.Verifying,
+                        Error = error!,
+                        Reason = FileOperationFailureReason.VerificationMismatch
+                    });
+                }
+                else
+                {
+                    verifiedBytes += failure.Length;
+                    verifiedFiles++;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                string error = ResourceService.Format(
+                    "Format.CannotVerifyFile",
+                    failure.RelativePath,
+                    ex.Message);
+                remaining.Add(failure with
+                {
+                    Stage = FileOperationStage.Verifying,
+                    Error = error,
+                    Reason = FileOperationFailureReason.VerificationIo
+                });
+                verificationResults.Add(new FileVerificationResult(
+                    failure.RelativePath,
+                    failure.Length,
+                    string.Empty,
+                    string.Empty,
+                    false,
+                    error));
+            }
+
+            processedVerifyBytes += failure.Length;
+            processedVerifyFiles++;
+            progress.Report(new CopyProgressInfo(
+                CopyPhase.Verifying,
+                totalBytes,
+                processedVerifyBytes,
+                failures.Count,
+                processedVerifyFiles,
+                failure.RelativePath,
+                processedVerifyBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001),
+                verifyWatch.Elapsed)
+            {
+                SuccessfulBytes = verifiedBytes,
+                SuccessfulFiles = verifiedFiles
+            });
+            verifyWatch.Stop();
+        }
     }
 
     private static Task CopyFileAsync(
@@ -513,7 +734,7 @@ public sealed class FileCopyService
         string destinationPath,
         bool useFastCopyAlgorithm,
         Func<CancellationToken, Task> waitWhilePaused,
-        Action<int> reportBytesWritten,
+        Action<long> reportBytesWritten,
         CancellationToken cancellationToken)
     {
         if (useFastCopyAlgorithm && NativeCopyEngine.IsAvailable)
@@ -542,7 +763,7 @@ public sealed class FileCopyService
         string sourcePath,
         string destinationPath,
         Func<CancellationToken, Task> waitWhilePaused,
-        Action<int> reportBytesWritten,
+        Action<long> reportBytesWritten,
         CancellationToken cancellationToken)
     {
         await using var source = new FileStream(
@@ -574,7 +795,7 @@ public sealed class FileCopyService
         string sourcePath,
         string destinationPath,
         Func<CancellationToken, Task> waitWhilePaused,
-        Action<int> reportBytesWritten,
+        Action<long> reportBytesWritten,
         CancellationToken cancellationToken)
     {
         var channel = Channel.CreateBounded<CopyBuffer>(
@@ -708,6 +929,89 @@ public sealed class FileCopyService
         }
     }
 
+    private static async Task<ScanResult> ScanSourceAsync(
+        string sourceRoot,
+        Func<CancellationToken, Task> waitWhilePaused,
+        CancellationToken cancellationToken)
+    {
+        string normalizedSource = Path.GetFullPath(sourceRoot);
+        var files = new List<SourceFile>();
+        var directories = new List<string>();
+        var errors = new List<string>();
+        var pending = new Stack<string>();
+        pending.Push(normalizedSource);
+
+        while (pending.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await waitWhilePaused(cancellationToken);
+            string current = pending.Pop();
+            string[] entries;
+            try
+            {
+                entries = Directory.GetFileSystemEntries(current);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                errors.Add(ResourceService.Format(
+                    "Format.CannotScanDirectory",
+                    Path.GetRelativePath(normalizedSource, current),
+                    ex.Message));
+                continue;
+            }
+
+            foreach (string entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await waitWhilePaused(cancellationToken);
+                FileAttributes attributes;
+                try
+                {
+                    attributes = File.GetAttributes(entry);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    errors.Add(ResourceService.Format(
+                        "Format.CannotReadPath",
+                        Path.GetRelativePath(normalizedSource, entry),
+                        ex.Message));
+                    continue;
+                }
+
+                // Never follow links while scanning removable media.
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    continue;
+                }
+
+                string relativePath = Path.GetRelativePath(normalizedSource, entry);
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    directories.Add(relativePath);
+                    pending.Push(entry);
+                    continue;
+                }
+
+                try
+                {
+                    files.Add(new SourceFile(
+                        entry,
+                        relativePath,
+                        new FileInfo(entry).Length));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    errors.Add(ResourceService.Format(
+                        "Format.CannotReadPath",
+                        relativePath,
+                        ex.Message));
+                }
+            }
+        }
+
+        return new ScanResult(files, directories, errors);
+    }
+
     private static void EnsureDestinationCapacity(string destinationRoot, long requiredBytes)
     {
         if (requiredBytes <= 0)
@@ -727,7 +1031,10 @@ public sealed class FileCopyService
             if (drive.IsReady && drive.AvailableFreeSpace < requiredBytes)
             {
                 throw new IOException(
-                    $"目标磁盘空间不足：需要 {FormatBytes(requiredBytes)}，可用 {FormatBytes(drive.AvailableFreeSpace)}。");
+                    ResourceService.Format(
+                        "Format.DestinationCapacityInsufficient",
+                        DisplayFormatting.FormatBytes(requiredBytes),
+                        DisplayFormatting.FormatBytes(drive.AvailableFreeSpace)));
             }
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
@@ -736,31 +1043,97 @@ public sealed class FileCopyService
         }
     }
 
-    private static string FormatBytes(double bytes)
+    private static string CreatePartialPath(string destinationPath) =>
+        $"{destinationPath}.{Guid.NewGuid():N}.ezdit-partial";
+
+    private static string? CommitPartialFile(
+        string partialPath,
+        string destinationPath,
+        ExistingFilePolicy policy)
     {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        int unit = 0;
-        while (bytes >= 1024 && unit < units.Length - 1)
+        if (policy == ExistingFilePolicy.Overwrite)
         {
-            bytes /= 1024;
-            unit++;
+            File.Move(partialPath, destinationPath, true);
+            return destinationPath;
         }
-        return unit == 0 ? $"{bytes:F0} {units[unit]}" : $"{bytes:F2} {units[unit]}";
+
+        if (policy == ExistingFilePolicy.Skip)
+        {
+            try
+            {
+                File.Move(partialPath, destinationPath, false);
+                return destinationPath;
+            }
+            catch (IOException) when (File.Exists(destinationPath))
+            {
+                TryDeletePartialFile(partialPath);
+                return null;
+            }
+        }
+
+        string candidate = destinationPath;
+        for (int attempt = 0; attempt < 10_000; attempt++)
+        {
+            if (attempt > 0 || File.Exists(candidate))
+            {
+                candidate = GetUniqueDestinationPath(destinationPath, attempt + 1);
+            }
+
+            try
+            {
+                File.Move(partialPath, candidate, false);
+                return candidate;
+            }
+            catch (IOException) when (File.Exists(candidate))
+            {
+                // Another process won this name; keep the completed partial
+                // and atomically try the next candidate.
+            }
+        }
+
+        throw new IOException(ResourceService.Format(
+            "Format.CannotCreateUniqueCopy",
+            destinationPath));
     }
 
-    private static string GetUniqueDestinationPath(string path)
+    private static void TryPreserveLastWriteTime(
+        SourceFile source,
+        string destinationPath,
+        List<string>? warnings)
+    {
+        try
+        {
+            File.SetLastWriteTimeUtc(
+                destinationPath,
+                File.GetLastWriteTimeUtc(source.FullPath));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            warnings?.Add(ResourceService.Format(
+                "Format.CannotPreserveTimestamp",
+                source.RelativePath,
+                ex.Message));
+        }
+    }
+
+    private static string GetUniqueDestinationPath(string path, int startIndex = 1)
     {
         string directory = Path.GetDirectoryName(path) ?? string.Empty;
         string name = Path.GetFileNameWithoutExtension(path);
         string extension = Path.GetExtension(path);
-        for (int index = 1; ; index++)
+        int firstIndex = Math.Max(1, startIndex);
+        for (int index = firstIndex; index <= 10_000; index++)
         {
             string candidate = Path.Combine(directory, $"{name} ({index}){extension}");
-            if (!File.Exists(candidate) && !File.Exists(candidate + ".ezdit-partial"))
+            if (!File.Exists(candidate))
             {
                 return candidate;
             }
         }
+
+        throw new IOException(ResourceService.Format(
+            "Format.CannotCreateUniqueCopy",
+            path));
     }
 
     private static void TryDeletePartialFile(string path)
@@ -779,6 +1152,9 @@ public sealed class FileCopyService
     }
 
     private sealed record CopyBuffer(byte[] Buffer, int Count);
-    private sealed record ScanResult(List<SourceFile> Files, List<string> Directories);
+    private sealed record ScanResult(
+        List<SourceFile> Files,
+        List<string> Directories,
+        List<string> Errors);
     private sealed record SourceFile(string FullPath, string RelativePath, long Length);
 }
