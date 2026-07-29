@@ -841,12 +841,21 @@ public sealed partial class MainWindow : Window
 
     private void RefreshHistoryItem(JobHistoryItem item)
     {
-        int index = _history
-            .Select((candidate, candidateIndex) => (candidate, candidateIndex))
-            .Where(entry => entry.candidate.Id == item.Id)
-            .Select(entry => entry.candidateIndex)
-            .DefaultIfEmpty(-1)
-            .First();
+        int index = _history.IndexOf(item);
+        if (index < 0)
+        {
+            for (int candidateIndex = 0; candidateIndex < _history.Count; candidateIndex++)
+            {
+                if (string.Equals(
+                        _history[candidateIndex].Id,
+                        item.Id,
+                        StringComparison.Ordinal))
+                {
+                    index = candidateIndex;
+                    break;
+                }
+            }
+        }
         if (index >= 0 && !ReferenceEquals(_history[index], item))
         {
             _history[index] = item;
@@ -854,15 +863,28 @@ public sealed partial class MainWindow : Window
         SyncTaskSection(item);
     }
 
-    private void TrimHistory()
+    private bool TrimHistory()
     {
+        bool changed = false;
         while (_history.Count > 200)
         {
-            JobHistoryItem removed = _history[^1];
-            _history.RemoveAt(_history.Count - 1);
+            int removableIndex = HistoryRetentionPolicy.FindOldestRemovableIndex(
+                _history,
+                _jobRuntimes.ContainsKey);
+            if (removableIndex < 0)
+            {
+                // Active tasks are retained even if temporary concurrency
+                // pushes the collection past its persisted-history limit.
+                break;
+            }
+
+            JobHistoryItem removed = _history[removableIndex];
+            _history.RemoveAt(removableIndex);
             _ = _historyService.DeleteReportAsync(GetReportReference(removed));
             RemoveTaskFromSections(removed);
+            changed = true;
         }
+        return changed;
     }
 
     private void UpdateHistoryEmptyState()

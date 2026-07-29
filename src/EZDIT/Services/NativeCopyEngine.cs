@@ -123,8 +123,19 @@ internal static class NativeCopyEngine
                 return false;
             }
 
-            NativeLibrary.Free(library);
-            return NativeCopyGetApiVersion() == ApiVersion;
+            try
+            {
+                nint export = NativeLibrary.GetExport(
+                    library,
+                    "EZDIT_NativeCopyGetApiVersion");
+                var getApiVersion =
+                    Marshal.GetDelegateForFunctionPointer<NativeGetApiVersionDelegate>(export);
+                return getApiVersion() == ApiVersion;
+            }
+            finally
+            {
+                NativeLibrary.Free(library);
+            }
         }
         catch (Exception ex) when (
             ex is DllNotFoundException or
@@ -140,12 +151,8 @@ internal static class NativeCopyEngine
         ulong bytesWritten,
         nint context);
 
-    [DllImport(
-        LibraryName,
-        EntryPoint = "EZDIT_NativeCopyGetApiVersion",
-        ExactSpelling = true,
-        CallingConvention = CallingConvention.StdCall)]
-    private static extern uint NativeCopyGetApiVersion();
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate uint NativeGetApiVersionDelegate();
 
     [DllImport(
         LibraryName,

@@ -53,6 +53,10 @@ public sealed partial class MainWindow
                 displayName: null,
                 out string? enqueueError))
         {
+            if (_shutdownInProgress || _shutdownCompleted)
+            {
+                return;
+            }
             await ShowMessageAsync(
                 "Error.CannotStartOverlappingTask",
                 enqueueError!);
@@ -68,6 +72,14 @@ public sealed partial class MainWindow
         string? displayName,
         out string? error)
     {
+        // Enqueue and closing callbacks run on the UI thread. Closing this gate
+        // before taking the runtime snapshot prevents late tasks from escaping it.
+        if (_shutdownInProgress || _shutdownCompleted)
+        {
+            error = null;
+            return false;
+        }
+
         if (TryFindPathConflict(
                 sourcePath,
                 destinationPath,
@@ -204,8 +216,13 @@ public sealed partial class MainWindow
             runtime.Cancellation.Dispose();
             runtime.IsWaitingForPriority = false;
             _jobRuntimes.Remove(runtime.Job.Id);
+            bool historyTrimmed = TrimHistory();
             UpdateSleepPreventionState();
             RefreshSelectedRuntime();
+            if (historyTrimmed)
+            {
+                await SaveHistorySafeAsync();
+            }
         }
     }
 
@@ -228,6 +245,7 @@ public sealed partial class MainWindow
             StringComparer.OrdinalIgnoreCase);
         var retryDestinationPaths = new Dictionary<string, string>(
             StringComparer.OrdinalIgnoreCase);
+        var retryWarnings = new List<string>();
         while (runtime.FailedFileChoices.Count > 0)
         {
             runtime.IsAwaitingFailureDecision = true;
@@ -286,6 +304,7 @@ public sealed partial class MainWindow
                 {
                     retryDestinationPaths[relativePath] = destinationPath;
                 }
+                retryWarnings.AddRange(retryResult.Warnings);
                 foreach (FailedFileChoice choice in actedChoices)
                 {
                     runtime.FailedFileChoices.Remove(choice);
@@ -354,7 +373,11 @@ public sealed partial class MainWindow
                     .Sum(item => item.Length),
                 VerifiedFileCount = finalVerifications.Count(item => item.IsMatch),
                 VerifiedFiles = finalVerifications,
-                DestinationPaths = destinationPaths
+                DestinationPaths = destinationPaths,
+                Warnings = original.Warnings
+                    .Concat(retryWarnings)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray()
             };
         }
     }
@@ -1075,6 +1098,10 @@ public sealed partial class MainWindow
                 displayName,
                 out string? enqueueError))
         {
+            if (_shutdownInProgress || _shutdownCompleted)
+            {
+                return;
+            }
             await ShowMessageAsync(
                 "Error.CannotStartOverlappingTask",
                 enqueueError!);
@@ -1179,6 +1206,10 @@ public sealed partial class MainWindow
                 displayName,
                 out string? enqueueError))
         {
+            if (_shutdownInProgress || _shutdownCompleted)
+            {
+                return;
+            }
             await ShowMessageAsync(
                 "Error.CannotStartOverlappingTask",
                 enqueueError!);
@@ -1273,11 +1304,11 @@ public sealed partial class MainWindow
             await SaveHistorySafeAsync();
             await App.SettingsService.SaveAsync(_appSettings);
         }
-        catch (Exception ex) when (
-            ex is OperationCanceledException or IOException or UnauthorizedAccessException)
+        catch (Exception)
         {
             // Copy tasks already preserve committed files and clean their
-            // unique partial files; shutdown should still be allowed.
+            // unique partial files. No task or persistence exception may
+            // escape this async closing event and crash the process.
         }
         finally
         {
@@ -1285,6 +1316,9 @@ public sealed partial class MainWindow
             _shutdownCompleted = true;
             _shutdownInProgress = false;
             sender.Destroy();
+            // AppWindow.Destroy can leave an unpackaged WinUI dispatcher alive
+            // without a window. All task and persistence cleanup is complete.
+            Environment.Exit(0);
         }
     }
 

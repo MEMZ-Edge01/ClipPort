@@ -86,11 +86,7 @@ public sealed record FileOperationFailure(
 
     [JsonIgnore]
     public bool IsVerificationMismatch =>
-        Reason == FileOperationFailureReason.VerificationMismatch ||
-        Reason == FileOperationFailureReason.Unknown &&
-        Stage == FileOperationStage.Verifying &&
-        (Error.StartsWith("\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF1A", StringComparison.Ordinal) ||
-         Error.StartsWith("Verification mismatch:", StringComparison.Ordinal));
+        Reason == FileOperationFailureReason.VerificationMismatch;
 }
 
 public sealed record FileRetryResult(
@@ -103,6 +99,7 @@ public sealed record FileRetryResult(
     public IReadOnlyList<FileVerificationResult> VerificationResults { get; init; } = [];
     public IReadOnlyDictionary<string, string> DestinationPaths { get; init; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
 public sealed record CopyResult(

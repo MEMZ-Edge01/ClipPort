@@ -184,11 +184,46 @@ public sealed class JobHistoryService
         item.SourcePath ??= string.Empty;
         item.DestinationPath ??= string.Empty;
         item.FailedFiles ??= [];
+        item.FailedFiles = item.FailedFiles
+            .OfType<FileOperationFailure>()
+            .Select(NormalizeLegacyFailureReason)
+            .ToList();
         item.DuplicateFiles ??= [];
         item.DuplicateDecisions ??= new Dictionary<string, ExistingFilePolicy>(
             StringComparer.OrdinalIgnoreCase);
         item.DestinationFiles ??= new Dictionary<string, string>(
             StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static FileOperationFailure NormalizeLegacyFailureReason(
+        FileOperationFailure failure)
+    {
+        if (failure.Reason != FileOperationFailureReason.Unknown)
+        {
+            return failure;
+        }
+
+        FileOperationFailureReason reason = failure.Stage switch
+        {
+            FileOperationStage.Copying => FileOperationFailureReason.CopyIo,
+            FileOperationStage.Verifying when IsLegacyVerificationMismatch(failure.Error) =>
+                FileOperationFailureReason.VerificationMismatch,
+            FileOperationStage.Verifying => FileOperationFailureReason.VerificationIo,
+            _ => FileOperationFailureReason.Unknown
+        };
+        return failure with { Reason = reason };
+    }
+
+    private static bool IsLegacyVerificationMismatch(string? error)
+    {
+        // These are migration signatures from builds that persisted localized
+        // error text before FileOperationFailureReason was added.
+        return error?.StartsWith(
+                   "\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF1A",
+                   StringComparison.Ordinal) == true ||
+               error?.StartsWith(
+                   "Verification mismatch:",
+                   StringComparison.Ordinal) == true;
     }
 
     private void BackupCorruptHistory()

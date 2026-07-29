@@ -20,6 +20,7 @@ internal static class Program
             ("verification-only mode never copies", TestVerificationOnlyAsync),
             ("verification mismatch can be overwritten", TestOverwriteVerificationMismatchAsync),
             ("FastCopy pipeline copy and verification", TestFastCopyAlgorithmAsync),
+            ("packaged native engine availability", TestPackagedNativeEngineAvailabilityAsync),
             ("pause and resume", TestPauseAndResumeAsync),
             ("cancellation preserves existing destination", TestCancellationSafetyAsync),
             ("corruption is detected", TestCorruptionDetectionAsync),
@@ -35,6 +36,9 @@ internal static class Program
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
             ("history isolates malformed records", TestHistoryMalformedRecordIsolationAsync),
+            ("history retention protects active jobs", TestHistoryRetentionProtectsActiveJobsAsync),
+            ("legacy failure reasons normalize", TestLegacyFailureReasonNormalizationAsync),
+            ("retry results preserve warnings", TestRetryResultWarningsAsync),
             ("priority jobs gate ordinary jobs", TestPrioritySchedulerAsync)
         };
 
@@ -268,6 +272,20 @@ internal static class Program
             Assert(!Directory.EnumerateFiles(destination, "*.ezdit-partial", SearchOption.AllDirectories).Any(),
                 "The FastCopy pipeline must not leave partial files after success.");
         });
+    }
+
+    private static Task TestPackagedNativeEngineAvailabilityAsync()
+    {
+        string nativeLibraryPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "EZDIT.NativeCopy.dll");
+        if (File.Exists(nativeLibraryPath))
+        {
+            Assert(NativeCopyEngine.IsAvailable,
+                "A packaged native engine with the expected API version should be available.");
+        }
+
+        return Task.CompletedTask;
     }
 
     private static async Task TestVerificationOnlyAsync()
@@ -1015,6 +1033,113 @@ internal static class Program
         {
             Directory.Delete(root, true);
         }
+    }
+
+    private static async Task TestLegacyFailureReasonNormalizationAsync()
+    {
+        string root = Path.Combine(
+            Path.GetTempPath(),
+            "EZDIT-HistoryFailureReasonTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(root, "history.json"),
+                """
+                [
+                  {
+                    "id": "legacy",
+                    "status": "CompletedWithErrors",
+                    "failedFiles": [
+                      {
+                        "relativePath": "mismatch.bin",
+                        "sourcePath": "source\\mismatch.bin",
+                        "destinationPath": "destination\\mismatch.bin",
+                        "length": 4,
+                        "stage": "Verifying",
+                        "error": "Verification mismatch: mismatch.bin"
+                      },
+                      {
+                        "relativePath": "unreadable.bin",
+                        "sourcePath": "source\\unreadable.bin",
+                        "destinationPath": "destination\\unreadable.bin",
+                        "length": 8,
+                        "stage": "Verifying",
+                        "error": "Could not verify unreadable.bin: access denied"
+                      },
+                      {
+                        "relativePath": "copy.bin",
+                        "sourcePath": "source\\copy.bin",
+                        "destinationPath": "destination\\copy.bin",
+                        "length": 16,
+                        "stage": "Copying",
+                        "error": "Could not copy copy.bin: access denied"
+                      }
+                    ]
+                  }
+                ]
+                """);
+
+            List<JobHistoryItem> loaded = await new JobHistoryService(root).LoadAsync();
+            Assert(loaded.Count == 1 && loaded[0].FailedFiles.Count == 3,
+                "The legacy history record should load with every failure.");
+            Assert(
+                loaded[0].FailedFiles[0].Reason == FileOperationFailureReason.VerificationMismatch &&
+                loaded[0].FailedFiles[0].IsVerificationMismatch,
+                "A legacy mismatch message should migrate to the structured mismatch reason.");
+            Assert(
+                loaded[0].FailedFiles[1].Reason == FileOperationFailureReason.VerificationIo &&
+                !loaded[0].FailedFiles[1].IsVerificationMismatch,
+                "A legacy verification IO failure must not be mistaken for a mismatch.");
+            Assert(
+                loaded[0].FailedFiles[2].Reason == FileOperationFailureReason.CopyIo,
+                "A legacy copy failure should migrate to the structured copy IO reason.");
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    private static Task TestHistoryRetentionProtectsActiveJobsAsync()
+    {
+        JobHistoryItem[] history =
+        [
+            new() { Id = "newest-terminal" },
+            new() { Id = "oldest-terminal" },
+            new() { Id = "older-active" },
+            new() { Id = "oldest-active" }
+        ];
+        var activeIds = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "older-active",
+            "oldest-active"
+        };
+
+        int removable = HistoryRetentionPolicy.FindOldestRemovableIndex(
+            history,
+            activeIds.Contains);
+        Assert(removable == 1,
+            "History trimming should skip older active jobs and choose the oldest terminal job.");
+
+        activeIds.Add("newest-terminal");
+        activeIds.Add("oldest-terminal");
+        Assert(
+            HistoryRetentionPolicy.FindOldestRemovableIndex(history, activeIds.Contains) == -1,
+            "History trimming should keep every record when all jobs are active.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestRetryResultWarningsAsync()
+    {
+        var result = new FileRetryResult([], TimeSpan.Zero, TimeSpan.Zero)
+        {
+            Warnings = ["timestamp warning"]
+        };
+        Assert(result.Warnings.SequenceEqual(["timestamp warning"]),
+            "Retry results should carry non-fatal warnings into the final task result.");
+        return Task.CompletedTask;
     }
 
     private static async Task WithTempFoldersAsync(Func<string, string, Task> test)

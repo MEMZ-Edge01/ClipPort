@@ -515,6 +515,7 @@ public sealed class FileCopyService
     {
         var remaining = new List<FileOperationFailure>();
         var verificationResults = new List<FileVerificationResult>();
+        var warnings = new List<string>();
         var destinationPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         long totalBytes = failures.Sum(item => item.Length);
         long processedCopyBytes = 0;
@@ -592,7 +593,7 @@ public sealed class FileCopyService
                 TryPreserveLastWriteTime(
                     new SourceFile(failure.SourcePath, failure.RelativePath, failure.Length),
                     failure.DestinationPath,
-                    warnings: null);
+                    warnings);
                 destinationPaths[failure.RelativePath] = failure.DestinationPath;
                 copiedBytes += failure.Length;
                 copiedFiles++;
@@ -651,7 +652,8 @@ public sealed class FileCopyService
             CopiedBytes = copiedBytes,
             CopiedFiles = copiedFiles,
             VerificationResults = verificationResults,
-            DestinationPaths = destinationPaths
+            DestinationPaths = destinationPaths,
+            Warnings = warnings
         };
 
         async Task VerifyFailureAsync(FileOperationFailure failure)
