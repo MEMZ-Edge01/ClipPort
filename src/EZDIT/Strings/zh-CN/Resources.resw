@@ -399,4 +399,14 @@
   <data name="Report.DuplicateEntry" xml:space="preserve"><value>[{0}] {1}</value></data>
   <data name="Report.SourceEntry" xml:space="preserve"><value>  来源：{0}</value></data>
   <data name="Report.ConflictEntry" xml:space="preserve"><value>  冲突：{0}</value></data>
+  <data name="CopySpeedChartsTitle.Text" xml:space="preserve"><value>拷贝速度</value></data>
+  <data name="ThroughputChartsLayout.ShowStacked" xml:space="preserve"><value>切换为一行一张</value></data>
+  <data name="ThroughputChartsLayout.ShowSideBySide" xml:space="preserve"><value>切换为一行两张</value></data>
+  <data name="CopyByteRateChartTitle.Text" xml:space="preserve"><value>文件拷贝大小速度</value></data>
+  <data name="CopyItemRateChartTitle.Text" xml:space="preserve"><value>项目数速度</value></data>
+  <data name="VerifySpeedChartsTitle.Text" xml:space="preserve"><value>校验速度</value></data>
+  <data name="VerifyByteRateChartTitle.Text" xml:space="preserve"><value>文件校验大小速度</value></data>
+  <data name="VerifyItemRateChartTitle.Text" xml:space="preserve"><value>项目数速度</value></data>
+  <data name="Unit.ItemsPerSecond" xml:space="preserve"><value>个/s</value></data>
+  <data name="Format.ItemsPerSecond" xml:space="preserve"><value>{0} 个/s</value></data>
 </root>

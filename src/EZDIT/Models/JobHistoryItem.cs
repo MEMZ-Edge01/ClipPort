@@ -37,7 +37,16 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
                 OnPropertyChanged(nameof(MetaText));
         }
     }
-    public DateTimeOffset? FinishedAt { get; set; }
+    public DateTimeOffset? FinishedAt
+    {
+        get => _finishedAt;
+        set
+        {
+            if (SetProperty(ref _finishedAt, value))
+                OnPropertyChanged(nameof(DurationText));
+        }
+    }
+    private DateTimeOffset? _finishedAt;
     public long TotalBytes
     {
         get => _totalBytes;
@@ -51,8 +60,32 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     public long CopiedBytes { get; set; }
     public int CopiedFiles { get; set; }
     public int VerifiedFiles { get; set; }
-    public double CopySeconds { get; set; }
-    public double VerifySeconds { get; set; }
+    public List<double> CopyByteSpeedSamples { get; set; } = [];
+    public List<double> CopyItemSpeedSamples { get; set; } = [];
+    public List<double> CopyThroughputProgressSamples { get; set; } = [];
+    public List<double> VerifyByteSpeedSamples { get; set; } = [];
+    public List<double> VerifyItemSpeedSamples { get; set; } = [];
+    public List<double> VerifyThroughputProgressSamples { get; set; } = [];
+    public double CopySeconds
+    {
+        get => _copySeconds;
+        set
+        {
+            if (SetProperty(ref _copySeconds, value))
+                OnPropertyChanged(nameof(DurationText));
+        }
+    }
+    private double _copySeconds;
+    public double VerifySeconds
+    {
+        get => _verifySeconds;
+        set
+        {
+            if (SetProperty(ref _verifySeconds, value))
+                OnPropertyChanged(nameof(DurationText));
+        }
+    }
+    private double _verifySeconds;
     public bool CopyEnabled { get; set; } = true;
     public bool VerificationEnabled { get; set; } = true;
     public bool UseFastCopyAlgorithm { get; set; }

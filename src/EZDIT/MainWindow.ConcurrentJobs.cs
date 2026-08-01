@@ -115,21 +115,34 @@ public sealed partial class MainWindow
                     StringComparer.OrdinalIgnoreCase),
         };
         var runtime = new CopyJobRuntime(job, options);
-        runtime.ScheduleRegistration = _jobScheduler.Register(isPriority);
-        _jobRuntimes.Add(job.Id, runtime);
-        UpdateSleepPreventionState();
-        _history.Insert(0, job);
-        TrimHistory();
-        UpdateHistoryEmptyState();
-        _selectedJob = job;
-        RefreshHistoryItem(job);
-        NewJobsList.SelectedItem = job;
-        ShowRuntimeJob(runtime);
-        _ = SaveHistorySafeAsync();
-        runtime.ExecutionTask = RunCopyJobAsync(runtime);
-        RefreshSelectedRuntime();
-        error = null;
-        return true;
+        CopyJobScheduler.CopyJobScheduleRegistration? registration = null;
+        try
+        {
+            registration = _jobScheduler.Register(isPriority);
+            _jobRuntimes.Add(job.Id, runtime);
+            runtime.ScheduleRegistration = registration;
+            UpdateSleepPreventionState();
+            _history.Insert(0, job);
+            TrimHistory();
+            UpdateHistoryEmptyState();
+            _selectedJob = job;
+            RefreshHistoryItem(job);
+            NewJobsList.SelectedItem = job;
+            ShowRuntimeJob(runtime);
+            _ = SaveHistorySafeAsync();
+            runtime.ExecutionTask = RunCopyJobAsync(runtime);
+            RefreshSelectedRuntime();
+            error = null;
+            return true;
+        }
+        catch
+        {
+            // If anything after Register fails, the priority gate must be
+            // released so ordinary jobs are not permanently blocked.
+            registration?.Dispose();
+            _jobRuntimes.Remove(job.Id);
+            throw;
+        }
     }
 
     private bool TryFindPathConflict(
@@ -276,7 +289,10 @@ public sealed partial class MainWindow
                 runtime.ActiveFailureAction = action.Mode;
                 var retryProgress = new Progress<CopyProgressInfo>(info =>
                 {
+                    CopyPhase? previousRetryPhase = runtime.RetryProgress?.Phase;
                     runtime.RetryProgress = info;
+                    EndThroughputInterval(runtime, previousRetryPhase, info.Phase);
+                    SampleThroughput(runtime, info);
                     RefreshSelectedRuntime();
                 });
                 FileRetryResult retryResult = action.Mode == FailureResolutionMode.Overwrite
@@ -292,6 +308,7 @@ public sealed partial class MainWindow
                         retryProgress,
                         token => WaitForJobPermissionAsync(runtime, token),
                         cancellationToken);
+                EndThroughputInterval(runtime, runtime.RetryProgress?.Phase, null);
                 retryCopyDuration += retryResult.CopyDuration;
                 retryVerifyDuration += retryResult.VerifyDuration;
                 retryCopiedBytes += retryResult.CopiedBytes;
@@ -407,7 +424,10 @@ public sealed partial class MainWindow
 
     private void UpdateJobProgress(CopyJobRuntime runtime, CopyProgressInfo info)
     {
+        CopyPhase? previousPhase = runtime.LastProgress?.Phase;
         runtime.LastProgress = info;
+        EndThroughputInterval(runtime, previousPhase, info.Phase);
+        SampleThroughput(runtime, info);
         runtime.Job.TotalBytes = info.TotalBytes;
         runtime.Job.FileCount = info.TotalFiles;
         switch (info.Phase)
@@ -451,6 +471,46 @@ public sealed partial class MainWindow
         if (ReferenceEquals(_selectedJob, runtime.Job))
         {
             ShowRuntimeJob(runtime);
+        }
+    }
+
+    private static void SampleThroughput(CopyJobRuntime runtime, CopyProgressInfo info)
+    {
+        runtime.CopyThroughputSampler.TrySample(
+            info,
+            runtime.Job.CopyByteSpeedSamples,
+            runtime.Job.CopyItemSpeedSamples,
+            runtime.Job.CopyThroughputProgressSamples);
+        runtime.VerifyThroughputSampler.TrySample(
+            info,
+            runtime.Job.VerifyByteSpeedSamples,
+            runtime.Job.VerifyItemSpeedSamples,
+            runtime.Job.VerifyThroughputProgressSamples);
+    }
+
+    private static void EndThroughputInterval(
+        CopyJobRuntime runtime,
+        CopyPhase? previousPhase,
+        CopyPhase? nextPhase)
+    {
+        if (previousPhase == nextPhase)
+        {
+            return;
+        }
+
+        if (previousPhase == CopyPhase.Copying)
+        {
+            runtime.CopyThroughputSampler.TryAppendIdleSample(
+                runtime.Job.CopyByteSpeedSamples,
+                runtime.Job.CopyItemSpeedSamples,
+                runtime.Job.CopyThroughputProgressSamples);
+        }
+        else if (previousPhase == CopyPhase.Verifying)
+        {
+            runtime.VerifyThroughputSampler.TryAppendIdleSample(
+                runtime.Job.VerifyByteSpeedSamples,
+                runtime.Job.VerifyItemSpeedSamples,
+                runtime.Job.VerifyThroughputProgressSamples);
         }
     }
 
@@ -642,6 +702,13 @@ public sealed partial class MainWindow
         PercentText.Text = $"{overall:F2}%";
         CopySpeedText.Text = info?.Phase == CopyPhase.Copying ? $"{FormatBytes(info.BytesPerSecond)}/s" : "--";
         VerifySpeedText.Text = info?.Phase == CopyPhase.Verifying ? $"{FormatBytes(info.BytesPerSecond)}/s" : "--";
+        UpdateThroughputCharts(
+            job.CopyByteSpeedSamples,
+            job.CopyItemSpeedSamples,
+            job.CopyThroughputProgressSamples,
+            job.VerifyByteSpeedSamples,
+            job.VerifyItemSpeedSamples,
+            job.VerifyThroughputProgressSamples);
         CopyTimeText.Text = FormatDuration(runtime.CopyElapsed);
         VerifyTimeText.Text = FormatDuration(runtime.VerifyElapsed);
         CopyCountText.Text = runtime.Options.SkipCopy ? "--" : $"{runtime.CopiedFiles}/{totalFiles}";
@@ -1377,6 +1444,9 @@ public sealed partial class MainWindow
         public TaskCompletionSource<IReadOnlyDictionary<string, ExistingFilePolicy>>? DuplicateDecisionSource { get; set; }
         public Task? ExecutionTask { get; set; }
         public TaskCompletionSource<FailureResolutionAction>? FailureActionSource { get; set; }
+        public CopyThroughputSampler CopyThroughputSampler { get; } = new();
+        public CopyThroughputSampler VerifyThroughputSampler { get; } = new(
+            sampledPhase: CopyPhase.Verifying);
         public CopyProgressInfo? LastProgress { get; set; }
         public CopyResult? Result { get; set; }
         public bool IsPaused { get; set; }

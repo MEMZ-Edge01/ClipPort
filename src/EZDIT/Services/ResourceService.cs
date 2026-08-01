@@ -63,7 +63,7 @@ public static class ResourceService
     {
         if (string.IsNullOrEmpty(key))
         {
-            return key;
+            return key ?? string.Empty;
         }
 
         Dictionary<string, string> selectedResources = _resources[_currentLanguage];

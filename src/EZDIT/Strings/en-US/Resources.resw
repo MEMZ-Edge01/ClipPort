@@ -399,4 +399,14 @@
   <data name="Report.DuplicateEntry" xml:space="preserve"><value>[{0}] {1}</value></data>
   <data name="Report.SourceEntry" xml:space="preserve"><value>  Source: {0}</value></data>
   <data name="Report.ConflictEntry" xml:space="preserve"><value>  Conflict: {0}</value></data>
+  <data name="CopySpeedChartsTitle.Text" xml:space="preserve"><value>Copy speed</value></data>
+  <data name="ThroughputChartsLayout.ShowStacked" xml:space="preserve"><value>Show one chart per row</value></data>
+  <data name="ThroughputChartsLayout.ShowSideBySide" xml:space="preserve"><value>Show two charts in one row</value></data>
+  <data name="CopyByteRateChartTitle.Text" xml:space="preserve"><value>Copy data rate</value></data>
+  <data name="CopyItemRateChartTitle.Text" xml:space="preserve"><value>Item throughput</value></data>
+  <data name="VerifySpeedChartsTitle.Text" xml:space="preserve"><value>Verification speed</value></data>
+  <data name="VerifyByteRateChartTitle.Text" xml:space="preserve"><value>Verification data rate</value></data>
+  <data name="VerifyItemRateChartTitle.Text" xml:space="preserve"><value>Item throughput</value></data>
+  <data name="Unit.ItemsPerSecond" xml:space="preserve"><value>items/s</value></data>
+  <data name="Format.ItemsPerSecond" xml:space="preserve"><value>{0} items/s</value></data>
 </root>

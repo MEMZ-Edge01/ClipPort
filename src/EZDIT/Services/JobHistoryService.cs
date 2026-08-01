@@ -193,6 +193,65 @@ public sealed class JobHistoryService
             StringComparer.OrdinalIgnoreCase);
         item.DestinationFiles ??= new Dictionary<string, string>(
             StringComparer.OrdinalIgnoreCase);
+        var copySamples = NormalizeThroughputSamples(
+            item.CopyByteSpeedSamples,
+            item.CopyItemSpeedSamples,
+            item.CopyThroughputProgressSamples);
+        item.CopyByteSpeedSamples = copySamples.ByteRates;
+        item.CopyItemSpeedSamples = copySamples.ItemRates;
+        item.CopyThroughputProgressSamples = copySamples.ProgressPositions;
+
+        var verifySamples = NormalizeThroughputSamples(
+            item.VerifyByteSpeedSamples,
+            item.VerifyItemSpeedSamples,
+            item.VerifyThroughputProgressSamples);
+        item.VerifyByteSpeedSamples = verifySamples.ByteRates;
+        item.VerifyItemSpeedSamples = verifySamples.ItemRates;
+        item.VerifyThroughputProgressSamples = verifySamples.ProgressPositions;
+    }
+
+    private static List<double> NormalizeSpeedSamples(List<double>? samples) =>
+        (samples ?? [])
+        .Where(value => double.IsFinite(value) && value >= 0)
+        .TakeLast(CopyThroughputSampler.DefaultCapacity)
+        .ToList();
+
+    private static (
+        List<double> ByteRates,
+        List<double> ItemRates,
+        List<double> ProgressPositions) NormalizeThroughputSamples(
+            List<double>? byteRates,
+            List<double>? itemRates,
+            List<double>? progressPositions)
+    {
+        List<double> normalizedByteRates = NormalizeSpeedSamples(byteRates);
+        List<double> normalizedItemRates = NormalizeSpeedSamples(itemRates);
+        int sampleCount = Math.Min(normalizedByteRates.Count, normalizedItemRates.Count);
+        normalizedByteRates = normalizedByteRates.TakeLast(sampleCount).ToList();
+        normalizedItemRates = normalizedItemRates.TakeLast(sampleCount).ToList();
+
+        List<double> normalizedProgress = (progressPositions ?? [])
+            .Where(double.IsFinite)
+            .Select(value => Math.Clamp(value, 0, 1))
+            .TakeLast(sampleCount)
+            .ToList();
+        if (normalizedProgress.Count != sampleCount)
+        {
+            // Older histories have no progress positions and are rendered by
+            // the legacy full-width fallback instead of inventing timestamps.
+            normalizedProgress.Clear();
+        }
+        else
+        {
+            for (int index = 1; index < normalizedProgress.Count; index++)
+            {
+                normalizedProgress[index] = Math.Max(
+                    normalizedProgress[index - 1],
+                    normalizedProgress[index]);
+            }
+        }
+
+        return (normalizedByteRates, normalizedItemRates, normalizedProgress);
     }
 
     private static FileOperationFailure NormalizeLegacyFailureReason(

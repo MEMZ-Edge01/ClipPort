@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Include="..\..\src\EZDIT\Models\AppSettings.cs" Link="Models\AppSettings.cs" />
     <Compile Include="..\..\src\EZDIT\Models\CopyModels.cs" Link="Models\CopyModels.cs" />
+    <Compile Include="..\..\src\EZDIT\Models\CopyThroughputSampler.cs" Link="Models\CopyThroughputSampler.cs" />
     <Compile Include="..\..\src\EZDIT\Models\DisplayFormatting.cs" Link="Models\DisplayFormatting.cs" />
     <Compile Include="..\..\src\EZDIT\Models\JobHistoryItem.cs" Link="Models\JobHistoryItem.cs" />
     <Compile Include="..\..\src\EZDIT\Services\FileCopyService.cs" Link="Services\FileCopyService.cs" />

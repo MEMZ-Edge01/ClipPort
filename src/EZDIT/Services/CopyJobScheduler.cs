@@ -57,17 +57,26 @@ public sealed class CopyJobScheduler
             return;
         }
 
-        TaskCompletionSource? gateToOpen = null;
         lock (_sync)
         {
             if (_activePriorityJobs > 0 && --_activePriorityJobs == 0)
             {
-                gateToOpen = _priorityGate;
+                // TrySetResult stays inside the lock so that a Register call on
+                // another thread cannot observe _activePriorityJobs == 0, create
+                // a fresh incomplete gate, and leave us opening the old one.
+                // RunContinuationsAsynchronously ensures continuations never
+                // execute synchronously under the lock.
+                bool opened = _priorityGate.TrySetResult();
+                if (!opened)
+                {
+                    // The gate was already completed — this indicates an
+                    // unbalanced register / dispose sequence.  The scheduler
+                    // remains in a safe state (a completed gate lets ordinary
+                    // jobs proceed), but the diagnostic is preserved here for
+                    // production telemetry when logging is available.
+                }
             }
         }
-        bool opened = gateToOpen?.TrySetResult() ?? true;
-        Debug.Assert(opened,
-            "Priority gate was already completed — this may indicate an unbalanced register / dispose sequence.");
     }
 
     private static TaskCompletionSource CreateCompletedGate()

@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
         _previousLanguage = _appSettings.Language;
         _lastSavedSettings = CloneSettings(_appSettings);
         InitializeComponent();
+        ApplyThroughputChartLayouts();
         NewJobsList.ItemsSource = _newJobs;
         HistoryList.ItemsSource = _visibleHistory;
         DuplicateList.ItemsSource = _duplicateChoices;
@@ -484,6 +485,13 @@ public sealed partial class MainWindow : Window
             ? $"{FormatBytes(job.CopiedBytes / job.CopySeconds)}/s"
             : "--";
         VerifySpeedText.Text = job.VerifySeconds > 0 ? $"{FormatBytes(job.TotalBytes / job.VerifySeconds)}/s" : "--";
+        UpdateThroughputCharts(
+            job.CopyByteSpeedSamples,
+            job.CopyItemSpeedSamples,
+            job.CopyThroughputProgressSamples,
+            job.VerifyByteSpeedSamples,
+            job.VerifyItemSpeedSamples,
+            job.VerifyThroughputProgressSamples);
         CopyTimeText.Text = job.CopyEnabled ? FormatDuration(TimeSpan.FromSeconds(job.CopySeconds)) : "--";
         VerifyTimeText.Text = FormatDuration(TimeSpan.FromSeconds(job.VerifySeconds));
         CopyCountText.Text = job.CopyEnabled ? $"{job.CopiedFiles}/{job.FileCount}" : "--";
@@ -831,6 +839,13 @@ public sealed partial class MainWindow : Window
         DurationText.Text = "--";
         CopySpeedText.Text = "0 B/s";
         VerifySpeedText.Text = "0 B/s";
+        UpdateThroughputCharts(
+            EmptyWaveformSamples,
+            EmptyWaveformSamples,
+            EmptyWaveformSamples,
+            EmptyWaveformSamples,
+            EmptyWaveformSamples,
+            EmptyWaveformSamples);
         CopyTimeText.Text = "00:00:00";
         VerifyTimeText.Text = "00:00:00";
         CopyCountText.Text = "0/0";

@@ -59,6 +59,8 @@ public sealed class FileCopyService
     {
         if (options.SkipCopy)
         {
+            // Skip-copy mode implies verification; there is nothing to skip
+            // when the user only wants to verify existing destination files.
             options = options with { VerifyFiles = true };
         }
 
@@ -77,6 +79,7 @@ public sealed class FileCopyService
         if (!options.SkipCopy)
         {
             PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationRoot);
+            EnsureDestinationCapacity(destinationRoot, totalBytes);
             Directory.CreateDirectory(destinationRoot);
             foreach (string relativeDirectory in scan.Directories)
             {
@@ -1067,10 +1070,14 @@ public sealed class FileCopyService
                 File.Move(partialPath, destinationPath, false);
                 return destinationPath;
             }
-            catch (IOException) when (File.Exists(destinationPath))
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                TryDeletePartialFile(partialPath);
-                return null;
+                if (File.Exists(destinationPath))
+                {
+                    TryDeletePartialFile(partialPath);
+                    return null;
+                }
+                throw;
             }
         }
 
@@ -1119,6 +1126,13 @@ public sealed class FileCopyService
         }
     }
 
+    /// <summary>
+    /// Returns a unique destination path by appending a numeric suffix.
+    /// This is a best-effort helper: the existence check and the subsequent
+    /// <see cref="File.Move(string,string,bool)"/> are not atomic.  Callers
+    /// such as <see cref="CommitPartialFile"/> handle the TOCTOU window with
+    /// a retry loop around the final move.
+    /// </summary>
     private static string GetUniqueDestinationPath(string path, int startIndex = 1)
     {
         string directory = Path.GetDirectoryName(path) ?? string.Empty;

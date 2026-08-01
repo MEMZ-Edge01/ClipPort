@@ -161,6 +161,7 @@ namespace
             {
                 CloseFiles();
                 directIo_ = false;
+                alignment_ = 0;
                 pipelineLength_ = fileSize_;
                 error = OpenFiles(
                     sourcePath, destinationPath, false, true);
@@ -540,6 +541,8 @@ namespace
                 return ERROR_SUCCESS;
             }
 
+            // Close the Direct I/O handles before reopening for buffered tail.
+            CloseFiles();
             DWORD error = OpenFiles(
                 sourcePath, destinationPath, false, false);
             if (error != ERROR_SUCCESS)

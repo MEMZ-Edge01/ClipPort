@@ -27,6 +27,15 @@ public enum FileOperationStage
     Verifying
 }
 
+/// <summary>
+/// Options that control how a copy-and-verify job executes.
+/// </summary>
+/// <remarks>
+/// <see cref="UseFastCopyAlgorithm"/> controls both the file-copy pipeline
+/// (managed-pipelined / native engine vs. sequential) and whether source and
+/// destination SHA-256 hashes are computed in parallel during verification.
+/// A future revision may split these concerns into independent flags.
+/// </remarks>
 public sealed record CopyOptions(
     ExistingFilePolicy ExistingFilePolicy = ExistingFilePolicy.Overwrite,
     bool VerifyFiles = true,

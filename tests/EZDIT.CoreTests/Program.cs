@@ -32,6 +32,7 @@ internal static class Program
             ("ask mode supports per-file decisions", TestAskPerFileDecisionsAsync),
             ("path safety and root-folder naming", TestPathSafetyAsync),
             ("shared display formatting", TestDisplayFormattingAsync),
+            ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
@@ -768,6 +769,9 @@ internal static class Program
                 IsPriority = true,
                 PreventSleep = false,
                 IsAcknowledged = false,
+                CopyByteSpeedSamples = [125 * 1024 * 1024, 140 * 1024 * 1024],
+                CopyItemSpeedSamples = [12.5, 14],
+                CopyThroughputProgressSamples = [0.4, 1],
                 DuplicateFiles = [new DuplicateFileConflict("clip.mov", @"F:\clip.mov", @"D:\Media\CardA\clip.mov", 1024)],
                 DuplicateDecisions = new Dictionary<string, ExistingFilePolicy>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -838,6 +842,11 @@ internal static class Program
                 "Per-file duplicate decisions should round-trip.");
             Assert(!loaded[0].IsAcknowledged,
                 "The acknowledgement state should round-trip.");
+            Assert(loaded[0].CopyByteSpeedSamples.SequenceEqual(item.CopyByteSpeedSamples) &&
+                   loaded[0].CopyItemSpeedSamples.SequenceEqual(item.CopyItemSpeedSamples) &&
+                   loaded[0].CopyThroughputProgressSamples.SequenceEqual(
+                       item.CopyThroughputProgressSamples),
+                "Copy waveform samples should round-trip with task history.");
             Assert(loaded[0].NeedsAttention,
                 "An unacknowledged completed job should request attention.");
             Assert(loaded[0].MetaText.Contains("117.74 MB"),
@@ -938,6 +947,116 @@ internal static class Program
             "Every view should use the same byte-unit formatter.");
         Assert(DisplayFormatting.FormatDuration(TimeSpan.FromHours(54.5)) == "2:06:30:00",
             "Durations over 24 hours should show an unambiguous day and hour count.");
+        Assert(DisplayFormatting.GetWaveformDivisionStep(0) == 0 &&
+               DisplayFormatting.GetWaveformDivisionStep(1.14) == 0.5 &&
+               DisplayFormatting.GetWaveformDivisionStep(4.1) == 1.5 &&
+               DisplayFormatting.GetWaveformDivisionStep(8) == 3 &&
+               DisplayFormatting.GetWaveformDivisionStep(10) == 5 &&
+               DisplayFormatting.GetWaveformDivisionStep(35) == 15 &&
+               DisplayFormatting.GetWaveformDivisionStep(60) == 20 &&
+               DisplayFormatting.GetWaveformDivisionStep(99) == 50 &&
+               DisplayFormatting.GetWaveformDivisionStep(100) == 50 &&
+               DisplayFormatting.GetWaveformDivisionStep(350) == 150 &&
+               DisplayFormatting.GetWaveformDivisionStep(401) == 150 &&
+               DisplayFormatting.GetWaveformDivisionStep(600) == 200 &&
+               DisplayFormatting.GetWaveformDivisionStep(601) == 300,
+            "Waveform divisions should use readable half-step values that cover the visible peak.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestCopyThroughputSamplingAsync()
+    {
+        const double megabyte = 1024 * 1024;
+        var sampler = new CopyThroughputSampler(capacity: 3, minimumIntervalSeconds: 0.2);
+        var byteRates = new List<double>();
+        var itemRates = new List<double>();
+        var progressPositions = new List<double>();
+
+        Assert(!sampler.TrySample(
+                new CopyProgressInfo(
+                    CopyPhase.Verifying, 100, 10, 10, 1, "verify-a.mov",
+                    25 * megabyte, TimeSpan.FromSeconds(0.4)),
+                byteRates,
+                itemRates,
+                progressPositions),
+            "A copy sampler should ignore verification progress.");
+
+        bool sampledTooEarly = sampler.TrySample(
+                new CopyProgressInfo(
+                    CopyPhase.Copying, 100, 10, 10, 1, "a.mov",
+                    25 * megabyte, TimeSpan.FromSeconds(0.1)),
+            byteRates,
+            itemRates,
+            progressPositions);
+        Assert(!sampledTooEarly && byteRates.Count == 0,
+            "Waveform sampling should throttle progress bursts.");
+
+        Assert(sampler.TrySample(
+                new CopyProgressInfo(
+                    CopyPhase.Copying, 100, 20, 10, 2, "b.mov",
+                    25 * megabyte, TimeSpan.FromSeconds(0.4)),
+                byteRates,
+                itemRates,
+                progressPositions),
+            "The first complete interval should produce a waveform sample.");
+        Assert(Math.Abs(byteRates[0] - 25 * megabyte) < 1 &&
+               Math.Abs(itemRates[0] - 5) < 0.001 &&
+               Math.Abs(progressPositions[0] - 0.2) < 0.001,
+            "Cumulative progress should be converted to instantaneous byte and item rates.");
+
+        sampler.TrySample(
+                new CopyProgressInfo(
+                    CopyPhase.Copying, 100, 50, 10, 5, "e.mov",
+                    30 * megabyte, TimeSpan.FromSeconds(0.8)),
+            byteRates,
+            itemRates,
+            progressPositions);
+        Assert(Math.Abs(byteRates[1] - 35 * megabyte) < 1 &&
+               Math.Abs(itemRates[1] - 7.5) < 0.001 &&
+               Math.Abs(progressPositions[0] - 0.2) < 0.001 &&
+               Math.Abs(progressPositions[1] - 0.5) < 0.001,
+            "Later samples should preserve existing positions and advance along the estimated timeline.");
+
+        Assert(sampler.TryAppendIdleSample(byteRates, itemRates, progressPositions) &&
+               byteRates[^1] == 0 && itemRates[^1] == 0 &&
+               Math.Abs(progressPositions[^1] - 0.5) < 0.001 &&
+               !sampler.TryAppendIdleSample(byteRates, itemRates, progressPositions),
+            "A completed copy interval should end at zero exactly once.");
+
+        for (int index = 1; index <= 4; index++)
+        {
+            double elapsed = 0.8 + index * 0.4;
+            sampler.TrySample(
+                new CopyProgressInfo(
+                    CopyPhase.Copying, 100, 50 + index, 20, 5 + index,
+                    $"extra-{index}.mov", 30 * megabyte, TimeSpan.FromSeconds(elapsed)),
+                byteRates,
+                itemRates,
+                progressPositions);
+        }
+        Assert(byteRates.Count == 3 && itemRates.Count == 3 &&
+               progressPositions.Count == 3 &&
+               progressPositions.SequenceEqual(progressPositions.OrderBy(value => value)),
+            "Waveform histories and their stable timeline positions should remain aligned and bounded.");
+
+        var verifySampler = new CopyThroughputSampler(
+            capacity: 3,
+            minimumIntervalSeconds: 0.2,
+            sampledPhase: CopyPhase.Verifying);
+        var verifyByteRates = new List<double>();
+        var verifyItemRates = new List<double>();
+        var verifyProgressPositions = new List<double>();
+        Assert(verifySampler.TrySample(
+                new CopyProgressInfo(
+                    CopyPhase.Verifying, 100, 40, 10, 4, "verify-d.mov",
+                    100 * megabyte, TimeSpan.FromSeconds(0.4)),
+                verifyByteRates,
+                verifyItemRates,
+                verifyProgressPositions) &&
+               Math.Abs(verifyByteRates[0] - 100 * megabyte) < 1 &&
+               Math.Abs(verifyItemRates[0] - 10) < 0.001 &&
+               Math.Abs(verifyProgressPositions[0] - 0.4) < 0.001,
+            "A verification sampler should produce independent byte and item rates.");
         return Task.CompletedTask;
     }
 
