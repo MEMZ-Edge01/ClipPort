@@ -6,17 +6,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$solutionPath = Join-Path $repoRoot 'EZDIT.sln'
-$projectPath = Join-Path $repoRoot 'src\EZDIT\EZDIT.csproj'
+$solutionPath = Join-Path $repoRoot 'ClipPort.sln'
+$projectPath = Join-Path $repoRoot 'src\ClipPort\ClipPort.csproj'
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 
 [xml]$project = Get-Content -LiteralPath $projectPath -Raw
 $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
 if ([string]::IsNullOrWhiteSpace($version)) {
-    throw 'EZDIT.csproj does not define a Version.'
+    throw 'ClipPort.csproj does not define a Version.'
 }
 
-$publishName = "EZDIT-$version-$Runtime"
+$publishName = "ClipPort-$version-$Runtime"
 $publishPath = Join-Path $artifactRoot $publishName
 $operationId = [Guid]::NewGuid().ToString('N')
 $stagingRoot = Join-Path $artifactRoot ".staging-$operationId"
@@ -75,7 +75,7 @@ try {
         throw "Solution build failed with exit code $LASTEXITCODE."
     }
 
-    $managedBuildRoot = Join-Path $repoRoot "src\EZDIT\bin\x64\$Configuration"
+    $managedBuildRoot = Join-Path $repoRoot "src\ClipPort\bin\x64\$Configuration"
     $requiredBuildFiles = @(
         'App.xbf',
         'MainWindow.xbf',
@@ -105,9 +105,9 @@ try {
     }
 
     $requiredFiles = @(
-        'EZDIT.exe',
-        'EZDIT.dll',
-        'EZDIT.NativeCopy.dll',
+        'ClipPort.exe',
+        'ClipPort.dll',
+        'ClipPort.NativeCopy.dll',
         'resources.pri',
         'Strings\zh-CN\Resources.resw',
         'Strings\en-US\Resources.resw'
@@ -137,4 +137,4 @@ finally {
     Remove-SafeArtifactChild -Path $stagingRoot
 }
 
-Get-Item -LiteralPath (Join-Path $publishPath 'EZDIT.exe')
+Get-Item -LiteralPath (Join-Path $publishPath 'ClipPort.exe')

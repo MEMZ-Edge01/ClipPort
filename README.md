@@ -1,171 +1,239 @@
-# EZ DIT
-
 <div align="center">
-
-**[English](#english)** &nbsp;|&nbsp; **[中文](#chinese)**
-
-一个使用 WinUI 3 + C# + C++ 构建的 Windows 自动拷卡工具 —— 安全、快速、可校验
-
+  <img src="src/ClipPort/Assets/Icons/clipport-app-icon.png" alt="ClipPort" width="160" />
+  <h1>ClipPort</h1>
+  <p>面向摄影、视频与其他大批量文件场景的 Windows 拷卡、校验和任务管理工具。</p>
+  <p>
+    <a href="#主要功能">主要功能</a> ·
+    <a href="#使用方法">使用方法</a> ·
+    <a href="#构建与测试">构建与测试</a> ·
+    <a href="#english-summary">English</a>
+  </p>
 </div>
 
+## 项目简介
+
+ClipPort 是一款使用 WinUI 3、C#、.NET 8 和 C++ 构建的 Windows x64 桌面应用。
+它可以把存储卡或普通目录中的文件复制到指定位置，并按需使用 SHA-256 对源文件与目标文件进行逐文件校验。
+
+应用不依赖账号、云服务或远程数据库。
+设置、任务历史、日志和报告都保存在本机。
+
+## 主要功能
+
+### 复制与校验
+
+- 复制完整目录结构，包括空目录。
+- 默认使用顺序异步复制，并以 4 MiB 缓冲区处理文件。
+- 可启用或关闭 SHA-256 校验。
+- 支持只校验模式：不创建目标目录、不复制文件，只比较已有源文件与目标文件。
+- 先写入随机命名的 .clipport-partial 临时文件，完整写入后再提交到正式目标路径。
+- 取消或单文件失败时会清理临时文件，不会用半成品覆盖已有目标文件。
+- 尽力保留源文件的最后修改时间；无法保留时记录警告，但不会中断整个任务。
+- 复制前检查目标磁盘空间，并拒绝危险的源目录、目标目录重叠关系。
+- 跳过目录联接和符号链接，并阻止目标路径穿过重解析点，避免意外递归或写入到非预期位置。
+
+### 三种任务模式
+
+| 模式 | 行为 |
+| --- | --- |
+| 复制并校验 | 复制文件后对源文件与目标文件计算 SHA-256，默认模式 |
+| 仅复制 | 复制文件但不执行校验 |
+| 只校验 | 不复制文件，仅校验目标目录中已经存在的对应文件 |
+
+创建任务时至少需要启用复制或校验中的一项。
+
+### 重复文件处理
+
+目标位置已经存在同名文件时，可以选择：
+
+- 询问：先继续处理其他文件，随后逐项或批量决定。
+- 覆盖：安全写入完成后替换目标文件。
+- 跳过：保留现有目标文件。
+- 创建副本：自动生成不冲突的新文件名。
+
+询问模式支持多选、全选和批量应用处理策略。
+
+### 多任务与优先级
+
+- 可以创建多个并发任务，并在“新任务”和“历史任务”区域中分别管理。
+- 会阻止同时运行的任务使用相互冲突的源路径或目标路径。
+- 优先任务可以并行执行；普通任务会在安全检查点等待，直到全部优先任务结束。
+- 每个任务都可以独立暂停、继续、取消，并可选择在任务期间阻止电脑进入休眠。
+- 失败、取消或意外中断的任务可以按原配置重新开始。
+- 已完成复制的任务可以再次启动只校验任务。
+
+### 失败恢复
+
+- 单个文件发生 I/O 或权限错误时，任务会继续处理其他文件。
+- 任务结束前可以勾选失败文件并选择重试或跳过。
+- 对 SHA-256 不一致的文件可以选择重新覆盖并再次校验。
+- 任务报告会保留失败原因、警告、重复文件处理结果和最终状态。
+
+### 实时进度与吞吐图
+
+- 显示当前阶段、当前文件、完成百分比、文件数量、数据量、速度和耗时。
+- 分别记录复制与校验阶段的字节速度和项目数速度。
+- 提供实时波形、当前值、最高值、最低值和动态刻度。
+- 复制图表与校验图表都可以在并排布局和纵向堆叠布局之间切换。
+- 吞吐采样会随任务历史保存，重新选择历史任务时仍可查看。
+
+### 历史、报告与批量操作
+
+- 任务历史以 JSON 保存在本机，最多保留 200 条非活动记录。
+- 活动任务不会因为历史数量达到上限而被删除。
+- 单条损坏的历史记录会被隔离，不影响其他有效记录。
+- 支持删除单条记录或批量删除已结束的记录，删除记录不会删除源文件和目标文件。
+- 支持导出单个报告，也可以为多个任务批量生成报告。
+- 报告内容跟随应用语言，并包含复制、校验、失败、警告和重复项处理明细。
+
+### 外观与语言
+
+- 支持跟随系统、浅色和深色三种外观模式。
+- 支持 Windows 系统强调色，以及海沫绿、亮玫红、黄金色、浅薄荷色和紫影色五种预设颜色。
+- 支持简体中文、English 和文言三种界面语言。
+- 切换语言后可以立即安排应用安全重启，也可以稍后手动重启。
+- 可以自定义日志和报告的保存目录。
+
+## 使用方法
+
+1. 点击“创建任务”。
+2. 选择源目录或存储卡。
+3. 如果启用复制，选择目标目录；可以额外填写目标子文件夹名。
+4. 选择复制、SHA-256 校验、重复文件策略、休眠防止和优先执行选项。
+5. 点击“开始任务”，在主界面查看实时进度与吞吐波形。
+6. 如果出现重复文件或失败文件，按界面提示逐项或批量处理。
+7. 任务结束后可以导出报告、重新开始或启动只校验任务。
+
+## 本地数据
+
+| 内容 | 默认位置 |
+| --- | --- |
+| 设置 | %LOCALAPPDATA%\ClipPort\settings.json |
+| 任务历史 | %LOCALAPPDATA%\ClipPort\history.json |
+| 日志 | 用户文档目录\ClipPort\ClipPort.log |
+| 自动报告 | 用户文档目录\ClipPort |
+
+日志和报告目录可以在设置中更改。
+日志达到 5 MiB 后会轮换为 ClipPort.old.log。
+
+## 当前限制
+
+- 当前发布目标仅为 Windows x64。
+- 当前提供自包含目录发布，不是单文件程序，也没有 MSIX 安装包。
+- C++ 原生复制引擎会随 Release 包构建和发布，但对应开关目前在界面中隐藏并禁用。
+- 普通用户当前使用默认顺序复制路径；原生引擎和托管流水线仅用于代码级实验与回归测试，不应视为稳定的公开功能。
+
+## 项目结构
+
+~~~text
+ClipPort
+├── ClipPort.sln
+├── src
+│   ├── ClipPort
+│   │   ├── Models
+│   │   ├── Services
+│   │   ├── Strings
+│   │   ├── Views
+│   │   └── Assets
+│   └── ClipPort.NativeCopy
+├── tests
+│   └── ClipPort.CoreTests
+└── scripts
+    └── publish-beta.ps1
+~~~
+
+## 构建与测试
+
+### 环境要求
+
+- Windows 10 1809 或更高版本。
+- .NET 8 SDK。
+- Visual Studio，并安装 MSBuild 与 C++ x64 桌面生成工具。
+
+原生 C++ 项目需要 Visual Studio MSBuild。
+不要使用 dotnet build ClipPort.sln 代替完整发布流程，否则可能因为无法解析 C++ targets 而失败。
+
+### 获取代码
+
+~~~powershell
+git clone https://github.com/MEMZ-Edge01/ClipPort.git
+cd ClipPort
+~~~
+
+### 运行核心测试
+
+~~~powershell
+dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release
+~~~
+
+当前核心测试共 28 项，覆盖：
+
+- 本地化资源完整性与语言查找。
+- Windows 系统强调色预览。
+- 复制、SHA-256 校验和只校验模式。
+- 校验不一致覆盖、暂停、继续和取消安全。
+- 重复文件的询问、覆盖、跳过和创建副本。
+- 单文件失败继续执行与失败重试。
+- 空目录、路径安全和符号链接保护。
+- 吞吐波形采样与显示格式。
+- 设置容错、本地历史、损坏记录隔离和历史保留。
+- 多语言报告、警告保留和优先任务调度。
+- Release 包中的原生 DLL 可用性。
+
+### 构建 Release 自包含包
+
+~~~powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-beta.ps1
+~~~
+
+脚本会：
+
+1. 使用 Visual Studio MSBuild 构建 Release x64 解决方案和 C++ 原生 DLL。
+2. 检查 App.xbf、MainWindow.xbf、TraeWorkTheme.xbf 和 SettingsView.xbf。
+3. 发布 win-x64 自包含运行时。
+4. 验证 ClipPort.exe、ClipPort.dll、ClipPort.NativeCopy.dll、resources.pri 和语言资源。
+5. 以安全的暂存与替换流程写入 artifacts 目录。
+
+默认输出位置：
+
+~~~text
+artifacts\ClipPort-1.0.0-beta-win-x64
+~~~
+
+## 技术栈
+
+- .NET 8
+- C# 12
+- WinUI 3 / Windows App SDK
+- C++20 / Win32
+- SHA-256
+- JSON 本地持久化
+
+## 许可证
+
+本仓库目前未声明开源许可证。
+除非仓库所有者另行授权，否则不应假定代码可以自由复制、修改或重新分发。
+
 ---
 
-<a name="chinese"></a>
+## English Summary
 
-## 🇨🇳 中文
+ClipPort is a Windows x64 desktop application for reliable media-card and directory transfers.
+It supports safe file copying, optional per-file SHA-256 verification, verification-only jobs, duplicate-file policies, concurrent and priority tasks, pause and cancellation, failure recovery, local history, localized reports, and real-time byte/item throughput charts.
 
-### 简介
+The application stores its settings and history locally and does not require an account or cloud service.
 
-**EZ DIT**（Easy Digital Imaging Transfer）是一款 Windows 桌面应用，专为摄影师和视频工作者设计，用于将存储卡中的素材安全、高效地拷贝到本地磁盘。支持完整的 SHA-256 完整性校验，确保每一个字节都被正确复制。
+The native C++ copy engine is built and packaged for engineering validation, but its UI switch is currently hidden and disabled.
+The default user-facing copy path is the sequential asynchronous implementation.
 
-### 特性
+Run the 28 core tests:
 
-- 🚀 **快速拷贝**：异步流式复制，支持托管流水线有界缓冲（原生引擎暂不可用，详见下方说明）
-- ✅ **SHA-256 校验**：逐文件执行 SHA-256 哈希校验，确保数据完整性
-- 📂 **保持目录结构**：完整复制源目录结构，包括空目录
-- ⏯️ **暂停/继续/取消**：随时暂停拷贝或校验，取消不会损坏已有目标文件
-- 🔄 **并发任务队列**：支持同时配置多个任务，优先级任务可插队执行
-- 📋 **历史记录**：自动保存任务历史，数据仅存储在本地
-- 📄 **报告导出**：导出包含每个文件哈希值及验证结果的文本报告
-- 🌗 **深色/浅色主题**：支持跟随系统 + 6 种强调色
-- 🌐 **中英双语**：完整的中文和英文界面
-- 🛡️ **安全写入**：使用 `.ezdit-partial` 临时文件 + 原子替换，取消/失败不破坏已有文件
-- 🔗 **符号链接保护**：跳过目录联接和符号链接，避免意外递归
+~~~powershell
+dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release
+~~~
 
-### 使用
+Build the self-contained Release package:
 
-1. 点击「源目录 / 存储卡」选择素材所在目录（如 SD 卡）。
-2. 点击「拷卡目的地」选择目标目录。
-3. 默认自动开始；可关闭「自动开始」再手动点击「开始拷卡」。
-4. 支持暂停 / 继续 / 取消，取消不会影响已完成的文件。
-5. 左侧历史面板可查看任意历史任务详情或导出报告。
-6. 可在设置中切换语言、主题和强调色。
-
-> 历史数据保存在本机 `%LOCALAPPDATA%\EZDIT`；日志和报告默认保存在用户文档下的 `EZ DIT` 文件夹，也可在设置中更改。无云服务依赖。
-
-### 技术架构
-
-```
-EZ DIT
-├── src/EZDIT/                  # C# WinUI 3 主程序
-│   ├── Models/                 # 数据模型
-│   ├── Services/               # 核心服务层
-│   │   ├── FileCopyService.cs  # 文件拷贝与校验
-│   │   ├── NativeCopyEngine.cs # 原生引擎 P/Invoke 封装
-│   │   ├── CopyJobScheduler.cs # 并发任务调度器
-│   │   └── ThemeManager.cs     # 主题与强调色管理
-│   ├── Views/                  # XAML 视图
-│   ├── Converters/             # 绑定转换器
-│   └── Strings/                # 多语言资源 (.resw)
-├── src/EZDIT.NativeCopy/       # C++ 原生引擎（实验性，当前默认禁用）
-│   ├── native_copy.h           # 公开 API 头文件
-│   └── native_copy.cpp         # 实现
-└── tests/EZDIT.CoreTests/      # 核心流程测试（23 个用例）
-```
-
-### 拷贝引擎
-
-EZ DIT 提供三种拷贝模式，根据配置自动选择：
-
-| 模式 | 说明 | 适用场景 |
-|------|------|----------|
-| **标准顺序复制** | `FileStream` 异步读写，4 MiB 缓冲 | 小文件、默认模式 |
-| **托管流水线** | `Channel<T>` 实现的生产者-消费者流水线，4 个 4 MiB 缓冲区 | 大文件、无原生 DLL 时 |
-| **原生引擎** | C++ 实现，Overlapped I/O + Direct I/O | ⚠️ 实验性，默认禁用 |
-
-原生引擎特性：
-- 两个原生工作线程重叠执行读取和写入
-- 4 × 4 MiB 有界环形缓冲控制内存和背压
-- 大于 32 MiB 的文件尝试 Direct I/O，不满足对齐要求时自动回退
-- 支持 `CancelIoEx` 快速取消
-- DLL 不存在或 API 版本不匹配时自动降级
-
-> ⚠️ 原生引擎当前因性能问题默认禁用（UI 中已隐藏），仅通过代码或历史任务重启时可用。
-> 原生实现是根据公开的 Windows I/O 能力独立编写的，没有复制 FastCopy-M 的 GPLv3 源码。
-
-### 构建
-
-**环境要求：**
-
-- Windows 10 1809+（推荐 Windows 11）
-- Visual Studio 2022 17.8+
-- .NET 8 SDK
-- 工作负载：`.NET 桌面开发`、`Windows 应用 SDK C# 模板`、`使用 C++ 的桌面开发`
-
-**构建步骤：**
-
-```powershell
-# 1. 克隆仓库
-git clone https://github.com/MEMZ-Edge01/EZ-DIT.git
-cd EZ-DIT
-
-# 2. 用 Visual Studio 打开 EZDIT.sln，选择 x64，生成
-
-# 3. 或用命令行构建
-msbuild .\EZDIT.sln -restore -m -p:Configuration=Release -p:Platform=x64
-
-# 4. 构建、校验并发布自包含 x64 包
-.\scripts\publish-beta.ps1
-```
-
-### 测试
-
-```powershell
-dotnet run --project .\tests\EZDIT.CoreTests\EZDIT.CoreTests.csproj -c Release
-```
-
-测试覆盖 23 个场景：正常复制与哈希一致性、只校验、暂停/继续、取消安全、损坏检测、文件失败恢复、空目录处理、流水线拷贝、重复文件逐策略处理、路径安全、设置容错、本地化报告、历史损坏隔离、优先级调度等。
-
-### 数据存储
-
-任务历史保存在本机 `%LOCALAPPDATA%\EZDIT`。日志和报告默认输出到用户文档下的 `EZ DIT` 文件夹，可在设置中更改；旧报告记录会保留其实际路径。不使用账号、云服务或网络数据库。
-
-### 许可证
-
-本项目目前未声明开源许可证，所有权利保留。
-
-### 致谢
-
-- [Windows App SDK / WinUI 3](https://github.com/microsoft/microsoft-ui-xaml) — UI 框架
-- [FastCopy](https://fastcopy.jp/) — 灵感来源（独立实现，未使用其源码）
-
----
-
-<a name="english"></a>
-
-## 🇬🇧 English
-
-### Overview
-
-**EZ DIT** (Easy Digital Imaging Transfer) is a Windows desktop application designed for photographers and videographers to safely and efficiently copy media from memory cards to local storage. It features full SHA-256 integrity verification to ensure every byte is copied correctly.
-
-### Features
-
-- 🚀 **Fast Copy** — Async streaming with managed pipeline buffering (native engine currently disabled due to performance issues)
-- ✅ **SHA-256 Verification** — Per-file hash verification for data integrity
-- 📂 **Preserves Structure** — Full directory tree including empty folders
-- ⏯️ **Pause/Resume/Cancel** — Safe cancellation with `.ezdit-partial` atomic writes
-- 🔄 **Concurrent Queue** — Multiple jobs with priority scheduling
-- 📋 **History** — Local-only task history with no cloud dependencies
-- 📄 **Reports** — Export per-file hash verification reports
-- 🌗 **Themes** — Light/dark with system follow + 6 accent colors
-- 🌐 **i18n** — Full Chinese and English localization
-- 🛡️ **Safe Writes** — Temporary files + atomic replacement; cancelling never corrupts existing files
-- 🔗 **Symlink Safe** — Skips junctions and symbolic links
-
-### Architecture
-
-- **Frontend**: WinUI 3 (Windows App SDK), C#, .NET 8
-- **Core Logic**: `FileCopyService` — async streaming copy with SHA-256 verification
-- **Native Engine**: C++/Win32 — ring buffer pipeline with Direct I/O fallback (experimental, currently disabled)
-- **Scheduler**: Custom priority-gated concurrent job scheduler
-- **Persistence**: JSON-based local history and settings
-- **Testing**: 23 core scenario tests covering copy, verify, pause, cancel, recovery, path safety, persistence, and localization
-
-### Build & Test
-
-Same commands as the Chinese section above.
-
-### License
-
-No open-source license has been declared for this project. All rights reserved.
+~~~powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-beta.ps1
+~~~
