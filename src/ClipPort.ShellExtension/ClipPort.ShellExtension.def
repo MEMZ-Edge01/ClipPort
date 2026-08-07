@@ -1,0 +1,4 @@
+LIBRARY "ClipPort.ShellExtension.dll"
+EXPORTS
+    DllCanUnloadNow PRIVATE
+    DllGetClassObject PRIVATE

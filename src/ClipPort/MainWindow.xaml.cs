@@ -23,6 +23,7 @@ public sealed partial class MainWindow : Window
     private readonly AppSettings _appSettings = App.Settings;
     private readonly JobHistoryService _historyService;
     private readonly AppLogService _logService;
+    private readonly ExplorerContextMenuService _explorerContextMenuService = new();
     private readonly UISettings _uiSettings = new();
     private readonly ObservableCollection<JobHistoryItem> _history = [];
     private readonly ObservableCollection<DuplicateConflictChoice> _duplicateChoices = [];
@@ -32,6 +33,8 @@ public sealed partial class MainWindow : Window
     private string? _destinationParentPath;
     private string? _dialogSourcePath;
     private string? _dialogDestinationParentPath;
+    private string? _automaticDialogSubfolderName;
+    private bool _quickStartDialogOpen;
     private CopyOptions _copyOptions = new();
     private bool _historyLoaded;
     private AppLanguage _previousLanguage;
@@ -61,6 +64,8 @@ public sealed partial class MainWindow : Window
         SettingsPage.BackRequested += SettingsPage_BackRequested;
         SettingsPage.SettingsChanged += SettingsPage_SettingsChanged;
         SettingsPage.BrowseDirectoryRequested += SettingsPage_BrowseDirectoryRequested;
+        SettingsPage.ExplorerContextMenuToggleRequested +=
+            SettingsPage_ExplorerContextMenuToggleRequested;
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         _uiSettings.ColorValuesChanged += SystemColorValuesChanged;
         LogText.RegisterPropertyChangedCallback(
@@ -106,6 +111,7 @@ public sealed partial class MainWindow : Window
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         ApplyTheme();
+        await SynchronizeExplorerContextMenuAsync();
         if (_historyLoaded)
         {
             return;
@@ -217,8 +223,7 @@ public sealed partial class MainWindow : Window
         {
             // Always generate a relative, filesystem-safe folder name,
             // including when the selected source is a drive root.
-            DialogDestinationSubfolderName.Text =
-                PathSafety.GetSuggestedSubfolderName(path, DateTime.Now);
+            SetAutomaticDialogSubfolderName(path);
         }
     }
 
@@ -245,12 +250,12 @@ public sealed partial class MainWindow : Window
         // Default to a relative, filesystem-safe folder name.
         if (_dialogSourcePath is not null)
         {
-            DialogDestinationSubfolderName.Text =
-                PathSafety.GetSuggestedSubfolderName(_dialogSourcePath, DateTime.Now);
+            SetAutomaticDialogSubfolderName(_dialogSourcePath);
         }
         else
         {
             DialogDestinationSubfolderName.Text = "";
+            _automaticDialogSubfolderName = null;
         }
 
         EnableCopyToggle.Toggled += OnEnableCopyToggled;
@@ -801,6 +806,13 @@ public sealed partial class MainWindow : Window
         StartButton.IsEnabled = _selectedJob is null;
     }
 
+    private void SetAutomaticDialogSubfolderName(string sourcePath)
+    {
+        _automaticDialogSubfolderName =
+            PathSafety.GetSuggestedSubfolderName(sourcePath, DateTime.Now);
+        DialogDestinationSubfolderName.Text = _automaticDialogSubfolderName;
+    }
+
     private void ResetProgress()
     {
         _duplicateChoices.Clear();
@@ -1014,6 +1026,7 @@ public sealed partial class MainWindow : Window
         if (!enabled)
         {
             DialogDestinationSubfolderName.Text = "";
+            _automaticDialogSubfolderName = null;
             VerifyFilesToggle.IsOn = true;
         }
         AskExistingRadio.IsEnabled = enabled;

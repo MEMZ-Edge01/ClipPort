@@ -26,6 +26,26 @@ public partial class App : Application
     {
         _window = new MainWindow();
         _window.Activate();
+        ActivationRouter.Register(
+            _window.DispatcherQueue,
+            HandleActivationAsync);
         ApplicationRestartService.CleanupRegistrationFromCommandLine();
+    }
+
+    private Task HandleActivationAsync(AppActivationRequest request)
+    {
+        if (_window is not MainWindow mainWindow)
+        {
+            return Task.CompletedTask;
+        }
+
+        mainWindow.ActivateAndRestore();
+        if (request.QuickStartRequest is not null)
+        {
+            // Do not block activation routing on the modal task dialog. A second
+            // Explorer request must be able to update the dialog while it is open.
+            _ = mainWindow.HandleQuickStartRequestAsync(request.QuickStartRequest);
+        }
+        return Task.CompletedTask;
     }
 }

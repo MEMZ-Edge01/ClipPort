@@ -212,6 +212,7 @@
   <data name="Settings.PageTitle" xml:space="preserve"><value>设置</value></data>
   <data name="Settings.Appearance" xml:space="preserve"><value>外观</value></data>
   <data name="Settings.General" xml:space="preserve"><value>常规</value></data>
+  <data name="Settings.QuickStart" xml:space="preserve"><value>快速开启</value></data>
   <data name="Settings.About" xml:space="preserve"><value>关于</value></data>
   <data name="Settings.BackToTask" xml:space="preserve"><value>返回任务</value></data>
   <data name="Settings.AppearanceDesc" xml:space="preserve"><value>选择应用的明暗外观与强调色。</value></data>
@@ -219,6 +220,10 @@
   <data name="Settings.ColorMode" xml:space="preserve"><value>颜色模式</value></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>主题色</value></data>
   <data name="Settings.GeneralDesc" xml:space="preserve"><value>设置界面语言以及日志与报告的默认位置。</value></data>
+  <data name="Settings.ExplorerMenuUnsupported" xml:space="preserve"><value>此功能需要 Windows 11，ClipPort 的其他功能不受影响。</value></data>
+  <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>已注册，可在文件资源管理器的 Windows 11 新式右键菜单中使用。</value></data>
+  <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>当前未注册到文件资源管理器右键菜单。</value></data>
+  <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>右键菜单状态更新失败：{0}</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>语言与文件</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>语言</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>日志与报告默认保存位置</value></data>
@@ -247,6 +252,13 @@
   <data name="SettingsSectionLabel.Text" xml:space="preserve"><value>设置</value></data>
   <data name="AppearanceNavText.Text" xml:space="preserve"><value>外观</value></data>
   <data name="GeneralNavText.Text" xml:space="preserve"><value>常规</value></data>
+  <data name="QuickStartNavText.Text" xml:space="preserve"><value>快速开启</value></data>
+  <data name="QuickStartTitle.Text" xml:space="preserve"><value>快速开启</value></data>
+  <data name="QuickStartDesc.Text" xml:space="preserve"><value>从文件资源管理器直接创建并预填 ClipPort 任务。</value></data>
+  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>注册到文件资源管理器右键菜单</value></data>
+  <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已开启</value></data>
+  <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已关闭</value></data>
+  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>右击文件夹或文件夹空白处，可选择作为源目录或目标目录。</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>关于</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>返回任务</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>外观</value></data>

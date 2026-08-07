@@ -15,6 +15,8 @@ public sealed partial class SettingsView : UserControl
     public event EventHandler? BackRequested;
     public event EventHandler? SettingsChanged;
     public event EventHandler? BrowseDirectoryRequested;
+    public event EventHandler<ExplorerContextMenuToggleRequestedEventArgs>?
+        ExplorerContextMenuToggleRequested;
 
     public SettingsView()
     {
@@ -57,6 +59,7 @@ public sealed partial class SettingsView : UserControl
             .OfType<ComboBoxItem>()
             .FirstOrDefault(item => item.Tag is AppLanguage language && language == settings.Language);
         OutputDirectoryTextBox.Text = settings.LogAndReportDirectory;
+        ExplorerContextMenuToggle.IsOn = settings.ExplorerContextMenuEnabled;
         UpdateAccentSelectionText();
         _initializing = false;
     }
@@ -81,15 +84,22 @@ public sealed partial class SettingsView : UserControl
     private void AboutNavButton_Click(object sender, RoutedEventArgs e) =>
         ShowSection(AboutPanel, AboutNavButton);
 
+    private void QuickStartNavButton_Click(object sender, RoutedEventArgs e) =>
+        ShowSection(QuickStartPanel, QuickStartNavButton);
+
     private void ShowSection(UIElement panel, Button selectedButton)
     {
         AppearancePanel.Visibility = panel == AppearancePanel ? Visibility.Visible : Visibility.Collapsed;
         GeneralPanel.Visibility = panel == GeneralPanel ? Visibility.Visible : Visibility.Collapsed;
+        QuickStartPanel.Visibility = panel == QuickStartPanel ? Visibility.Visible : Visibility.Collapsed;
         AboutPanel.Visibility = panel == AboutPanel ? Visibility.Visible : Visibility.Collapsed;
         AppearanceNavButton.Background = panel == AppearancePanel
             ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlSecondaryBrush"]
             : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
         GeneralNavButton.Background = panel == GeneralPanel
+            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlSecondaryBrush"]
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        QuickStartNavButton.Background = panel == QuickStartPanel
             ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlSecondaryBrush"]
             : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
         AboutNavButton.Background = panel == AboutPanel
@@ -163,6 +173,32 @@ public sealed partial class SettingsView : UserControl
     private void BrowseDirectoryButton_Click(object sender, RoutedEventArgs e) =>
         BrowseDirectoryRequested?.Invoke(this, EventArgs.Empty);
 
+    private void ExplorerContextMenuToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        ExplorerContextMenuToggle.IsEnabled = false;
+        ExplorerContextMenuToggleRequested?.Invoke(
+            this,
+            new ExplorerContextMenuToggleRequestedEventArgs(
+                ExplorerContextMenuToggle.IsOn));
+    }
+
+    public void SetExplorerContextMenuState(
+        bool enabled,
+        bool supported,
+        string statusText)
+    {
+        _initializing = true;
+        ExplorerContextMenuToggle.IsOn = enabled;
+        ExplorerContextMenuToggle.IsEnabled = supported;
+        ExplorerContextMenuStatusText.Text = statusText;
+        _initializing = false;
+    }
+
     private async void RepositoryButton_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -185,4 +221,9 @@ public sealed partial class SettingsView : UserControl
             await dialog.ShowAsync();
         }
     }
+}
+
+public sealed class ExplorerContextMenuToggleRequestedEventArgs(bool enabled) : EventArgs
+{
+    public bool Enabled { get; } = enabled;
 }

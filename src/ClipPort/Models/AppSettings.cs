@@ -53,6 +53,7 @@ public sealed class AppSettings
     public AppThemeMode Theme { get; set; } = AppThemeMode.System;
     public AppAccentMode Accent { get; set; } = AppAccentMode.System;
     public AppLanguage Language { get; set; } = AppLanguage.SimplifiedChinese;
+    public bool ExplorerContextMenuEnabled { get; set; }
     public string LogAndReportDirectory { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ClipPort");
 }

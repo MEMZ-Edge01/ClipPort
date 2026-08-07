@@ -20,3 +20,6 @@ artifacts/
 # OS
 .DS_Store
 Thumbs.db
+
+#clips
+CLIPS/

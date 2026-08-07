@@ -33,6 +33,7 @@ internal static class Program
             ("path safety and root-folder naming", TestPathSafetyAsync),
             ("shared display formatting", TestDisplayFormattingAsync),
             ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
+            ("quick-start requests preserve the opposite directory", TestQuickStartRequestsAsync),
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
@@ -1086,6 +1087,59 @@ internal static class Program
                 "Undefined numeric enum values should fall back instead of crashing startup.");
             Assert(Path.IsPathFullyQualified(loaded.LogAndReportDirectory),
                 "An invalid or relative output directory should return to the absolute default.");
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestQuickStartRequestsAsync()
+    {
+        string root = Path.Combine(
+            Path.GetTempPath(),
+            "ClipPort-QuickStartTests",
+            Guid.NewGuid().ToString("N"));
+        string sourceA = Path.Combine(root, "source-a");
+        string sourceB = Path.Combine(root, "source-b");
+        string destination = Path.Combine(root, "destination");
+        Directory.CreateDirectory(sourceA);
+        Directory.CreateDirectory(sourceB);
+        Directory.CreateDirectory(destination);
+        try
+        {
+            QuickStartRequest? parsedSource = QuickStartRequestParser.Parse(
+                [QuickStartRequestParser.SourceOption, sourceA]);
+            Assert(parsedSource is
+                {
+                    Role: QuickStartDirectoryRole.Source
+                } && parsedSource.DirectoryPath == Path.GetFullPath(sourceA),
+                "The source command-line option should produce a normalized source request.");
+
+            var draft = new QuickStartDraft(null, destination).Apply(parsedSource!);
+            Assert(draft.SourceDirectory == Path.GetFullPath(sourceA) &&
+                   draft.DestinationDirectory == destination,
+                "Applying a source request must preserve the destination directory.");
+
+            QuickStartRequest? replacementSource = QuickStartRequestParser.Parse(
+                [QuickStartRequestParser.SourceOption, sourceB]);
+            draft = draft.Apply(replacementSource!);
+            Assert(draft.SourceDirectory == Path.GetFullPath(sourceB) &&
+                   draft.DestinationDirectory == destination,
+                "Applying another source request must overwrite only the source directory.");
+
+            QuickStartRequest? parsedDestination = QuickStartRequestParser.Parse(
+                [QuickStartRequestParser.DestinationOption, destination]);
+            var destinationDraft = new QuickStartDraft(sourceA, null).Apply(parsedDestination!);
+            Assert(destinationDraft.SourceDirectory == sourceA &&
+                   destinationDraft.DestinationDirectory == Path.GetFullPath(destination),
+                "Applying a destination request must preserve the source directory.");
+
+            Assert(QuickStartRequestParser.Parse(
+                       [QuickStartRequestParser.SourceOption, Path.Combine(root, "missing")]) is null,
+                "A missing directory must not produce a quick-start request.");
         }
         finally
         {

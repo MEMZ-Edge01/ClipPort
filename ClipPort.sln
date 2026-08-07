@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipPort", "src\ClipPort\Cl
 EndProject
 Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "ClipPort.NativeCopy", "src\ClipPort.NativeCopy\ClipPort.NativeCopy.vcxproj", "{E66CF3B7-A669-4F1D-8BB4-0290CD902D54}"
 EndProject
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "ClipPort.ShellExtension", "src\ClipPort.ShellExtension\ClipPort.ShellExtension.vcxproj", "{5B42873C-E576-49C0-A473-387157D18F89}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -24,6 +26,10 @@ Global
 		{E66CF3B7-A669-4F1D-8BB4-0290CD902D54}.Debug|x64.Build.0 = Debug|x64
 		{E66CF3B7-A669-4F1D-8BB4-0290CD902D54}.Release|x64.ActiveCfg = Release|x64
 		{E66CF3B7-A669-4F1D-8BB4-0290CD902D54}.Release|x64.Build.0 = Release|x64
+		{5B42873C-E576-49C0-A473-387157D18F89}.Debug|x64.ActiveCfg = Debug|x64
+		{5B42873C-E576-49C0-A473-387157D18F89}.Debug|x64.Build.0 = Debug|x64
+		{5B42873C-E576-49C0-A473-387157D18F89}.Release|x64.ActiveCfg = Release|x64
+		{5B42873C-E576-49C0-A473-387157D18F89}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

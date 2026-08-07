@@ -1,7 +1,10 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = 'Release',
-    [string]$Runtime = 'win-x64'
+    [string]$Runtime = 'win-x64',
+    [string]$ShellPackagePublisher = $env:CLIPPORT_SHELL_PACKAGE_PUBLISHER,
+    [string]$ShellPackageCertificateThumbprint = $env:CLIPPORT_SHELL_PACKAGE_CERTIFICATE_THUMBPRINT,
+    [switch]$UnsignedShellPackageForDevelopment
 )
 
 $ErrorActionPreference = 'Stop'
@@ -108,6 +111,7 @@ try {
         'ClipPort.exe',
         'ClipPort.dll',
         'ClipPort.NativeCopy.dll',
+        'ClipPort.ShellExtension.dll',
         'resources.pri',
         'Strings\zh-CN\Resources.resw',
         'Strings\en-US\Resources.resw'
@@ -117,6 +121,32 @@ try {
         if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
             throw "Publish validation failed; required file is missing: $relativePath"
         }
+    }
+
+    $hasShellPublisher = -not [string]::IsNullOrWhiteSpace($ShellPackagePublisher)
+    $hasShellCertificate = -not [string]::IsNullOrWhiteSpace($ShellPackageCertificateThumbprint)
+    if (-not $UnsignedShellPackageForDevelopment -and $hasShellPublisher -ne $hasShellCertificate) {
+        throw 'Shell package publisher and certificate thumbprint must be supplied together.'
+    }
+    if ($UnsignedShellPackageForDevelopment) {
+        & (Join-Path $PSScriptRoot 'build-shell-package.ps1') `
+            -ExternalContentDirectory $stagingPublishPath `
+            -OutputPath (Join-Path $stagingPublishPath 'ClipPort.ShellIntegration.msix') `
+            -Publisher 'CN=ClipPort Development' `
+            -UnsignedDevelopmentPackage
+    }
+    elseif ($hasShellPublisher) {
+        & (Join-Path $PSScriptRoot 'build-shell-package.ps1') `
+            -ExternalContentDirectory $stagingPublishPath `
+            -OutputPath (Join-Path $stagingPublishPath 'ClipPort.ShellIntegration.msix') `
+            -Publisher $ShellPackagePublisher `
+            -CertificateThumbprint $ShellPackageCertificateThumbprint
+        if ($LASTEXITCODE -ne 0) {
+            throw "Shell integration package build failed with exit code $LASTEXITCODE."
+        }
+    }
+    else {
+        Write-Warning 'Shell integration MSIX was skipped because signing parameters were not supplied.'
     }
 
     if (Test-Path -LiteralPath $publishPath) {

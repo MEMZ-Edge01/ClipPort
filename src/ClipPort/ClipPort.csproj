@@ -9,6 +9,7 @@
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
@@ -46,6 +47,7 @@
 
   <PropertyGroup>
     <NativeCopyOutput>$(MSBuildThisFileDirectory)..\ClipPort.NativeCopy\bin\$(Platform)\$(Configuration)\ClipPort.NativeCopy.dll</NativeCopyOutput>
+    <ShellExtensionOutput>$(MSBuildThisFileDirectory)..\ClipPort.ShellExtension\bin\$(Platform)\$(Configuration)\ClipPort.ShellExtension.dll</ShellExtensionOutput>
   </PropertyGroup>
 
   <Target Name="CopyNativeCopyEngine" AfterTargets="Build"
@@ -60,6 +62,23 @@
     <ItemGroup>
       <ResolvedFileToPublish Include="$(NativeCopyOutput)">
         <RelativePath>ClipPort.NativeCopy.dll</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CopyShellExtension" AfterTargets="Build"
+          Condition="Exists('$(ShellExtensionOutput)')">
+    <Copy SourceFiles="$(ShellExtensionOutput)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="PublishShellExtension" AfterTargets="ComputeFilesToPublish"
+          Condition="Exists('$(ShellExtensionOutput)')">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(ShellExtensionOutput)">
+        <RelativePath>ClipPort.ShellExtension.dll</RelativePath>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </ResolvedFileToPublish>
     </ItemGroup>

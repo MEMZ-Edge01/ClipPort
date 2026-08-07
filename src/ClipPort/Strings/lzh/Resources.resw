@@ -212,6 +212,7 @@
   <data name="Settings.PageTitle" xml:space="preserve"><value>设</value></data>
   <data name="Settings.Appearance" xml:space="preserve"><value>仪观</value></data>
   <data name="Settings.General" xml:space="preserve"><value>常设</value></data>
+  <data name="Settings.QuickStart" xml:space="preserve"><value>速启</value></data>
   <data name="Settings.About" xml:space="preserve"><value>关于</value></data>
   <data name="Settings.BackToTask" xml:space="preserve"><value>返役</value></data>
   <data name="Settings.AppearanceDesc" xml:space="preserve"><value>择此器之明暗仪观与强调色。</value></data>
@@ -219,6 +220,10 @@
   <data name="Settings.ColorMode" xml:space="preserve"><value>色式</value></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>主题色</value></data>
   <data name="Settings.GeneralDesc" xml:space="preserve"><value>设界面之文辞及日志、录之默认所存。</value></data>
+  <data name="Settings.ExplorerMenuUnsupported" xml:space="preserve"><value>此能须 Windows 11；ClipPort 余能如故。</value></data>
+  <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>已注，可用于 Windows 11 文卷司之新式右键单。</value></data>
+  <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>今未注于文卷司右键单。</value></data>
+  <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>更右键单而败：{0}</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>文辞与文卷</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>文辞</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>日志与录默认所存</value></data>
@@ -247,6 +252,13 @@
   <data name="SettingsSectionLabel.Text" xml:space="preserve"><value>设</value></data>
   <data name="AppearanceNavText.Text" xml:space="preserve"><value>仪观</value></data>
   <data name="GeneralNavText.Text" xml:space="preserve"><value>常设</value></data>
+  <data name="QuickStartNavText.Text" xml:space="preserve"><value>速启</value></data>
+  <data name="QuickStartTitle.Text" xml:space="preserve"><value>速启</value></data>
+  <data name="QuickStartDesc.Text" xml:space="preserve"><value>自文卷司径立并预填 ClipPort 之役。</value></data>
+  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>注于文卷司右键单</value></data>
+  <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已启</value></data>
+  <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已闭</value></data>
+  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>右击目录或其空处，可定为源目录或所往目录。</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>关于</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>返役</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>仪观</value></data>

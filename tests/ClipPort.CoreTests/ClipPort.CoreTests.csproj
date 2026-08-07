@@ -14,6 +14,7 @@
     <Compile Include="..\..\src\ClipPort\Models\CopyThroughputSampler.cs" Link="Models\CopyThroughputSampler.cs" />
     <Compile Include="..\..\src\ClipPort\Models\DisplayFormatting.cs" Link="Models\DisplayFormatting.cs" />
     <Compile Include="..\..\src\ClipPort\Models\JobHistoryItem.cs" Link="Models\JobHistoryItem.cs" />
+    <Compile Include="..\..\src\ClipPort\Models\QuickStartModels.cs" Link="Models\QuickStartModels.cs" />
     <Compile Include="..\..\src\ClipPort\Services\FileCopyService.cs" Link="Services\FileCopyService.cs" />
     <Compile Include="..\..\src\ClipPort\Services\HistoryRetentionPolicy.cs" Link="Services\HistoryRetentionPolicy.cs" />
     <Compile Include="..\..\src\ClipPort\Services\NativeCopyEngine.cs" Link="Services\NativeCopyEngine.cs" />

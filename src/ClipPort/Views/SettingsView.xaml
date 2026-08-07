@@ -74,6 +74,15 @@
                                 <TextBlock x:Name="GeneralNavText" x:Uid="GeneralNavText" Text="常规" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="QuickStartNavButton" Style="{StaticResource SettingsNavButtonStyle}"
+                                Click="QuickStartNavButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Border Width="24" Height="24" CornerRadius="5" Background="#FFFFFF">
+                                    <FontIcon Glyph="&#xE8B7;" FontSize="14" Foreground="#202020" />
+                                </Border>
+                                <TextBlock x:Name="QuickStartNavText" x:Uid="QuickStartNavText" Text="快速开启" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="AboutNavButton" Style="{StaticResource SettingsNavButtonStyle}"
                                 Click="AboutNavButton_Click">
                             <StackPanel Orientation="Horizontal" Spacing="11">
@@ -192,6 +201,30 @@
                                 <Button Grid.Column="1" Click="BrowseDirectoryButton_Click"
                                         x:Name="BrowseFolderButton" x:Uid="BrowseFolderButton" Content="选择文件夹" Padding="16,0" />
                             </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel x:Name="QuickStartPanel" Spacing="24" Visibility="Collapsed">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="QuickStartTitle" x:Uid="QuickStartTitle" Text="快速开启" FontSize="28" FontWeight="SemiBold" />
+                        <TextBlock x:Name="QuickStartDesc" x:Uid="QuickStartDesc" Text="从文件资源管理器直接创建并预填 ClipPort 任务。" FontSize="14"
+                                   Foreground="{StaticResource SecondaryTextBrush}" />
+                    </StackPanel>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="14">
+                            <ToggleSwitch x:Name="ExplorerContextMenuToggle"
+                                          x:Uid="ExplorerContextMenuToggle"
+                                          Header="注册到文件资源管理器右键菜单"
+                                          OnContent="已开启"
+                                          OffContent="已关闭"
+                                          Toggled="ExplorerContextMenuToggle_Toggled" />
+                            <TextBlock x:Name="ExplorerContextMenuHint" x:Uid="ExplorerContextMenuHint"
+                                       Text="右击文件夹或文件夹空白处，可选择作为源目录或目标目录。"
+                                       TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock x:Name="ExplorerContextMenuStatusText"
+                                       TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>

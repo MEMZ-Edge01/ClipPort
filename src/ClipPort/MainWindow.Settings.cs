@@ -13,6 +13,7 @@ public sealed partial class MainWindow
         TaskWorkspace.Visibility = Visibility.Collapsed;
         SettingsPage.Visibility = Visibility.Visible;
         SettingsPage.Initialize(_appSettings);
+        RefreshExplorerContextMenuStatus();
         AppTitleText.Text = ResourceService.GetString("Settings.PageTitle");
     }
 
@@ -60,6 +61,14 @@ public sealed partial class MainWindow
         if (languageChanged)
         {
             _previousLanguage = requestedLanguage;
+            if (_appSettings.ExplorerContextMenuEnabled)
+            {
+                ExplorerContextMenuStatus contextMenuStatus =
+                    await _explorerContextMenuService.SetEnabledAsync(
+                        true,
+                        requestedLanguage);
+                ApplyExplorerContextMenuStatus(contextMenuStatus);
+            }
             await ShowLanguageRestartDialogAsync();
         }
     }
@@ -69,6 +78,7 @@ public sealed partial class MainWindow
         Theme = settings.Theme,
         Accent = settings.Accent,
         Language = settings.Language,
+        ExplorerContextMenuEnabled = settings.ExplorerContextMenuEnabled,
         LogAndReportDirectory = settings.LogAndReportDirectory
     };
 
@@ -77,7 +87,72 @@ public sealed partial class MainWindow
         _appSettings.Theme = settings.Theme;
         _appSettings.Accent = settings.Accent;
         _appSettings.Language = settings.Language;
+        _appSettings.ExplorerContextMenuEnabled = settings.ExplorerContextMenuEnabled;
         _appSettings.LogAndReportDirectory = settings.LogAndReportDirectory;
+    }
+
+    private async void SettingsPage_ExplorerContextMenuToggleRequested(
+        object? sender,
+        Views.ExplorerContextMenuToggleRequestedEventArgs e)
+    {
+        bool previousEnabled = _appSettings.ExplorerContextMenuEnabled;
+        ExplorerContextMenuStatus status =
+            await _explorerContextMenuService.SetEnabledAsync(
+                e.Enabled,
+                _appSettings.Language);
+        if (status.ErrorMessage is not null || status.IsEnabled != e.Enabled)
+        {
+            ApplyExplorerContextMenuStatus(status with { IsEnabled = previousEnabled });
+            return;
+        }
+
+        _appSettings.ExplorerContextMenuEnabled = e.Enabled;
+        try
+        {
+            await App.SettingsService.SaveAsync(_appSettings);
+            _lastSavedSettings = CloneSettings(_appSettings);
+            ApplyExplorerContextMenuStatus(status);
+        }
+        catch (Exception ex) when (
+            ex is IOException or UnauthorizedAccessException)
+        {
+            _appSettings.ExplorerContextMenuEnabled = previousEnabled;
+            ExplorerContextMenuStatus rollbackStatus =
+                await _explorerContextMenuService.SetEnabledAsync(
+                    previousEnabled,
+                    _appSettings.Language);
+            ApplyExplorerContextMenuStatus(rollbackStatus with
+            {
+                ErrorMessage = ex.Message
+            });
+        }
+    }
+
+    private async Task SynchronizeExplorerContextMenuAsync()
+    {
+        ExplorerContextMenuStatus status =
+            await _explorerContextMenuService.SynchronizeAsync(_appSettings);
+        ApplyExplorerContextMenuStatus(status);
+    }
+
+    private void RefreshExplorerContextMenuStatus() =>
+        ApplyExplorerContextMenuStatus(_explorerContextMenuService.GetStatus());
+
+    private void ApplyExplorerContextMenuStatus(ExplorerContextMenuStatus status)
+    {
+        string statusText = !status.IsSupported
+            ? ResourceService.GetString("Settings.ExplorerMenuUnsupported")
+            : status.ErrorMessage is not null
+                ? ResourceService.Format(
+                    "Settings.ExplorerMenuFailed",
+                    status.ErrorMessage)
+                : status.IsEnabled
+                    ? ResourceService.GetString("Settings.ExplorerMenuEnabled")
+                    : ResourceService.GetString("Settings.ExplorerMenuDisabled");
+        SettingsPage.SetExplorerContextMenuState(
+            status.IsEnabled,
+            status.IsSupported,
+            statusText);
     }
 
     private async Task ShowLanguageRestartDialogAsync()

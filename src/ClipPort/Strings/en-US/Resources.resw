@@ -212,6 +212,7 @@
   <data name="Settings.PageTitle" xml:space="preserve"><value>Settings</value></data>
   <data name="Settings.Appearance" xml:space="preserve"><value>Appearance</value></data>
   <data name="Settings.General" xml:space="preserve"><value>General</value></data>
+  <data name="Settings.QuickStart" xml:space="preserve"><value>Quick launch</value></data>
   <data name="Settings.About" xml:space="preserve"><value>About</value></data>
   <data name="Settings.BackToTask" xml:space="preserve"><value>Back to tasks</value></data>
   <data name="Settings.AppearanceDesc" xml:space="preserve"><value>Choose the app color mode and accent color.</value></data>
@@ -219,6 +220,10 @@
   <data name="Settings.ColorMode" xml:space="preserve"><value>Color mode</value></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>Accent color</value></data>
   <data name="Settings.GeneralDesc" xml:space="preserve"><value>Set the interface language and the default location for logs and reports.</value></data>
+  <data name="Settings.ExplorerMenuUnsupported" xml:space="preserve"><value>This feature requires Windows 11. Other ClipPort features remain available.</value></data>
+  <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>Registered and available in the Windows 11 File Explorer context menu.</value></data>
+  <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>Not currently registered in the File Explorer context menu.</value></data>
+  <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>Failed to update the context menu: {0}</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>Language and files</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>Language</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>Default log and report location</value></data>
@@ -247,6 +252,13 @@
   <data name="SettingsSectionLabel.Text" xml:space="preserve"><value>Settings</value></data>
   <data name="AppearanceNavText.Text" xml:space="preserve"><value>Appearance</value></data>
   <data name="GeneralNavText.Text" xml:space="preserve"><value>General</value></data>
+  <data name="QuickStartNavText.Text" xml:space="preserve"><value>Quick launch</value></data>
+  <data name="QuickStartTitle.Text" xml:space="preserve"><value>Quick launch</value></data>
+  <data name="QuickStartDesc.Text" xml:space="preserve"><value>Create and prefill ClipPort tasks directly from File Explorer.</value></data>
+  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>Register in the File Explorer context menu</value></data>
+  <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>On</value></data>
+  <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>Right-click a folder or folder background and use it as the source or destination.</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>About</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>Back to tasks</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>Appearance</value></data>
