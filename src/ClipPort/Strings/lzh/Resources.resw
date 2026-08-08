@@ -223,7 +223,24 @@
   <data name="Settings.ExplorerMenuUnsupported" xml:space="preserve"><value>此能须 Windows 11；ClipPort 余能如故。</value></data>
   <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>已注，可用于 Windows 11 文卷司之新式右键单。</value></data>
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>今未注于文卷司右键单。</value></data>
+  <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>右键单组件已置，今尚闭之。</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>更右键单而败：{0}</value></data>
+  <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>发布目录无别置之凭证；正式署名可信之包，常可径置。</value></data>
+  <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>不能读凭证文卷：{0}</value></data>
+  <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>凭证文卷具，而 Windows 尚未信之。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>凭证惟当前用户信之；Windows 置包或仍须本机信任。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>凭证已在本机受信之证库。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedChain" xml:space="preserve"><value>Windows 已信其证链，毋须手置凭证。</value></data>
+  <data name="Settings.ExplorerCertificateWithThumbprint" xml:space="preserve"><value>{0} 指纹：{1}</value></data>
+  <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>发布目录无右键单组件包。</value></data>
+  <data name="Settings.ExplorerPackageReady" xml:space="preserve"><value>组件包已备，尚未置。</value></data>
+  <data name="Settings.ExplorerPackageInstalled" xml:space="preserve"><value>组件包已置，并注于当前用户。</value></data>
+  <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>Windows 凭证安置导引已启；毕后请刷新状态。</value></data>
+  <data name="Settings.CertificateOpenFailed" xml:space="preserve"><value>不能启凭证安置导引：{0}</value></data>
+  <data name="Settings.PackageInstallSucceeded" xml:space="preserve"><value>右键单组件已置；今可启上方开关。</value></data>
+  <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>置右键单组件而败：{0}</value></data>
+  <data name="Settings.PackageInstallDidNotComplete" xml:space="preserve"><value>Windows 未报安置既成。</value></data>
+  <data name="Settings.ExplorerStatusRefreshed" xml:space="preserve"><value>凭证与组件状态已刷新。</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>文辞与文卷</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>文辞</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>日志与录默认所存</value></data>
@@ -259,6 +276,19 @@
   <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已启</value></data>
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已闭</value></data>
   <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>右击目录或其空处，可定为源目录或所往目录。</value></data>
+  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>安置与护持</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>依次信凭证、置组件、启其用。正式署名可信之包，多可略凭证一步。</value></data>
+  <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>一、置署名凭证</value></data>
+  <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>惟 Windows 称署名未信时用之。于导引核其指纹，惟信 ClipPort 发布者之证。</value></data>
+  <data name="InstallCertificateButton.Content" xml:space="preserve"><value>启凭证安置导引</value></data>
+  <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>二、置右键单组件</value></data>
+  <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>注随 ClipPort 所颁之稀疏包，使 Windows 11 载新式右键单。</value></data>
+  <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>置组件</value></data>
+  <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>三、启右键单</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件既置，以此前开关启之；其文从启时之软件语言。</value></data>
+  <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>刷新状态</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>安置之示</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>正式署名可信之包，常毋须手置凭证。若败，记其误码，先核证之所自与指纹。</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>关于</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>返役</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>仪观</value></data>

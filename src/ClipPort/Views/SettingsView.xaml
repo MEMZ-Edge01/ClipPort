@@ -227,6 +227,107 @@
                                        TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
                     </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="18">
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="ShellIntegrationInstallTitle"
+                                           x:Uid="ShellIntegrationInstallTitle"
+                                           Text="安装与维护" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ShellIntegrationInstallDesc"
+                                           x:Uid="ShellIntegrationInstallDesc"
+                                           Text="按顺序完成证书信任、组件安装和功能开启。"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource SecondaryTextBrush}" />
+                            </StackPanel>
+
+                            <Grid ColumnSpacing="18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="5">
+                                    <TextBlock x:Name="CertificateInstallStepTitle"
+                                               x:Uid="CertificateInstallStepTitle"
+                                               Text="1. 安装签名证书" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="CertificateInstallStepDesc"
+                                               x:Uid="CertificateInstallStepDesc"
+                                               Text="仅在 Windows 提示签名不受信任时使用，并在向导中核对证书指纹。"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                    <TextBlock x:Name="CertificateInstallStatusText"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource MutedTextBrush}" />
+                                </StackPanel>
+                                <Button x:Name="InstallCertificateButton" Grid.Column="1"
+                                        x:Uid="InstallCertificateButton"
+                                        Content="打开证书安装向导"
+                                        Click="InstallCertificateButton_Click"
+                                        VerticalAlignment="Center" Padding="16,0" Height="40" />
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />
+
+                            <Grid ColumnSpacing="18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="5">
+                                    <TextBlock x:Name="PackageInstallStepTitle"
+                                               x:Uid="PackageInstallStepTitle"
+                                               Text="2. 安装右键菜单组件" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="PackageInstallStepDesc"
+                                               x:Uid="PackageInstallStepDesc"
+                                               Text="注册随 ClipPort 发布的稀疏包，让 Windows 11 加载新式右键菜单。"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                    <TextBlock x:Name="PackageInstallStatusText"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource MutedTextBrush}" />
+                                </StackPanel>
+                                <Button x:Name="InstallShellPackageButton" Grid.Column="1"
+                                        x:Uid="InstallShellPackageButton"
+                                        Content="安装组件"
+                                        Click="InstallShellPackageButton_Click"
+                                        VerticalAlignment="Center" Padding="16,0" Height="40" />
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />
+
+                            <Grid ColumnSpacing="18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="5">
+                                    <TextBlock x:Name="EnableMenuStepTitle"
+                                               x:Uid="EnableMenuStepTitle"
+                                               Text="3. 开启右键菜单" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="EnableMenuStepDesc"
+                                               x:Uid="EnableMenuStepDesc"
+                                               Text="组件安装成功后，使用上方开关启用菜单。菜单语言以启用时的软件语言为准。"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                </StackPanel>
+                                <Button x:Name="RefreshShellIntegrationButton" Grid.Column="1"
+                                        x:Uid="RefreshShellIntegrationButton"
+                                        Content="刷新状态"
+                                        Click="RefreshShellIntegrationButton_Click"
+                                        VerticalAlignment="Center" Padding="16,0" Height="40" />
+                            </Grid>
+
+                            <InfoBar x:Name="ShellIntegrationGuideInfoBar"
+                                     x:Uid="ShellIntegrationGuideInfoBar"
+                                     IsOpen="True" IsClosable="False"
+                                     Severity="Informational"
+                                     Title="安装提示"
+                                     Message="正式可信签名包通常不需要手动安装证书。若安装失败，请记录错误代码并先核对证书来源和指纹。" />
+                            <TextBlock x:Name="ShellIntegrationOperationStatusText"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <StackPanel x:Name="AboutPanel" Spacing="24" Visibility="Collapsed">

@@ -223,7 +223,24 @@
   <data name="Settings.ExplorerMenuUnsupported" xml:space="preserve"><value>此功能需要 Windows 11，ClipPort 的其他功能不受影响。</value></data>
   <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>已注册，可在文件资源管理器的 Windows 11 新式右键菜单中使用。</value></data>
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>当前未注册到文件资源管理器右键菜单。</value></data>
+  <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>右键菜单组件已安装，当前开关处于关闭状态。</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>右键菜单状态更新失败：{0}</value></data>
+  <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>发布目录中没有单独的证书文件；正式可信签名包通常可直接安装。</value></data>
+  <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>证书文件无法读取：{0}</value></data>
+  <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>证书文件可用，但尚未在 Windows 中信任。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>证书仅受当前用户信任；Windows 包部署仍可能要求本机信任。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>证书已在本机受信任证书存储中。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedChain" xml:space="preserve"><value>证书链已由 Windows 信任，无需手动安装证书。</value></data>
+  <data name="Settings.ExplorerCertificateWithThumbprint" xml:space="preserve"><value>{0} 指纹：{1}</value></data>
+  <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>发布目录中未找到右键菜单组件包。</value></data>
+  <data name="Settings.ExplorerPackageReady" xml:space="preserve"><value>组件包已就绪，尚未安装。</value></data>
+  <data name="Settings.ExplorerPackageInstalled" xml:space="preserve"><value>组件包已安装并注册到当前用户。</value></data>
+  <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>已打开 Windows 证书安装向导；完成后请点击“刷新状态”。</value></data>
+  <data name="Settings.CertificateOpenFailed" xml:space="preserve"><value>无法打开证书安装向导：{0}</value></data>
+  <data name="Settings.PackageInstallSucceeded" xml:space="preserve"><value>右键菜单组件安装成功；现在可以使用上方开关开启功能。</value></data>
+  <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>右键菜单组件安装失败：{0}</value></data>
+  <data name="Settings.PackageInstallDidNotComplete" xml:space="preserve"><value>Windows 未报告安装完成。</value></data>
+  <data name="Settings.ExplorerStatusRefreshed" xml:space="preserve"><value>证书和组件状态已刷新。</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>语言与文件</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>语言</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>日志与报告默认保存位置</value></data>
@@ -259,6 +276,19 @@
   <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已开启</value></data>
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已关闭</value></data>
   <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>右击文件夹或文件夹空白处，可选择作为源目录或目标目录。</value></data>
+  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>安装与维护</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>按顺序完成证书信任、组件安装和功能开启。正式可信签名包通常可跳过证书步骤。</value></data>
+  <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>1. 安装签名证书</value></data>
+  <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>仅在 Windows 提示签名不受信任时使用。请在向导中核对指纹，只信任来自 ClipPort 发布方的证书。</value></data>
+  <data name="InstallCertificateButton.Content" xml:space="preserve"><value>打开证书安装向导</value></data>
+  <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>2. 安装右键菜单组件</value></data>
+  <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>注册随 ClipPort 发布的稀疏包，让 Windows 11 加载新式右键菜单。</value></data>
+  <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>安装组件</value></data>
+  <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>3. 开启右键菜单</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件安装成功后，使用上方开关启用菜单。菜单语言以启用时的软件语言为准。</value></data>
+  <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>刷新状态</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>安装提示</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>正式可信签名包通常不需要手动安装证书。若安装失败，请记录错误代码，并先核对证书来源和指纹。</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>关于</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>返回任务</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>外观</value></data>

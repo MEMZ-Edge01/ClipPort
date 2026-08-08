@@ -17,6 +17,9 @@ public sealed partial class SettingsView : UserControl
     public event EventHandler? BrowseDirectoryRequested;
     public event EventHandler<ExplorerContextMenuToggleRequestedEventArgs>?
         ExplorerContextMenuToggleRequested;
+    public event EventHandler? InstallExplorerCertificateRequested;
+    public event EventHandler? InstallExplorerPackageRequested;
+    public event EventHandler? RefreshExplorerIntegrationRequested;
 
     public SettingsView()
     {
@@ -187,17 +190,55 @@ public sealed partial class SettingsView : UserControl
                 ExplorerContextMenuToggle.IsOn));
     }
 
+    private void InstallCertificateButton_Click(object sender, RoutedEventArgs e)
+    {
+        InstallCertificateButton.IsEnabled = false;
+        InstallExplorerCertificateRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void InstallShellPackageButton_Click(object sender, RoutedEventArgs e)
+    {
+        InstallShellPackageButton.IsEnabled = false;
+        InstallExplorerPackageRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void RefreshShellIntegrationButton_Click(object sender, RoutedEventArgs e) =>
+        RefreshExplorerIntegrationRequested?.Invoke(this, EventArgs.Empty);
+
     public void SetExplorerContextMenuState(
-        bool enabled,
-        bool supported,
-        string statusText)
+        ExplorerContextMenuStatus status,
+        string menuStatusText,
+        string certificateStatusText,
+        string packageStatusText,
+        string? operationStatusText = null)
     {
         _initializing = true;
-        ExplorerContextMenuToggle.IsOn = enabled;
-        ExplorerContextMenuToggle.IsEnabled = supported;
-        ExplorerContextMenuStatusText.Text = statusText;
+        ExplorerContextMenuToggle.IsOn = status.IsEnabled;
+        ExplorerContextMenuToggle.IsEnabled = status.IsSupported;
+        ExplorerContextMenuStatusText.Text = menuStatusText;
+        CertificateInstallStatusText.Text = certificateStatusText;
+        PackageInstallStatusText.Text = packageStatusText;
+        InstallCertificateButton.IsEnabled =
+            status.IsSupported &&
+            status.IsCertificateFileAvailable &&
+            status.CertificateTrustScope is not (
+                CertificateTrustScope.LocalMachine or
+                CertificateTrustScope.TrustedChain) &&
+            !status.IsPackageRegistered;
+        InstallShellPackageButton.IsEnabled =
+            status.IsSupported &&
+            status.IsPackageFileAvailable &&
+            !status.IsPackageRegistered;
+        RefreshShellIntegrationButton.IsEnabled = status.IsSupported;
+        if (operationStatusText is not null)
+        {
+            ShellIntegrationOperationStatusText.Text = operationStatusText;
+        }
         _initializing = false;
     }
+
+    public void SetExplorerIntegrationOperationStatus(string statusText) =>
+        ShellIntegrationOperationStatusText.Text = statusText;
 
     private async void RepositoryButton_Click(object sender, RoutedEventArgs e)
     {

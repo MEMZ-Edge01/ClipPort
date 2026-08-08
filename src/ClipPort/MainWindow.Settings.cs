@@ -3,6 +3,7 @@ using ClipPort.Services;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System.ComponentModel;
 
 namespace ClipPort;
 
@@ -138,7 +139,53 @@ public sealed partial class MainWindow
     private void RefreshExplorerContextMenuStatus() =>
         ApplyExplorerContextMenuStatus(_explorerContextMenuService.GetStatus());
 
-    private void ApplyExplorerContextMenuStatus(ExplorerContextMenuStatus status)
+    private void SettingsPage_InstallExplorerCertificateRequested(
+        object? sender,
+        EventArgs e)
+    {
+        try
+        {
+            _explorerContextMenuService.OpenCertificateInstaller();
+            ApplyExplorerContextMenuStatus(
+                _explorerContextMenuService.GetStatus(),
+                ResourceService.GetString("Settings.CertificateWizardOpened"));
+        }
+        catch (Exception ex) when (
+            ex is InvalidOperationException or Win32Exception)
+        {
+            ApplyExplorerContextMenuStatus(
+                _explorerContextMenuService.GetStatus(),
+                ResourceService.Format(
+                    "Settings.CertificateOpenFailed",
+                    ex.Message));
+        }
+    }
+
+    private async void SettingsPage_InstallExplorerPackageRequested(
+        object? sender,
+        EventArgs e)
+    {
+        ExplorerContextMenuStatus status =
+            await _explorerContextMenuService.InstallPackageAsync();
+        string operationStatus = status.IsPackageRegistered
+            ? ResourceService.GetString("Settings.PackageInstallSucceeded")
+            : ResourceService.Format(
+                "Settings.PackageInstallFailed",
+                status.ErrorMessage ??
+                    ResourceService.GetString("Settings.PackageInstallDidNotComplete"));
+        ApplyExplorerContextMenuStatus(status, operationStatus);
+    }
+
+    private void SettingsPage_RefreshExplorerIntegrationRequested(
+        object? sender,
+        EventArgs e) =>
+        ApplyExplorerContextMenuStatus(
+            _explorerContextMenuService.GetStatus(),
+            ResourceService.GetString("Settings.ExplorerStatusRefreshed"));
+
+    private void ApplyExplorerContextMenuStatus(
+        ExplorerContextMenuStatus status,
+        string? operationStatus = null)
     {
         string statusText = !status.IsSupported
             ? ResourceService.GetString("Settings.ExplorerMenuUnsupported")
@@ -148,11 +195,46 @@ public sealed partial class MainWindow
                     status.ErrorMessage)
                 : status.IsEnabled
                     ? ResourceService.GetString("Settings.ExplorerMenuEnabled")
-                    : ResourceService.GetString("Settings.ExplorerMenuDisabled");
+                    : status.IsPackageRegistered
+                        ? ResourceService.GetString("Settings.ExplorerMenuInstalledDisabled")
+                        : ResourceService.GetString("Settings.ExplorerMenuDisabled");
+
+        string certificateStatus = status.CertificateErrorMessage is not null
+            ? ResourceService.Format(
+                "Settings.ExplorerCertificateInvalid",
+                status.CertificateErrorMessage)
+            : !status.IsCertificateFileAvailable
+            ? ResourceService.GetString("Settings.ExplorerCertificateMissing")
+            : status.CertificateTrustScope switch
+            {
+                CertificateTrustScope.LocalMachine =>
+                    ResourceService.GetString("Settings.ExplorerCertificateTrustedMachine"),
+                CertificateTrustScope.TrustedChain =>
+                    ResourceService.GetString("Settings.ExplorerCertificateTrustedChain"),
+                CertificateTrustScope.CurrentUser =>
+                    ResourceService.GetString("Settings.ExplorerCertificateTrustedUser"),
+                _ => ResourceService.GetString("Settings.ExplorerCertificateNotTrusted")
+            };
+        if (!string.IsNullOrWhiteSpace(status.CertificateThumbprint))
+        {
+            certificateStatus = ResourceService.Format(
+                "Settings.ExplorerCertificateWithThumbprint",
+                certificateStatus,
+                status.CertificateThumbprint);
+        }
+
+        string packageStatus = status.IsPackageRegistered
+            ? ResourceService.GetString("Settings.ExplorerPackageInstalled")
+            : status.IsPackageFileAvailable
+                ? ResourceService.GetString("Settings.ExplorerPackageReady")
+                : ResourceService.GetString("Settings.ExplorerPackageMissing");
+
         SettingsPage.SetExplorerContextMenuState(
-            status.IsEnabled,
-            status.IsSupported,
-            statusText);
+            status,
+            statusText,
+            certificateStatus,
+            packageStatus,
+            operationStatus);
     }
 
     private async Task ShowLanguageRestartDialogAsync()

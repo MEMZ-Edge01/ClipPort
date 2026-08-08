@@ -223,7 +223,24 @@
   <data name="Settings.ExplorerMenuUnsupported" xml:space="preserve"><value>This feature requires Windows 11. Other ClipPort features remain available.</value></data>
   <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>Registered and available in the Windows 11 File Explorer context menu.</value></data>
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>Not currently registered in the File Explorer context menu.</value></data>
+  <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>The context-menu component is installed, but the feature is currently turned off.</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>Failed to update the context menu: {0}</value></data>
+  <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>No separate certificate file is included. A package with a publicly trusted signature can normally be installed directly.</value></data>
+  <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>The certificate file could not be read: {0}</value></data>
+  <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>The certificate file is available but is not yet trusted by Windows.</value></data>
+  <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>The certificate is trusted only for the current user; Windows package deployment may still require machine trust.</value></data>
+  <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>The certificate is present in a trusted machine certificate store.</value></data>
+  <data name="Settings.ExplorerCertificateTrustedChain" xml:space="preserve"><value>The certificate chain is trusted by Windows; manual certificate installation is not required.</value></data>
+  <data name="Settings.ExplorerCertificateWithThumbprint" xml:space="preserve"><value>{0} Thumbprint: {1}</value></data>
+  <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>The context-menu component package is missing from the release directory.</value></data>
+  <data name="Settings.ExplorerPackageReady" xml:space="preserve"><value>The component package is ready but is not installed.</value></data>
+  <data name="Settings.ExplorerPackageInstalled" xml:space="preserve"><value>The component package is installed and registered for the current user.</value></data>
+  <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>The Windows certificate wizard was opened. Select Refresh status after completing it.</value></data>
+  <data name="Settings.CertificateOpenFailed" xml:space="preserve"><value>Could not open the certificate wizard: {0}</value></data>
+  <data name="Settings.PackageInstallSucceeded" xml:space="preserve"><value>The context-menu component was installed. You can now turn on the feature above.</value></data>
+  <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>Could not install the context-menu component: {0}</value></data>
+  <data name="Settings.PackageInstallDidNotComplete" xml:space="preserve"><value>Windows did not report a completed installation.</value></data>
+  <data name="Settings.ExplorerStatusRefreshed" xml:space="preserve"><value>The certificate and component status was refreshed.</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>Language and files</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>Language</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>Default log and report location</value></data>
@@ -259,6 +276,19 @@
   <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>Off</value></data>
   <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>Right-click a folder or folder background and use it as the source or destination.</value></data>
+  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>Installation and maintenance</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>Complete certificate trust, component installation, and feature activation in order. Packages with a publicly trusted signature normally skip the certificate step.</value></data>
+  <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>1. Install the signing certificate</value></data>
+  <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>Use this only when Windows reports an untrusted signature. Verify the thumbprint and trust only a certificate supplied by the ClipPort publisher.</value></data>
+  <data name="InstallCertificateButton.Content" xml:space="preserve"><value>Open certificate wizard</value></data>
+  <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>2. Install the context-menu component</value></data>
+  <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>Register the sparse package distributed with ClipPort so Windows 11 can load the modern context-menu extension.</value></data>
+  <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>Install component</value></data>
+  <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>3. Turn on the context menu</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>After the component is installed, use the switch above to enable the menu. Its language matches the ClipPort language used when it is enabled.</value></data>
+  <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>Refresh status</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>Installation guidance</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>A package with a publicly trusted signature normally does not require manual certificate installation. If installation fails, record the error code and verify the certificate source and thumbprint first.</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>About</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>Back to tasks</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>Appearance</value></data>

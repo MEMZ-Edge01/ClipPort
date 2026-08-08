@@ -144,6 +144,30 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw "Shell integration package build failed with exit code $LASTEXITCODE."
         }
+
+        $normalizedThumbprint = $ShellPackageCertificateThumbprint.Replace(' ', '')
+        $signingCertificate = Get-Item -LiteralPath (
+            "Cert:\CurrentUser\My\$normalizedThumbprint"
+        ) -ErrorAction SilentlyContinue
+        if ($null -eq $signingCertificate) {
+            $signingCertificate = Get-Item -LiteralPath (
+                "Cert:\LocalMachine\My\$normalizedThumbprint"
+            ) -ErrorAction SilentlyContinue
+        }
+        if ($null -eq $signingCertificate) {
+            throw "Shell package signing certificate was not found after signing: $normalizedThumbprint"
+        }
+
+        # Export only the public certificate. The settings page can open the
+        # Windows certificate wizard later without ever handling a private key.
+        $certificateOutputPath = Join-Path $stagingPublishPath 'ClipPort.ShellIntegration.cer'
+        [IO.File]::WriteAllBytes(
+            $certificateOutputPath,
+            $signingCertificate.Export(
+                [Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+        if (-not (Test-Path -LiteralPath $certificateOutputPath -PathType Leaf)) {
+            throw 'Shell integration public certificate export failed.'
+        }
     }
     else {
         Write-Warning 'Shell integration MSIX was skipped because signing parameters were not supplied.'

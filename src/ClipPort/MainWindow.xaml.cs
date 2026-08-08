@@ -66,6 +66,12 @@ public sealed partial class MainWindow : Window
         SettingsPage.BrowseDirectoryRequested += SettingsPage_BrowseDirectoryRequested;
         SettingsPage.ExplorerContextMenuToggleRequested +=
             SettingsPage_ExplorerContextMenuToggleRequested;
+        SettingsPage.InstallExplorerCertificateRequested +=
+            SettingsPage_InstallExplorerCertificateRequested;
+        SettingsPage.InstallExplorerPackageRequested +=
+            SettingsPage_InstallExplorerPackageRequested;
+        SettingsPage.RefreshExplorerIntegrationRequested +=
+            SettingsPage_RefreshExplorerIntegrationRequested;
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
         _uiSettings.ColorValuesChanged += SystemColorValuesChanged;
         LogText.RegisterPropertyChangedCallback(
