@@ -227,15 +227,15 @@
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>Failed to update the context menu: {0}</value></data>
   <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>No separate certificate file is included. A package with a publicly trusted signature can normally be installed directly.</value></data>
   <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>The certificate file could not be read: {0}</value></data>
-  <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>The certificate file is available but is not yet trusted by Windows.</value></data>
-  <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>The certificate is trusted only for the current user; Windows package deployment may still require machine trust.</value></data>
-  <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>The certificate is present in a trusted machine certificate store.</value></data>
+  <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>The certificate is not installed yet. Follow every step below.</value></data>
+  <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>The certificate was installed for Current User, which is not enough to install the component. Reinstall it to Local Machine → Trusted People by following the steps below.</value></data>
+  <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>The certificate is correctly trusted by the local machine. You can now install the component.</value></data>
   <data name="Settings.ExplorerCertificateTrustedChain" xml:space="preserve"><value>The certificate chain is trusted by Windows; manual certificate installation is not required.</value></data>
   <data name="Settings.ExplorerCertificateWithThumbprint" xml:space="preserve"><value>{0} Thumbprint: {1}</value></data>
   <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>The context-menu component package is missing from the release directory.</value></data>
   <data name="Settings.ExplorerPackageReady" xml:space="preserve"><value>The component package is ready but is not installed.</value></data>
   <data name="Settings.ExplorerPackageInstalled" xml:space="preserve"><value>The component package is installed and registered for the current user.</value></data>
-  <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>The Windows certificate wizard was opened. Select Refresh status after completing it.</value></data>
+  <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>The certificate window is open. Start at substep 2 below, then return here and select Refresh status.</value></data>
   <data name="Settings.CertificateOpenFailed" xml:space="preserve"><value>Could not open the certificate wizard: {0}</value></data>
   <data name="Settings.PackageInstallSucceeded" xml:space="preserve"><value>The context-menu component was installed. You can now turn on the feature above.</value></data>
   <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>Could not install the context-menu component: {0}</value></data>
@@ -277,18 +277,47 @@
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>Off</value></data>
   <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>Right-click a folder or folder background and use it as the source or destination.</value></data>
   <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>Installation and maintenance</value></data>
-  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>Complete certificate trust, component installation, and feature activation in order. Packages with a publicly trusted signature normally skip the certificate step.</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>When using this test build for the first time, start at step 1 and complete each step in order.</value></data>
   <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>1. Install the signing certificate</value></data>
-  <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>Use this only when Windows reports an untrusted signature. Verify the thumbprint and trust only a certificate supplied by the ClipPort publisher.</value></data>
+  <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>Follow these instructions exactly. Do not keep the wizard's default choices.</value></data>
+  <data name="CertificateGuideStep1Prefix.Text" xml:space="preserve"><value>1. Select </value></data>
+  <data name="CertificateGuideStep1Action.Text" xml:space="preserve"><value>Open certificate wizard.</value></data>
+  <data name="CertificateGuideStep2Prefix.Text" xml:space="preserve"><value>2. When Windows opens the certificate window, select </value></data>
+  <data name="CertificateGuideStep2Action.Text" xml:space="preserve"><value>Install Certificate...</value></data>
+  <data name="CertificateGuideStep2Suffix.Text" xml:space="preserve"><value>.</value></data>
+  <data name="CertificateGuideStep3Prefix.Text" xml:space="preserve"><value>3. On the Certificate Import Wizard's Store Location page, select </value></data>
+  <data name="CertificateGuideStep3Location.Text" xml:space="preserve"><value>Local Machine</value></data>
+  <data name="CertificateGuideStep3Suffix.Text" xml:space="preserve"><value>, then select Next.</value></data>
+  <data name="CertificateGuideStep4Prefix.Text" xml:space="preserve"><value>4. If Windows asks whether to allow changes, select </value></data>
+  <data name="CertificateGuideStep4Action.Text" xml:space="preserve"><value>Yes</value></data>
+  <data name="CertificateGuideStep4Suffix.Text" xml:space="preserve"><value>.</value></data>
+  <data name="CertificateGuideStep5Prefix.Text" xml:space="preserve"><value>5. Select </value></data>
+  <data name="CertificateGuideStep5StoreMode.Text" xml:space="preserve"><value>Place all certificates in the following store</value></data>
+  <data name="CertificateGuideStep5Middle.Text" xml:space="preserve"><value>, then select </value></data>
+  <data name="CertificateGuideStep5Browse.Text" xml:space="preserve"><value>Browse...</value></data>
+  <data name="CertificateGuideStep5Suffix.Text" xml:space="preserve"><value>.</value></data>
+  <data name="CertificateGuideStep6Prefix.Text" xml:space="preserve"><value>6. Select </value></data>
+  <data name="CertificateGuideStep6Store.Text" xml:space="preserve"><value>Trusted People</value></data>
+  <data name="CertificateGuideStep6Middle.Text" xml:space="preserve"><value> from the list, select OK, then select </value></data>
+  <data name="CertificateGuideStep6Next.Text" xml:space="preserve"><value>Next</value></data>
+  <data name="CertificateGuideStep6Suffix.Text" xml:space="preserve"><value>.</value></data>
+  <data name="CertificateGuideStep7Prefix.Text" xml:space="preserve"><value>7. Make sure Certificate store shows </value></data>
+  <data name="CertificateGuideStep7Store.Text" xml:space="preserve"><value>Trusted People</value></data>
+  <data name="CertificateGuideStep7Middle.Text" xml:space="preserve"><value>, then select </value></data>
+  <data name="CertificateGuideStep7Finish.Text" xml:space="preserve"><value>Finish</value></data>
+  <data name="CertificateGuideStep7Suffix.Text" xml:space="preserve"><value>. Close the window after Windows confirms the import succeeded.</value></data>
+  <data name="CertificateGuideStep8Prefix.Text" xml:space="preserve"><value>8. Return to ClipPort and select </value></data>
+  <data name="CertificateGuideStep8Refresh.Text" xml:space="preserve"><value>Refresh status</value></data>
+  <data name="CertificateGuideStep8Suffix.Text" xml:space="preserve"><value>. Continue only after the page says the certificate is trusted by the local machine.</value></data>
   <data name="InstallCertificateButton.Content" xml:space="preserve"><value>Open certificate wizard</value></data>
   <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>2. Install the context-menu component</value></data>
-  <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>Register the sparse package distributed with ClipPort so Windows 11 can load the modern context-menu extension.</value></data>
+  <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>After the certificate is trusted correctly, select Install component and wait for the success message.</value></data>
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>Install component</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>3. Turn on the context menu</value></data>
-  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>After the component is installed, use the switch above to enable the menu. Its language matches the ClipPort language used when it is enabled.</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>After installation succeeds, turn on Register in the File Explorer context menu above. Open a new File Explorer window, then right-click a folder or folder background to test it.</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>Refresh status</value></data>
   <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>Installation guidance</value></data>
-  <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>A package with a publicly trusted signature normally does not require manual certificate installation. If installation fails, record the error code and verify the certificate source and thumbprint first.</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>This test build uses a development certificate, so it must be installed manually. A production build signed by a certificate already trusted by Windows can normally skip step 1. Install a certificate only after verifying its source and thumbprint.</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>About</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>Back to tasks</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>Appearance</value></data>

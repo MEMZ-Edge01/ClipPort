@@ -227,15 +227,15 @@
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>更右键单而败：{0}</value></data>
   <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>发布目录无别置之凭证；正式署名可信之包，常可径置。</value></data>
   <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>不能读凭证文卷：{0}</value></data>
-  <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>凭证文卷具，而 Windows 尚未信之。</value></data>
-  <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>凭证惟当前用户信之；Windows 置包或仍须本机信任。</value></data>
-  <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>凭证已在本机受信之证库。</value></data>
+  <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>凭证尚未安置，请依下列诸步而行。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>凭证误置于“当前用户”，不足以置组件。请依下法重置于“本地计算机 → 受信任人”。</value></data>
+  <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>凭证已为本地计算机所信，今可置组件。</value></data>
   <data name="Settings.ExplorerCertificateTrustedChain" xml:space="preserve"><value>Windows 已信其证链，毋须手置凭证。</value></data>
   <data name="Settings.ExplorerCertificateWithThumbprint" xml:space="preserve"><value>{0} 指纹：{1}</value></data>
   <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>发布目录无右键单组件包。</value></data>
   <data name="Settings.ExplorerPackageReady" xml:space="preserve"><value>组件包已备，尚未置。</value></data>
   <data name="Settings.ExplorerPackageInstalled" xml:space="preserve"><value>组件包已置，并注于当前用户。</value></data>
-  <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>Windows 凭证安置导引已启；毕后请刷新状态。</value></data>
+  <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>凭证窗口已启，请自下列第二小步始；毕后返此，点击“刷新状态”。</value></data>
   <data name="Settings.CertificateOpenFailed" xml:space="preserve"><value>不能启凭证安置导引：{0}</value></data>
   <data name="Settings.PackageInstallSucceeded" xml:space="preserve"><value>右键单组件已置；今可启上方开关。</value></data>
   <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>置右键单组件而败：{0}</value></data>
@@ -277,18 +277,47 @@
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已闭</value></data>
   <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>右击目录或其空处，可定为源目录或所往目录。</value></data>
   <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>安置与护持</value></data>
-  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>依次信凭证、置组件、启其用。正式署名可信之包，多可略凭证一步。</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>初用此测试版，请自第一步依次而行；一步既毕，乃行下一步。</value></data>
   <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>一、置署名凭证</value></data>
-  <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>惟 Windows 称署名未信时用之。于导引核其指纹，惟信 ClipPort 发布者之证。</value></data>
+  <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>务依下列次序而行，毋从导引之默认选项。</value></data>
+  <data name="CertificateGuideStep1Prefix.Text" xml:space="preserve"><value>1. 点击右侧之 </value></data>
+  <data name="CertificateGuideStep1Action.Text" xml:space="preserve"><value>启凭证安置导引。</value></data>
+  <data name="CertificateGuideStep2Prefix.Text" xml:space="preserve"><value>2. Windows 弹出凭证窗口后，点击 </value></data>
+  <data name="CertificateGuideStep2Action.Text" xml:space="preserve"><value>安装证书...</value></data>
+  <data name="CertificateGuideStep2Suffix.Text" xml:space="preserve"><value>。</value></data>
+  <data name="CertificateGuideStep3Prefix.Text" xml:space="preserve"><value>3. 于“证书导入向导”之“存储位置”页，选择 </value></data>
+  <data name="CertificateGuideStep3Location.Text" xml:space="preserve"><value>本地计算机</value></data>
+  <data name="CertificateGuideStep3Suffix.Text" xml:space="preserve"><value>，然后点击下一步。</value></data>
+  <data name="CertificateGuideStep4Prefix.Text" xml:space="preserve"><value>4. 若 Windows 询问是否允许更改，点击 </value></data>
+  <data name="CertificateGuideStep4Action.Text" xml:space="preserve"><value>是</value></data>
+  <data name="CertificateGuideStep4Suffix.Text" xml:space="preserve"><value>。</value></data>
+  <data name="CertificateGuideStep5Prefix.Text" xml:space="preserve"><value>5. 选择 </value></data>
+  <data name="CertificateGuideStep5StoreMode.Text" xml:space="preserve"><value>将所有的证书都放入下列存储</value></data>
+  <data name="CertificateGuideStep5Middle.Text" xml:space="preserve"><value>，再点击 </value></data>
+  <data name="CertificateGuideStep5Browse.Text" xml:space="preserve"><value>浏览...</value></data>
+  <data name="CertificateGuideStep5Suffix.Text" xml:space="preserve"><value>。</value></data>
+  <data name="CertificateGuideStep6Prefix.Text" xml:space="preserve"><value>6. 于列中选择 </value></data>
+  <data name="CertificateGuideStep6Store.Text" xml:space="preserve"><value>受信任人</value></data>
+  <data name="CertificateGuideStep6Middle.Text" xml:space="preserve"><value>，点击确定，然后点击 </value></data>
+  <data name="CertificateGuideStep6Next.Text" xml:space="preserve"><value>下一步</value></data>
+  <data name="CertificateGuideStep6Suffix.Text" xml:space="preserve"><value>。</value></data>
+  <data name="CertificateGuideStep7Prefix.Text" xml:space="preserve"><value>7. 确认“证书存储”显示为 </value></data>
+  <data name="CertificateGuideStep7Store.Text" xml:space="preserve"><value>受信任人</value></data>
+  <data name="CertificateGuideStep7Middle.Text" xml:space="preserve"><value>，点击 </value></data>
+  <data name="CertificateGuideStep7Finish.Text" xml:space="preserve"><value>完成</value></data>
+  <data name="CertificateGuideStep7Suffix.Text" xml:space="preserve"><value>；见导入成功后，闭其窗。</value></data>
+  <data name="CertificateGuideStep8Prefix.Text" xml:space="preserve"><value>8. 返 ClipPort，点击 </value></data>
+  <data name="CertificateGuideStep8Refresh.Text" xml:space="preserve"><value>刷新状态</value></data>
+  <data name="CertificateGuideStep8Suffix.Text" xml:space="preserve"><value>；俟页面称凭证已置于本地计算机，乃续置组件。</value></data>
   <data name="InstallCertificateButton.Content" xml:space="preserve"><value>启凭证安置导引</value></data>
   <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>二、置右键单组件</value></data>
-  <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>注随 ClipPort 所颁之稀疏包，使 Windows 11 载新式右键单。</value></data>
+  <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>凭证既正确安置，点击右侧“置组件”，俟页面称安置成功。</value></data>
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>置组件</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>三、启右键单</value></data>
-  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件既置，以此前开关启之；其文从启时之软件语言。</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件既置，启上方“注于文卷司右键单”开关。复启一新文卷司窗口，右击目录或空处以试之。</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>刷新状态</value></data>
   <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>安置之示</value></data>
-  <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>正式署名可信之包，常毋须手置凭证。若败，记其误码，先核证之所自与指纹。</value></data>
+  <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>此测试版用开发凭证，故须手置。正式版若用 Windows 已信之署名凭证，常可略第一步。惟证之所自与指纹皆确，方可安置。</value></data>
   <data name="AboutNavText.Text" xml:space="preserve"><value>关于</value></data>
   <data name="BackToTaskText.Text" xml:space="preserve"><value>返役</value></data>
   <data name="AppearanceTitle.Text" xml:space="preserve"><value>仪观</value></data>

@@ -246,15 +246,62 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Spacing="5">
+                                <StackPanel Spacing="8">
                                     <TextBlock x:Name="CertificateInstallStepTitle"
                                                x:Uid="CertificateInstallStepTitle"
                                                Text="1. 安装签名证书" FontWeight="SemiBold" />
                                     <TextBlock x:Name="CertificateInstallStepDesc"
                                                x:Uid="CertificateInstallStepDesc"
-                                               Text="仅在 Windows 提示签名不受信任时使用，并在向导中核对证书指纹。"
+                                               Text="请严格按照下面的顺序操作，不要使用向导的默认选项。"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource SecondaryTextBrush}" />
+                                    <StackPanel Spacing="5" Margin="0,3,0,0">
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep1Prefix" Text="1. 点击右侧的 " />
+                                            <Run x:Uid="CertificateGuideStep1Action" Text="打开证书安装向导。" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep2Prefix" Text="2. Windows 弹出证书窗口后，点击 " />
+                                            <Run x:Uid="CertificateGuideStep2Action" Text="安装证书..." FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep2Suffix" Text="。" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep3Prefix" Text="3. 在“证书导入向导”的“存储位置”页面，选择 " />
+                                            <Run x:Uid="CertificateGuideStep3Location" Text="本地计算机" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep3Suffix" Text="，然后点击下一步。" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep4Prefix" Text="4. 如果 Windows 询问是否允许更改，点击 " />
+                                            <Run x:Uid="CertificateGuideStep4Action" Text="是" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep4Suffix" Text="。" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep5Prefix" Text="5. 选择 " />
+                                            <Run x:Uid="CertificateGuideStep5StoreMode" Text="将所有的证书都放入下列存储" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep5Middle" Text="，再点击 " />
+                                            <Run x:Uid="CertificateGuideStep5Browse" Text="浏览..." FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep5Suffix" Text="。" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep6Prefix" Text="6. 在列表中选择 " />
+                                            <Run x:Uid="CertificateGuideStep6Store" Text="受信任人" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep6Middle" Text="，点击确定，然后点击 " />
+                                            <Run x:Uid="CertificateGuideStep6Next" Text="下一步" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep6Suffix" Text="。" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep7Prefix" Text="7. 确认“证书存储”显示为 " />
+                                            <Run x:Uid="CertificateGuideStep7Store" Text="受信任人" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep7Middle" Text="，点击 " />
+                                            <Run x:Uid="CertificateGuideStep7Finish" Text="完成" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep7Suffix" Text="；看到导入成功后关闭窗口。" />
+                                        </TextBlock>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}">
+                                            <Run x:Uid="CertificateGuideStep8Prefix" Text="8. 回到 ClipPort，点击 " />
+                                            <Run x:Uid="CertificateGuideStep8Refresh" Text="刷新状态" FontWeight="SemiBold" />
+                                            <Run x:Uid="CertificateGuideStep8Suffix" Text="；确认页面提示证书已安装到本地计算机后，再继续安装组件。" />
+                                        </TextBlock>
+                                    </StackPanel>
                                     <TextBlock x:Name="CertificateInstallStatusText"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource MutedTextBrush}" />
@@ -273,13 +320,13 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Spacing="5">
+                                <StackPanel Spacing="8">
                                     <TextBlock x:Name="PackageInstallStepTitle"
                                                x:Uid="PackageInstallStepTitle"
                                                Text="2. 安装右键菜单组件" FontWeight="SemiBold" />
                                     <TextBlock x:Name="PackageInstallStepDesc"
                                                x:Uid="PackageInstallStepDesc"
-                                               Text="注册随 ClipPort 发布的稀疏包，让 Windows 11 加载新式右键菜单。"
+                                               Text="证书安装正确后，点击右侧的“安装组件”，等待页面提示安装成功。"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource SecondaryTextBrush}" />
                                     <TextBlock x:Name="PackageInstallStatusText"
@@ -306,7 +353,7 @@
                                                Text="3. 开启右键菜单" FontWeight="SemiBold" />
                                     <TextBlock x:Name="EnableMenuStepDesc"
                                                x:Uid="EnableMenuStepDesc"
-                                               Text="组件安装成功后，使用上方开关启用菜单。菜单语言以启用时的软件语言为准。"
+                                               Text="组件安装成功后，打开上方的“注册到文件资源管理器右键菜单”开关。再打开一个新的文件资源管理器窗口，右击文件夹或空白处进行测试。"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource SecondaryTextBrush}" />
                                 </StackPanel>
@@ -322,7 +369,7 @@
                                      IsOpen="True" IsClosable="False"
                                      Severity="Informational"
                                      Title="安装提示"
-                                     Message="正式可信签名包通常不需要手动安装证书。若安装失败，请记录错误代码并先核对证书来源和指纹。" />
+                                     Message="测试版使用的是开发证书，所以需要手动安装。正式版如果使用 Windows 已信任的签名证书，通常可以跳过第 1 步。只安装来源和指纹都确认无误的证书。" />
                             <TextBlock x:Name="ShellIntegrationOperationStatusText"
                                        TextWrapping="Wrap"
                                        Foreground="{StaticResource MutedTextBrush}" />
