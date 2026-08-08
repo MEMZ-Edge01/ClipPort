@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Channels;
@@ -57,6 +58,11 @@ public sealed class FileCopyService
         Func<CancellationToken, Task> waitWhilePaused,
         CancellationToken cancellationToken)
     {
+        options = options with
+        {
+            VerificationAlgorithm = VerificationAlgorithms.Normalize(options.VerificationAlgorithm)
+        };
+
         if (options.SkipCopy)
         {
             // Skip-copy mode implies verification; there is nothing to skip
@@ -289,15 +295,15 @@ public sealed class FileCopyService
                     if (options.UseFastCopyAlgorithm)
                     {
                         byte[][] hashes = await Task.WhenAll(
-                            ComputeHashAsync(file.FullPath, waitWhilePaused, cancellationToken),
-                            ComputeHashAsync(destinationPath, waitWhilePaused, cancellationToken));
+                            ComputeHashAsync(file.FullPath, options.VerificationAlgorithm, waitWhilePaused, cancellationToken),
+                            ComputeHashAsync(destinationPath, options.VerificationAlgorithm, waitWhilePaused, cancellationToken));
                         sourceHash = hashes[0];
                         destinationHash = hashes[1];
                     }
                     else
                     {
-                        sourceHash = await ComputeHashAsync(file.FullPath, waitWhilePaused, cancellationToken);
-                        destinationHash = await ComputeHashAsync(destinationPath, waitWhilePaused, cancellationToken);
+                        sourceHash = await ComputeHashAsync(file.FullPath, options.VerificationAlgorithm, waitWhilePaused, cancellationToken);
+                        destinationHash = await ComputeHashAsync(destinationPath, options.VerificationAlgorithm, waitWhilePaused, cancellationToken);
                     }
                     bool isMatch = CryptographicOperations.FixedTimeEquals(sourceHash, destinationHash);
                     verifications.Add(new FileVerificationResult(
@@ -320,7 +326,7 @@ public sealed class FileCopyService
                         verifiedFiles++;
                     }
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or CryptographicException)
                 {
                     string error = ResourceService.Format(
                         "Format.CannotVerifyFile",
@@ -468,7 +474,8 @@ public sealed class FileCopyService
             VerifiedBytes = verifiedBytes,
             VerifiedFileCount = verifiedFiles,
             DestinationPaths = destinationPaths,
-            Warnings = warnings
+            Warnings = warnings,
+            VerificationAlgorithm = options.VerificationAlgorithm
         };
     }
 
@@ -517,6 +524,11 @@ public sealed class FileCopyService
         Func<CancellationToken, Task> waitWhilePaused,
         CancellationToken cancellationToken)
     {
+        options = options with
+        {
+            VerificationAlgorithm = VerificationAlgorithms.Normalize(options.VerificationAlgorithm)
+        };
+
         var remaining = new List<FileOperationFailure>();
         var verificationResults = new List<FileVerificationResult>();
         var warnings = new List<string>();
@@ -665,8 +677,8 @@ public sealed class FileCopyService
             verifyWatch.Start();
             try
             {
-                byte[] sourceHash = await ComputeHashAsync(failure.SourcePath, waitWhilePaused, cancellationToken);
-                byte[] destinationHash = await ComputeHashAsync(failure.DestinationPath, waitWhilePaused, cancellationToken);
+                byte[] sourceHash = await ComputeHashAsync(failure.SourcePath, options.VerificationAlgorithm, waitWhilePaused, cancellationToken);
+                byte[] destinationHash = await ComputeHashAsync(failure.DestinationPath, options.VerificationAlgorithm, waitWhilePaused, cancellationToken);
                 bool isMatch = CryptographicOperations.FixedTimeEquals(sourceHash, destinationHash);
                 string? error = isMatch
                     ? null
@@ -695,7 +707,7 @@ public sealed class FileCopyService
                     verifiedFiles++;
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or CryptographicException)
             {
                 string error = ResourceService.Format(
                     "Format.CannotVerifyFile",
@@ -911,13 +923,20 @@ public sealed class FileCopyService
 
     private static async Task<byte[]> ComputeHashAsync(
         string path,
+        VerificationAlgorithmKind algorithm,
         Func<CancellationToken, Task> waitWhilePaused,
         CancellationToken cancellationToken)
     {
         await using var stream = new FileStream(
             path, FileMode.Open, FileAccess.Read, FileShare.Read,
             BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        VerificationAlgorithmKind normalizedAlgorithm = VerificationAlgorithms.Normalize(algorithm);
+        XxHash64? xxHash = normalizedAlgorithm == VerificationAlgorithmKind.XxHash64
+            ? new XxHash64()
+            : null;
+        using IncrementalHash? cryptographicHash = xxHash is null
+            ? IncrementalHash.CreateHash(GetCryptographicHashName(normalizedAlgorithm))
+            : null;
         byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
         try
         {
@@ -925,15 +944,33 @@ public sealed class FileCopyService
             while ((read = await stream.ReadAsync(buffer.AsMemory(0, BufferSize), cancellationToken)) > 0)
             {
                 await waitWhilePaused(cancellationToken);
-                hash.AppendData(buffer, 0, read);
+                if (xxHash is not null)
+                {
+                    xxHash.Append(buffer.AsSpan(0, read));
+                }
+                else
+                {
+                    cryptographicHash!.AppendData(buffer, 0, read);
+                }
             }
-            return hash.GetHashAndReset();
+            return xxHash?.GetHashAndReset() ?? cryptographicHash!.GetHashAndReset();
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
     }
+
+    private static HashAlgorithmName GetCryptographicHashName(
+        VerificationAlgorithmKind algorithm) =>
+        algorithm switch
+        {
+            VerificationAlgorithmKind.Sha256 => HashAlgorithmName.SHA256,
+            VerificationAlgorithmKind.Sha512 => HashAlgorithmName.SHA512,
+            VerificationAlgorithmKind.Sha1 => HashAlgorithmName.SHA1,
+            VerificationAlgorithmKind.Md5 => HashAlgorithmName.MD5,
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, null)
+        };
 
     private static async Task<ScanResult> ScanSourceAsync(
         string sourceRoot,

@@ -52,7 +52,7 @@
   <data name="Status.Copying" xml:space="preserve"><value>正在拷贝</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>拷贝文件</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>正在校验</value></data>
-  <data name="Status.SHA256Verification" xml:space="preserve"><value>SHA-256 完整性校验</value></data>
+  <data name="Status.SHA256Verification" xml:space="preserve"><value>完整性校验</value></data>
   <data name="Status.WaitingDuplicateChoices" xml:space="preserve"><value>等待处理重复文件</value></data>
   <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>等待处理失败文件</value></data>
   <data name="Status.Cancelling" xml:space="preserve"><value>正在取消</value></data>
@@ -90,12 +90,17 @@
   <data name="Info.FailedFilesHint" xml:space="preserve"><value>勾选文件后选择覆盖、重试或跳过；覆盖仅适用于校验不一致文件。</value></data>
   <data name="Info.ChooseRetryOrSkip" xml:space="preserve"><value>请在下方选择重试或跳过</value></data>
   <data name="Info.OtherFilesProcessed" xml:space="preserve"><value>其他文件已继续处理，任务不会因单个文件错误直接失败。</value></data>
-  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>覆盖后重新执行 SHA-256 校验</value></data>
+  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>覆盖后重新执行完整性校验</value></data>
   <data name="Info.OnlySelectedFailures" xml:space="preserve"><value>仅处理已选失败项</value></data>
   <data name="Info.OverwriteAndReverifyDesc" xml:space="preserve"><value>正在用源文件覆盖目标文件，并重新校验完整性。</value></data>
   <data name="Info.StillFailedRemain" xml:space="preserve"><value>重试完成后，仍失败的文件会继续保留在下方。</value></data>
   <data name="Info.ChooseActionBelow" xml:space="preserve"><value>请在下方逐个选择处理方式</value></data>
   <data name="Info.FastCopyHint" xml:space="preserve"><value>使用原生流水线复制引擎；不可用时自动回退到托管流水线。文件大小、进度和剩余时间仍会正常显示。</value></data>
+  <data name="Info.VerificationAlgorithmSha256" xml:space="preserve"><value>默认选择，兼顾速度与抗碰撞能力，适合重要素材交付与长期归档。</value></data>
+  <data name="Info.VerificationAlgorithmSha512" xml:space="preserve"><value>摘要更长、抗碰撞能力更高，适合需长期保存的高要求归档；计算开销通常更高。</value></data>
+  <data name="Info.VerificationAlgorithmSha1" xml:space="preserve"><value>兼容旧有校验清单和系统；不适合安全性或防篡改证明。</value></data>
+  <data name="Info.VerificationAlgorithmMd5" xml:space="preserve"><value>兼容性高且开销较低，适合旧系统或非安全场景；不适合作为防篡改证明。</value></data>
+  <data name="Info.VerificationAlgorithmXxHash64" xml:space="preserve"><value>吞吐量优先，适合本机大批量快速完整性检查；不适合作为防篡改证明。</value></data>
   <!-- ===== Language restart ===== -->
   <data name="Info.LanguageRestartRequired" xml:space="preserve"><value>语言已更改，请重启应用以生效。</value></data>
   <!-- ===== Error ===== -->
@@ -149,11 +154,11 @@
   <!-- ===== Result ===== -->
   <data name="Result.CopiedFailedFilesSkipped" xml:space="preserve"><value>拷贝已完成，失败文件已跳过</value></data>
   <data name="Result.VerifiedFailedFilesSkipped" xml:space="preserve"><value>校验已完成，失败文件已跳过</value></data>
-  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>拷贝和 SHA-256 校验均已完成</value></data>
+  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>拷贝和文件校验均已完成</value></data>
   <data name="Result.CopyCompleted" xml:space="preserve"><value>拷贝已完成</value></data>
-  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>SHA-256 校验已完成</value></data>
+  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>文件校验已完成</value></data>
   <data name="Result.CopyCompletedButVerifyFailed" xml:space="preserve"><value>拷贝完成，但完整性校验未通过</value></data>
-  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>SHA-256 校验未通过</value></data>
+  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>文件校验未通过</value></data>
   <data name="Result.UnknownStatus" xml:space="preserve"><value>未知状态</value></data>
   <data name="Result.Interrupted" xml:space="preserve"><value>意外中断</value></data>
   <data name="Result.Cancelled" xml:space="preserve"><value>已取消</value></data>
@@ -196,7 +201,7 @@
   <data name="Format.DeletedNTaskRecords" xml:space="preserve"><value>已删除 {0} 条任务记录，所有文件均已保留。</value></data>
   <data name="Format.TaskCompletedCopiedVerified" xml:space="preserve"><value>任务完成：已拷贝并校验 {0} 个文件。</value></data>
   <data name="Format.CopyCompletedCopied" xml:space="preserve"><value>拷贝完成：已拷贝 {0} 个文件。</value></data>
-  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>校验完成：{0} 个文件均通过 SHA-256 校验。</value></data>
+  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>校验完成：{0} 个文件均通过完整性校验。</value></data>
   <data name="Format.CreatedNReportsInPath" xml:space="preserve"><value>已在 {0} 创建 {1} 份任务报告。</value></data>
   <data name="Format.DuplicateFileRecords" xml:space="preserve"><value>重复文件记录：{0} 个</value></data>
   <data name="Format.NFilesAwaitingAction" xml:space="preserve"><value>{0} 个文件待处理</value></data>
@@ -369,7 +374,7 @@
   <data name="ElapsedTimeLabel.Text" xml:space="preserve"><value>累计用时</value></data>
   <data name="CopySectionLabel.Text" xml:space="preserve"><value>拷贝</value></data>
   <data name="CopyCompletedText.Text" xml:space="preserve"><value>已完成</value></data>
-  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>SHA-256 校验</value></data>
+  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>文件校验</value></data>
   <data name="VerifyCompletedText.Text" xml:space="preserve"><value>已完成</value></data>
   <data name="StartButtonText.Text" xml:space="preserve"><value>开始拷卡</value></data>
   <data name="StartVerificationButtonText.Text" xml:space="preserve"><value>开始校验</value></data>
@@ -418,9 +423,11 @@
   <data name="FastCopyToggle.OnContent" xml:space="preserve"><value>开启</value></data>
   <data name="FastCopyToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
   <data name="FastCopyHintText.Text" xml:space="preserve"><value>使用原生流水线复制引擎；不可用时自动回退到托管流水线。文件大小、进度和剩余时间仍会正常显示。</value></data>
-  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>文件校验（SHA-256）</value></data>
+  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>文件校验</value></data>
   <data name="VerifyFilesToggle.OnContent" xml:space="preserve"><value>开启</value></data>
   <data name="VerifyFilesToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="VerificationAlgorithmLabel.Text" xml:space="preserve"><value>校验算法</value></data>
+  <data name="VerificationAlgorithmHintText.Text" xml:space="preserve"><value>默认选择，兼顾速度与抗碰撞能力，适合重要素材交付与长期归档。</value></data>
   <data name="PreventSleepToggle.Header" xml:space="preserve"><value>任务期间阻止电脑休眠</value></data>
   <data name="PreventSleepToggle.OnContent" xml:space="preserve"><value>开启</value></data>
   <data name="PreventSleepToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
@@ -458,7 +465,7 @@
   <data name="Report.VerifiedProgress" xml:space="preserve"><value>校验通过：{0}/{1} 个文件</value></data>
   <data name="Report.VerificationDisabled" xml:space="preserve"><value>文件校验：未启用</value></data>
   <data name="Report.VerificationDetails" xml:space="preserve"><value>文件校验明细：</value></data>
-  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[通过] {0} | {1} | SHA-256: {2}</value></data>
+  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[通过] {0} | {1} | {2}: {3}</value></data>
   <data name="Report.FailedVerificationEntry" xml:space="preserve"><value>[失败] {0} | 源: {1} | 目标: {2} | {3}</value></data>
   <data name="Report.TaskStatus" xml:space="preserve"><value>任务状态：{0}</value></data>
   <data name="Report.Details" xml:space="preserve"><value>说明：{0}</value></data>

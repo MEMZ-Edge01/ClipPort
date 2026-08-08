@@ -52,6 +52,8 @@ public sealed partial class MainWindow : Window
         _previousLanguage = _appSettings.Language;
         _lastSavedSettings = CloneSettings(_appSettings);
         InitializeComponent();
+        UpdateVerificationAlgorithmDescription();
+        UpdateVerificationAlgorithmControls();
         ApplyThroughputChartLayouts();
         NewJobsList.ItemsSource = _newJobs;
         HistoryList.ItemsSource = _visibleHistory;
@@ -315,7 +317,8 @@ public sealed partial class MainWindow : Window
                     ExistingFilePolicy: duplicatePolicy,
                     VerifyFiles: verifyOnly || VerifyFilesToggle.IsOn,
                     UseFastCopyAlgorithm: false,
-                    SkipCopy: verifyOnly);
+                    SkipCopy: verifyOnly,
+                    VerificationAlgorithm: GetSelectedVerificationAlgorithm());
                 SourcePathText.Text = _sourcePath;
                 DestinationPathText.Text = _destinationPath;
                 HeroNameText.Text = GetDisplayName(_sourcePath);
@@ -423,6 +426,9 @@ public sealed partial class MainWindow : Window
         DestinationPathText.Text = ResourceService.GetString("Info.NotSelected");
         PriorityExecutionToggle.IsOn = false;
         UseFastCopyAlgorithmToggle.IsOn = false;
+        VerificationAlgorithmComboBox.SelectedIndex = 0;
+        UpdateVerificationAlgorithmDescription();
+        UpdateVerificationAlgorithmControls();
         PreventSleepToggle.IsOn = true;
         HeroNameText.Text = ResourceService.GetString("Info.PrepareNewTask");
         CurrentFileText.Text = ResourceService.GetString("Info.SelectSourceAndDest");
@@ -1039,5 +1045,50 @@ public sealed partial class MainWindow : Window
         OverwriteExistingRadio.IsEnabled = enabled;
         SkipExistingRadio.IsEnabled = enabled;
         CreateCopyRadio.IsEnabled = enabled;
+        UpdateVerificationAlgorithmControls();
+    }
+
+    private void VerifyFilesToggle_Toggled(object sender, RoutedEventArgs e) =>
+        UpdateVerificationAlgorithmControls();
+
+    private void VerificationAlgorithmComboBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e) =>
+        UpdateVerificationAlgorithmDescription();
+
+    private VerificationAlgorithmKind GetSelectedVerificationAlgorithm()
+    {
+        if (VerificationAlgorithmComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
+            Enum.TryParse(tag, ignoreCase: true, out VerificationAlgorithmKind algorithm))
+        {
+            return VerificationAlgorithms.Normalize(algorithm);
+        }
+
+        return VerificationAlgorithmKind.Sha256;
+    }
+
+    private void UpdateVerificationAlgorithmDescription()
+    {
+        if (VerificationAlgorithmHintText is null)
+        {
+            return;
+        }
+
+        VerificationAlgorithmHintText.Text = ResourceService.GetString(
+            VerificationAlgorithms.GetDescriptionResourceKey(GetSelectedVerificationAlgorithm()));
+    }
+
+    private void UpdateVerificationAlgorithmControls()
+    {
+        if (VerificationAlgorithmComboBox is null || VerificationAlgorithmHintText is null)
+        {
+            return;
+        }
+
+        // Verification-only tasks always execute a hash comparison, even though
+        // the ordinary verification toggle is locked on in that mode.
+        bool verificationWillRun = !EnableCopyToggle.IsOn || VerifyFilesToggle.IsOn;
+        VerificationAlgorithmComboBox.IsEnabled = verificationWillRun;
+        VerificationAlgorithmHintText.Opacity = verificationWillRun ? 1 : 0.55;
     }
 }

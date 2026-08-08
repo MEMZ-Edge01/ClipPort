@@ -183,6 +183,7 @@ public sealed class JobHistoryService
         item.DisplayName ??= string.Empty;
         item.SourcePath ??= string.Empty;
         item.DestinationPath ??= string.Empty;
+        item.VerificationAlgorithm = VerificationAlgorithms.Normalize(item.VerificationAlgorithm);
         item.FailedFiles ??= [];
         item.FailedFiles = item.FailedFiles
             .OfType<FileOperationFailure>()

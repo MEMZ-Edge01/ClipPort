@@ -104,6 +104,7 @@ public sealed partial class MainWindow
             Status = JobStatus.Queued,
             CopyEnabled = !options.SkipCopy,
             VerificationEnabled = options.VerifyFiles,
+            VerificationAlgorithm = options.VerificationAlgorithm,
             UseFastCopyAlgorithm = options.UseFastCopyAlgorithm,
             IsPriority = isPriority,
             PreventSleep = preventSleep,
@@ -587,6 +588,7 @@ public sealed partial class MainWindow
         job.CopySeconds = result?.CopyDuration.TotalSeconds ?? runtime.CopyElapsed.TotalSeconds;
         job.VerifySeconds = result?.VerifyDuration.TotalSeconds ?? runtime.VerifyElapsed.TotalSeconds;
         job.VerificationEnabled = result?.VerificationPerformed ?? runtime.Options.VerifyFiles;
+        job.VerificationAlgorithm = result?.VerificationAlgorithm ?? runtime.Options.VerificationAlgorithm;
         job.ErrorMessage = error;
 
         if (result is not null)
@@ -1147,7 +1149,8 @@ public sealed partial class MainWindow
             ExistingFilePolicy: ExistingFilePolicy.Overwrite,
             VerifyFiles: true,
             UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
-            SkipCopy: true)
+            SkipCopy: true,
+            VerificationAlgorithm: originalJob.VerificationAlgorithm)
         {
             DestinationPaths = originalJob.DestinationFiles
         };
@@ -1255,7 +1258,8 @@ public sealed partial class MainWindow
                 : ExistingFilePolicy.Overwrite,
             VerifyFiles: originalJob.VerificationEnabled,
             UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
-            SkipCopy: !originalJob.CopyEnabled)
+            SkipCopy: !originalJob.CopyEnabled,
+            VerificationAlgorithm: originalJob.VerificationAlgorithm)
         {
             DestinationPaths = !originalJob.CopyEnabled
                 ? originalJob.DestinationFiles

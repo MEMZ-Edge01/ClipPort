@@ -28,19 +28,65 @@ public enum FileOperationStage
 }
 
 /// <summary>
+/// Hash algorithms available for file integrity verification.
+/// </summary>
+public enum VerificationAlgorithmKind
+{
+    Sha256,
+    Sha512,
+    Sha1,
+    Md5,
+    XxHash64
+}
+
+/// <summary>
+/// Centralizes the user-facing names and resource keys for verification algorithms.
+/// </summary>
+public static class VerificationAlgorithms
+{
+    public static VerificationAlgorithmKind Normalize(VerificationAlgorithmKind algorithm) =>
+        Enum.IsDefined(typeof(VerificationAlgorithmKind), algorithm)
+            ? algorithm
+            : VerificationAlgorithmKind.Sha256;
+
+    public static string GetDisplayName(VerificationAlgorithmKind algorithm) =>
+        Normalize(algorithm) switch
+        {
+            VerificationAlgorithmKind.Sha256 => "SHA-256",
+            VerificationAlgorithmKind.Sha512 => "SHA-512",
+            VerificationAlgorithmKind.Sha1 => "SHA-1",
+            VerificationAlgorithmKind.Md5 => "MD5",
+            VerificationAlgorithmKind.XxHash64 => "xxHash64",
+            _ => "SHA-256"
+        };
+
+    public static string GetDescriptionResourceKey(VerificationAlgorithmKind algorithm) =>
+        Normalize(algorithm) switch
+        {
+            VerificationAlgorithmKind.Sha256 => "Info.VerificationAlgorithmSha256",
+            VerificationAlgorithmKind.Sha512 => "Info.VerificationAlgorithmSha512",
+            VerificationAlgorithmKind.Sha1 => "Info.VerificationAlgorithmSha1",
+            VerificationAlgorithmKind.Md5 => "Info.VerificationAlgorithmMd5",
+            VerificationAlgorithmKind.XxHash64 => "Info.VerificationAlgorithmXxHash64",
+            _ => "Info.VerificationAlgorithmSha256"
+        };
+}
+
+/// <summary>
 /// Options that control how a copy-and-verify job executes.
 /// </summary>
 /// <remarks>
 /// <see cref="UseFastCopyAlgorithm"/> controls both the file-copy pipeline
 /// (managed-pipelined / native engine vs. sequential) and whether source and
-/// destination SHA-256 hashes are computed in parallel during verification.
+/// destination hashes are computed in parallel during verification.
 /// A future revision may split these concerns into independent flags.
 /// </remarks>
 public sealed record CopyOptions(
     ExistingFilePolicy ExistingFilePolicy = ExistingFilePolicy.Overwrite,
     bool VerifyFiles = true,
     bool UseFastCopyAlgorithm = false,
-    bool SkipCopy = false)
+    bool SkipCopy = false,
+    VerificationAlgorithmKind VerificationAlgorithm = VerificationAlgorithmKind.Sha256)
 {
     public IReadOnlyDictionary<string, string>? DestinationPaths { get; init; }
 }
@@ -68,8 +114,8 @@ public sealed record CopyProgressInfo(
 public sealed record FileVerificationResult(
     string RelativePath,
     long Length,
-    string SourceSha256,
-    string DestinationSha256,
+    string SourceHash,
+    string DestinationHash,
     bool IsMatch,
     string? Error);
 
@@ -130,4 +176,6 @@ public sealed record CopyResult(
     public IReadOnlyDictionary<string, string> DestinationPaths { get; init; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyList<string> Warnings { get; init; } = [];
+    public VerificationAlgorithmKind VerificationAlgorithm { get; init; } =
+        VerificationAlgorithmKind.Sha256;
 }

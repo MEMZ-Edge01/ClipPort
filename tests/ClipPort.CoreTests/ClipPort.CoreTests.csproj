@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\..\src\ClipPort\Models\AppSettings.cs" Link="Models\AppSettings.cs" />
     <Compile Include="..\..\src\ClipPort\Models\CopyModels.cs" Link="Models\CopyModels.cs" />
     <Compile Include="..\..\src\ClipPort\Models\CopyThroughputSampler.cs" Link="Models\CopyThroughputSampler.cs" />

@@ -38,7 +38,7 @@ public static class TaskReportBuilder
         report.AppendLine(ResourceService.Format(
             "Report.VerificationAlgorithm",
             result.VerificationPerformed
-                ? "SHA-256"
+                ? VerificationAlgorithms.GetDisplayName(result.VerificationAlgorithm)
                 : ResourceService.GetString("Common.Disabled")));
         if (result.VerificationPerformed)
         {
@@ -63,12 +63,13 @@ public static class TaskReportBuilder
                         "Report.PassedVerificationEntry",
                         file.RelativePath,
                         DisplayFormatting.FormatBytes(file.Length),
-                        file.SourceSha256)
+                        VerificationAlgorithms.GetDisplayName(result.VerificationAlgorithm),
+                        file.SourceHash)
                     : ResourceService.Format(
                         "Report.FailedVerificationEntry",
                         file.RelativePath,
-                        file.SourceSha256,
-                        file.DestinationSha256,
+                        file.SourceHash,
+                        file.DestinationHash,
                         file.Error ?? ResourceService.GetString("Common.Failed")));
             }
         }
@@ -103,12 +104,20 @@ public static class TaskReportBuilder
             report.AppendLine(ResourceService.GetString("Report.CopyDisabled"));
         }
 
-        report.AppendLine(job.VerificationEnabled
-            ? ResourceService.Format(
+        if (job.VerificationEnabled)
+        {
+            report.AppendLine(ResourceService.Format(
+                "Report.VerificationAlgorithm",
+                VerificationAlgorithms.GetDisplayName(job.VerificationAlgorithm)));
+            report.AppendLine(ResourceService.Format(
                 "Report.VerifiedProgress",
                 job.VerifiedFiles.ToString("N0"),
-                job.FileCount.ToString("N0"))
-            : ResourceService.GetString("Report.VerificationDisabled"));
+                job.FileCount.ToString("N0")));
+        }
+        else
+        {
+            report.AppendLine(ResourceService.GetString("Report.VerificationDisabled"));
+        }
         if (!string.IsNullOrWhiteSpace(job.ErrorMessage))
         {
             report.AppendLine(ResourceService.Format(

@@ -453,7 +453,7 @@
                                     <ColumnDefinition Width="130" />
                                     <ColumnDefinition Width="150" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Uid="VerifySectionLabel" Text="SHA-256 校验" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <TextBlock x:Uid="VerifySectionLabel" Text="文件校验" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <Grid Grid.Column="1" Margin="0,0,28,0">
                                     <ProgressBar x:Name="VerifyProgress" Height="5" Minimum="0" Maximum="100" Foreground="{StaticResource SuccessBrush}" />
                                     <Border x:Name="VerifyCompletedBadge" Visibility="Collapsed" Background="{StaticResource SuccessBrush}" CornerRadius="5" Padding="12,5">
@@ -1105,8 +1105,25 @@
                                    Foreground="{StaticResource MutedTextBrush}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
-                    <ToggleSwitch x:Name="VerifyFilesToggle" x:Uid="VerifyFilesToggle" Header="文件校验（SHA-256）" IsOn="True"
-                                  OnContent="开启" OffContent="关闭" HorizontalAlignment="Stretch" />
+                    <ToggleSwitch x:Name="VerifyFilesToggle" x:Uid="VerifyFilesToggle" Header="文件校验" IsOn="True"
+                                  OnContent="开启" OffContent="关闭" HorizontalAlignment="Stretch"
+                                  Toggled="VerifyFilesToggle_Toggled" />
+                    <StackPanel Spacing="6">
+                        <TextBlock x:Name="VerificationAlgorithmLabel" x:Uid="VerificationAlgorithmLabel"
+                                   Text="校验算法" Foreground="{StaticResource DefaultTextBrush}" />
+                        <ComboBox x:Name="VerificationAlgorithmComboBox" SelectedIndex="0"
+                                  SelectionChanged="VerificationAlgorithmComboBox_SelectionChanged"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBoxItem Tag="Sha256" Content="SHA-256" />
+                            <ComboBoxItem Tag="Sha512" Content="SHA-512" />
+                            <ComboBoxItem Tag="Sha1" Content="SHA-1" />
+                            <ComboBoxItem Tag="Md5" Content="MD5" />
+                            <ComboBoxItem Tag="XxHash64" Content="xxHash64" />
+                        </ComboBox>
+                        <TextBlock x:Name="VerificationAlgorithmHintText" x:Uid="VerificationAlgorithmHintText"
+                                   Text="默认选择，兼顾速度与抗碰撞能力，适合重要素材交付与长期归档。"
+                                   FontSize="11" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
                     <ToggleSwitch x:Name="PreventSleepToggle" x:Uid="PreventSleepToggle"
                                   Header="&#x4EFB;&#x52A1;&#x671F;&#x95F4;&#x963B;&#x6B62;&#x7535;&#x8111;&#x4F11;&#x7720;"
                                   OnContent="开启" OffContent="关闭"

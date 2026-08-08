@@ -52,7 +52,7 @@
   <data name="Status.Copying" xml:space="preserve"><value>传写中</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>传写文卷</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>校验中</value></data>
-  <data name="Status.SHA256Verification" xml:space="preserve"><value>SHA-256 完整性之验</value></data>
+  <data name="Status.SHA256Verification" xml:space="preserve"><value>完整性之验</value></data>
   <data name="Status.WaitingDuplicateChoices" xml:space="preserve"><value>重文待处</value></data>
   <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>败卷待处</value></data>
   <data name="Status.Cancelling" xml:space="preserve"><value>撤销中</value></data>
@@ -90,12 +90,17 @@
   <data name="Info.FailedFilesHint" xml:space="preserve"><value>勾卷后可覆写、复试或略之；惟验而不合者可覆写。</value></data>
   <data name="Info.ChooseRetryOrSkip" xml:space="preserve"><value>请于下择复试或略之</value></data>
   <data name="Info.OtherFilesProcessed" xml:space="preserve"><value>他卷已续治，此役不因一卷之误而径败。</value></data>
-  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>覆写后复行 SHA-256 之验</value></data>
+  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>覆写后复行完整性之验</value></data>
   <data name="Info.OnlySelectedFailures" xml:space="preserve"><value>惟治所择败项</value></data>
   <data name="Info.OverwriteAndReverifyDesc" xml:space="preserve"><value>方以源卷覆写所往之卷，并复验其完整。</value></data>
   <data name="Info.StillFailedRemain" xml:space="preserve"><value>复试毕，犹败之卷仍列于下。</value></data>
   <data name="Info.ChooseActionBelow" xml:space="preserve"><value>请于下逐一择其处置</value></data>
   <data name="Info.FastCopyHint" xml:space="preserve"><value>用原生流水线传写引擎；若不可用，则自退用托管流水线。卷之大小、进度与余时仍如常显示。</value></data>
+  <data name="Info.VerificationAlgorithmSha256" xml:space="preserve"><value>默认之选，速与抗碰撞相济，宜要材交付及久藏。</value></data>
+  <data name="Info.VerificationAlgorithmSha512" xml:space="preserve"><value>摘要更长，抗碰撞尤强，宜久藏严谨之档；常费更多算力。</value></data>
+  <data name="Info.VerificationAlgorithmSha1" xml:space="preserve"><value>兼容旧清单与旧制；不宜安全或防篡改之证。</value></data>
+  <data name="Info.VerificationAlgorithmMd5" xml:space="preserve"><value>兼容广且耗费少，宜旧制或非安全之用；不宜作防篡改之证。</value></data>
+  <data name="Info.VerificationAlgorithmXxHash64" xml:space="preserve"><value>吞吐为先，宜本机多卷疾验；不宜作防篡改之证。</value></data>
   <!-- ===== Language restart ===== -->
   <data name="Info.LanguageRestartRequired" xml:space="preserve"><value>文辞已易，请重启此器乃生效。</value></data>
   <!-- ===== Error ===== -->
@@ -149,11 +154,11 @@
   <!-- ===== Result ===== -->
   <data name="Result.CopiedFailedFilesSkipped" xml:space="preserve"><value>传写已毕，败卷已略</value></data>
   <data name="Result.VerifiedFailedFilesSkipped" xml:space="preserve"><value>校验已毕，败卷已略</value></data>
-  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>传写与 SHA-256 之验皆毕</value></data>
+  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>传写与文卷之验皆毕</value></data>
   <data name="Result.CopyCompleted" xml:space="preserve"><value>传写已毕</value></data>
-  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>SHA-256 之验已毕</value></data>
+  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>文卷之验已毕</value></data>
   <data name="Result.CopyCompletedButVerifyFailed" xml:space="preserve"><value>传写既毕，然完整性之验未合</value></data>
-  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>SHA-256 之验未合</value></data>
+  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>文卷之验未合</value></data>
   <data name="Result.UnknownStatus" xml:space="preserve"><value>状况未详</value></data>
   <data name="Result.Interrupted" xml:space="preserve"><value>意外中断</value></data>
   <data name="Result.Cancelled" xml:space="preserve"><value>已撤</value></data>
@@ -196,7 +201,7 @@
   <data name="Format.DeletedNTaskRecords" xml:space="preserve"><value>已删 {0} 条役录，诸文卷皆存。</value></data>
   <data name="Format.TaskCompletedCopiedVerified" xml:space="preserve"><value>役毕：已传写并验 {0} 卷。</value></data>
   <data name="Format.CopyCompletedCopied" xml:space="preserve"><value>传写毕：已传写 {0} 卷。</value></data>
-  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>校验毕：{0} 卷皆合 SHA-256 之验。</value></data>
+  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>校验毕：{0} 卷皆合完整性之验。</value></data>
   <data name="Format.CreatedNReportsInPath" xml:space="preserve"><value>已于 {0} 撰 {1} 份役录。</value></data>
   <data name="Format.DuplicateFileRecords" xml:space="preserve"><value>重文之录：{0} 卷</value></data>
   <data name="Format.NFilesAwaitingAction" xml:space="preserve"><value>{0} 卷待处</value></data>
@@ -369,7 +374,7 @@
   <data name="ElapsedTimeLabel.Text" xml:space="preserve"><value>历时</value></data>
   <data name="CopySectionLabel.Text" xml:space="preserve"><value>传写</value></data>
   <data name="CopyCompletedText.Text" xml:space="preserve"><value>已毕</value></data>
-  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>SHA-256 之验</value></data>
+  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>文卷之验</value></data>
   <data name="VerifyCompletedText.Text" xml:space="preserve"><value>已毕</value></data>
   <data name="StartButtonText.Text" xml:space="preserve"><value>始传写</value></data>
   <data name="StartVerificationButtonText.Text" xml:space="preserve"><value>始验</value></data>
@@ -418,9 +423,11 @@
   <data name="FastCopyToggle.OnContent" xml:space="preserve"><value>启</value></data>
   <data name="FastCopyToggle.OffContent" xml:space="preserve"><value>闭</value></data>
   <data name="FastCopyHintText.Text" xml:space="preserve"><value>用原生流水线传写引擎；若不可用，则自退用托管流水线。卷之大小、进度与余时仍如常显示。</value></data>
-  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>验文卷（SHA-256）</value></data>
+  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>验文卷</value></data>
   <data name="VerifyFilesToggle.OnContent" xml:space="preserve"><value>启</value></data>
   <data name="VerifyFilesToggle.OffContent" xml:space="preserve"><value>闭</value></data>
+  <data name="VerificationAlgorithmLabel.Text" xml:space="preserve"><value>校验之法</value></data>
+  <data name="VerificationAlgorithmHintText.Text" xml:space="preserve"><value>默认之选，速与抗碰撞相济，宜要材交付及久藏。</value></data>
   <data name="PreventSleepToggle.Header" xml:space="preserve"><value>役中禁电脑休眠</value></data>
   <data name="PreventSleepToggle.OnContent" xml:space="preserve"><value>启</value></data>
   <data name="PreventSleepToggle.OffContent" xml:space="preserve"><value>闭</value></data>
@@ -458,7 +465,7 @@
   <data name="Report.VerifiedProgress" xml:space="preserve"><value>校验合格：{0}/{1} 卷</value></data>
   <data name="Report.VerificationDisabled" xml:space="preserve"><value>校验文卷：未启</value></data>
   <data name="Report.VerificationDetails" xml:space="preserve"><value>校验文卷之细目：</value></data>
-  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[合] {0} | {1} | SHA-256: {2}</value></data>
+  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[合] {0} | {1} | {2}: {3}</value></data>
   <data name="Report.FailedVerificationEntry" xml:space="preserve"><value>[败] {0} | 源: {1} | 所往: {2} | {3}</value></data>
   <data name="Report.TaskStatus" xml:space="preserve"><value>役之状：{0}</value></data>
   <data name="Report.Details" xml:space="preserve"><value>说：{0}</value></data>

@@ -88,6 +88,8 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     private double _verifySeconds;
     public bool CopyEnabled { get; set; } = true;
     public bool VerificationEnabled { get; set; } = true;
+    public VerificationAlgorithmKind VerificationAlgorithm { get; set; } =
+        VerificationAlgorithmKind.Sha256;
     public bool UseFastCopyAlgorithm { get; set; }
     public bool IsPriority { get; set; }
     public bool PreventSleep { get; set; } = true;

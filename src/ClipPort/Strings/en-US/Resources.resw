@@ -52,7 +52,7 @@
   <data name="Status.Copying" xml:space="preserve"><value>Copying</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>Copying files</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>Verifying</value></data>
-  <data name="Status.SHA256Verification" xml:space="preserve"><value>SHA-256 integrity verification</value></data>
+  <data name="Status.SHA256Verification" xml:space="preserve"><value>Integrity verification</value></data>
   <data name="Status.WaitingDuplicateChoices" xml:space="preserve"><value>Waiting for duplicate choices</value></data>
   <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>Waiting to handle failed files</value></data>
   <data name="Status.Cancelling" xml:space="preserve"><value>Cancelling</value></data>
@@ -90,12 +90,17 @@
   <data name="Info.FailedFilesHint" xml:space="preserve"><value>Select files to overwrite, retry, or skip. Overwrite is available only for verification mismatches.</value></data>
   <data name="Info.ChooseRetryOrSkip" xml:space="preserve"><value>Choose retry or skip below</value></data>
   <data name="Info.OtherFilesProcessed" xml:space="preserve"><value>Other files continue processing; the task will not fail outright due to a single file error.</value></data>
-  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>Re-running SHA-256 after overwrite</value></data>
+  <data name="Info.ReverifyAfterOverwrite" xml:space="preserve"><value>Re-running integrity verification after overwrite</value></data>
   <data name="Info.OnlySelectedFailures" xml:space="preserve"><value>Processing selected failures only</value></data>
   <data name="Info.OverwriteAndReverifyDesc" xml:space="preserve"><value>Overwriting destination files with source and re-verifying integrity.</value></data>
   <data name="Info.StillFailedRemain" xml:space="preserve"><value>After retry, files that still fail will remain listed below.</value></data>
   <data name="Info.ChooseActionBelow" xml:space="preserve"><value>Choose an action for each item below</value></data>
   <data name="Info.FastCopyHint" xml:space="preserve"><value>Use the native pipelined copy engine and fall back automatically when unavailable. Size, progress, and remaining time remain available.</value></data>
+  <data name="Info.VerificationAlgorithmSha256" xml:space="preserve"><value>Default choice balancing throughput and collision resistance; recommended for important media delivery and long-term archives.</value></data>
+  <data name="Info.VerificationAlgorithmSha512" xml:space="preserve"><value>Longer digest and higher collision resistance for high-assurance archives; it usually uses more CPU.</value></data>
+  <data name="Info.VerificationAlgorithmSha1" xml:space="preserve"><value>Compatible with legacy manifests and systems; not suitable for security or tamper-resistance.</value></data>
+  <data name="Info.VerificationAlgorithmMd5" xml:space="preserve"><value>Widely compatible with low overhead for legacy or non-security workflows; not suitable as tamper evidence.</value></data>
+  <data name="Info.VerificationAlgorithmXxHash64" xml:space="preserve"><value>Throughput-first for fast local verification of large batches; not suitable as tamper evidence.</value></data>
   <!-- ===== Language restart ===== -->
   <data name="Info.LanguageRestartRequired" xml:space="preserve"><value>Language changed. Please restart the app for changes to take effect.</value></data>
   <!-- ===== Error ===== -->
@@ -149,11 +154,11 @@
   <!-- ===== Result ===== -->
   <data name="Result.CopiedFailedFilesSkipped" xml:space="preserve"><value>Copy completed; failed files were skipped</value></data>
   <data name="Result.VerifiedFailedFilesSkipped" xml:space="preserve"><value>Verification completed; failed files were skipped</value></data>
-  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>Copy and SHA-256 verification completed</value></data>
+  <data name="Result.CopyAndVerifyCompleted" xml:space="preserve"><value>Copy and file verification completed</value></data>
   <data name="Result.CopyCompleted" xml:space="preserve"><value>Copy completed</value></data>
-  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>SHA-256 verification completed</value></data>
+  <data name="Result.SHA256VerificationCompleted" xml:space="preserve"><value>File verification completed</value></data>
   <data name="Result.CopyCompletedButVerifyFailed" xml:space="preserve"><value>Copy completed, but integrity verification failed</value></data>
-  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>SHA-256 verification failed</value></data>
+  <data name="Result.SHA256VerificationFailed" xml:space="preserve"><value>File verification failed</value></data>
   <data name="Result.UnknownStatus" xml:space="preserve"><value>Unknown status</value></data>
   <data name="Result.Interrupted" xml:space="preserve"><value>Interrupted</value></data>
   <data name="Result.Cancelled" xml:space="preserve"><value>Cancelled</value></data>
@@ -196,7 +201,7 @@
   <data name="Format.DeletedNTaskRecords" xml:space="preserve"><value>Deleted {0} task records; all files were kept.</value></data>
   <data name="Format.TaskCompletedCopiedVerified" xml:space="preserve"><value>Task completed: copied and verified {0} files.</value></data>
   <data name="Format.CopyCompletedCopied" xml:space="preserve"><value>Copy completed: copied {0} files.</value></data>
-  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>Verification completed: all {0} files passed SHA-256 verification.</value></data>
+  <data name="Format.VerificationCompletedAllPassed" xml:space="preserve"><value>Verification completed: all {0} files passed integrity verification.</value></data>
   <data name="Format.CreatedNReportsInPath" xml:space="preserve"><value>Created {1} task reports in {0}.</value></data>
   <data name="Format.DuplicateFileRecords" xml:space="preserve"><value>Duplicate file records: {0}</value></data>
   <data name="Format.NFilesAwaitingAction" xml:space="preserve"><value>{0} files awaiting action</value></data>
@@ -369,7 +374,7 @@
   <data name="ElapsedTimeLabel.Text" xml:space="preserve"><value>Elapsed</value></data>
   <data name="CopySectionLabel.Text" xml:space="preserve"><value>Copy</value></data>
   <data name="CopyCompletedText.Text" xml:space="preserve"><value>Completed</value></data>
-  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>SHA-256 verification</value></data>
+  <data name="VerifySectionLabel.Text" xml:space="preserve"><value>File verification</value></data>
   <data name="VerifyCompletedText.Text" xml:space="preserve"><value>Completed</value></data>
   <data name="StartButtonText.Text" xml:space="preserve"><value>Start copy</value></data>
   <data name="StartVerificationButtonText.Text" xml:space="preserve"><value>Start verification</value></data>
@@ -418,9 +423,11 @@
   <data name="FastCopyToggle.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="FastCopyToggle.OffContent" xml:space="preserve"><value>Off</value></data>
   <data name="FastCopyHintText.Text" xml:space="preserve"><value>Use the native pipelined copy engine and fall back automatically when unavailable. Size, progress, and remaining time remain available.</value></data>
-  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>File verification (SHA-256)</value></data>
+  <data name="VerifyFilesToggle.Header" xml:space="preserve"><value>File verification</value></data>
   <data name="VerifyFilesToggle.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="VerifyFilesToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="VerificationAlgorithmLabel.Text" xml:space="preserve"><value>Verification algorithm</value></data>
+  <data name="VerificationAlgorithmHintText.Text" xml:space="preserve"><value>Default choice balancing throughput and collision resistance; recommended for important media delivery and long-term archives.</value></data>
   <data name="PreventSleepToggle.Header" xml:space="preserve"><value>Prevent sleep during tasks</value></data>
   <data name="PreventSleepToggle.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="PreventSleepToggle.OffContent" xml:space="preserve"><value>Off</value></data>
@@ -458,7 +465,7 @@
   <data name="Report.VerifiedProgress" xml:space="preserve"><value>Verification passed: {0}/{1} files</value></data>
   <data name="Report.VerificationDisabled" xml:space="preserve"><value>File verification: disabled</value></data>
   <data name="Report.VerificationDetails" xml:space="preserve"><value>File verification details:</value></data>
-  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[Passed] {0} | {1} | SHA-256: {2}</value></data>
+  <data name="Report.PassedVerificationEntry" xml:space="preserve"><value>[Passed] {0} | {1} | {2}: {3}</value></data>
   <data name="Report.FailedVerificationEntry" xml:space="preserve"><value>[Failed] {0} | source: {1} | destination: {2} | {3}</value></data>
   <data name="Report.TaskStatus" xml:space="preserve"><value>Task status: {0}</value></data>
   <data name="Report.Details" xml:space="preserve"><value>Details: {0}</value></data>

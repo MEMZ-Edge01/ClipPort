@@ -17,6 +17,7 @@ internal static class Program
             ("localized string lookup", TestLocalizedStringLookupAsync),
             ("Windows accent preview stays independent", TestWindowsAccentPreviewAsync),
             ("copy and SHA-256 verification", TestCopyAndVerifyAsync),
+            ("verification algorithms detect corruption", TestVerificationAlgorithmsAsync),
             ("verification-only mode never copies", TestVerificationOnlyAsync),
             ("verification mismatch can be overwritten", TestOverwriteVerificationMismatchAsync),
             ("FastCopy pipeline copy and verification", TestFastCopyAlgorithmAsync),
@@ -313,6 +314,56 @@ internal static class Program
         });
     }
 
+    private static async Task TestVerificationAlgorithmsAsync()
+    {
+        await WithTempFoldersAsync(async (source, destination) =>
+        {
+            byte[] content = RandomNumberGenerator.GetBytes(512 * 1024 + 19);
+            await File.WriteAllBytesAsync(Path.Combine(source, "manifest.bin"), content);
+
+            foreach (VerificationAlgorithmKind algorithm in Enum.GetValues<VerificationAlgorithmKind>())
+            {
+                string algorithmDestination = Path.Combine(destination, algorithm.ToString());
+                var options = new CopyOptions(
+                    ExistingFilePolicy: ExistingFilePolicy.Overwrite,
+                    VerifyFiles: true,
+                    UseFastCopyAlgorithm: false,
+                    SkipCopy: false,
+                    VerificationAlgorithm: algorithm);
+                CopyResult result = await new FileCopyService().CopyAndVerifyAsync(
+                    source,
+                    algorithmDestination,
+                    options,
+                    new InlineProgress<CopyProgressInfo>(_ => { }),
+                    _ => Task.CompletedTask,
+                    CancellationToken.None);
+
+                Assert(result.Success && result.VerificationPerformed &&
+                       result.VerificationAlgorithm == algorithm,
+                    $"{VerificationAlgorithms.GetDisplayName(algorithm)} should verify a copied file.");
+                Assert(result.VerifiedFiles.Count == 1 &&
+                       result.VerifiedFiles[0].SourceHash == result.VerifiedFiles[0].DestinationHash &&
+                       !string.IsNullOrEmpty(result.VerifiedFiles[0].SourceHash),
+                    $"{VerificationAlgorithms.GetDisplayName(algorithm)} should record matching digests.");
+
+                await File.WriteAllTextAsync(
+                    Path.Combine(algorithmDestination, "manifest.bin"),
+                    "corrupted payload");
+                CopyResult reverification = await new FileCopyService().CopyAndVerifyAsync(
+                    source,
+                    algorithmDestination,
+                    options with { SkipCopy = true },
+                    new InlineProgress<CopyProgressInfo>(_ => { }),
+                    _ => Task.CompletedTask,
+                    CancellationToken.None);
+
+                Assert(!reverification.Success &&
+                       reverification.FailedFiles.Single().IsVerificationMismatch,
+                    $"{VerificationAlgorithms.GetDisplayName(algorithm)} should detect a changed destination file.");
+            }
+        });
+    }
+
     private static Task TestPackagedNativeEngineAvailabilityAsync()
     {
         string nativeLibraryPath = Path.Combine(
@@ -392,7 +443,8 @@ internal static class Program
             CopyOptions options = new(
                 ExistingFilePolicy.Overwrite,
                 VerifyFiles: true,
-                SkipCopy: true);
+                SkipCopy: true,
+                VerificationAlgorithm: VerificationAlgorithmKind.Md5);
             CopyResult result = await service.CopyAndVerifyAsync(
                 source,
                 destination,
@@ -402,7 +454,8 @@ internal static class Program
                 CancellationToken.None);
 
             Assert(result.FailedFiles.Count == 1 &&
-                   result.FailedFiles[0].IsVerificationMismatch,
+                   result.FailedFiles[0].IsVerificationMismatch &&
+                   result.VerificationAlgorithm == VerificationAlgorithmKind.Md5,
                 "A hash mismatch should be eligible for overwrite.");
 
             FileRetryResult retry = await service.RetryFailedFilesAsync(
@@ -428,6 +481,8 @@ internal static class Program
                 "Overwrite should clear a verification mismatch after copying the source file.");
             Assert(overwrite.CopiedFiles == 1 && overwrite.CopiedBytes > 0,
                 "Overwrite should report one genuinely copied file.");
+            Assert(overwrite.VerificationResults.Single().SourceHash.Length == 32,
+                "Failure retries should keep the task's selected MD5 algorithm.");
             Assert(await File.ReadAllTextAsync(destinationFile) == "authoritative source",
                 "Overwrite should replace the destination with the source file.");
             Assert(overwriteEvents.Any(item => item.Phase == CopyPhase.Copying),
@@ -766,6 +821,7 @@ internal static class Program
                 Status = JobStatus.Completed,
                 CopyEnabled = false,
                 VerificationEnabled = true,
+                VerificationAlgorithm = VerificationAlgorithmKind.XxHash64,
                 UseFastCopyAlgorithm = true,
                 IsPriority = true,
                 PreventSleep = false,
@@ -789,6 +845,11 @@ internal static class Program
                 "The job status should round-trip as an enum value.");
             Assert(loaded[0].VerificationEnabled,
                 "The verification setting should round-trip.");
+            Assert(loaded[0].VerificationAlgorithm == VerificationAlgorithmKind.XxHash64,
+                "The verification algorithm should round-trip.");
+            Assert(VerificationAlgorithms.Normalize((VerificationAlgorithmKind)999) ==
+                   VerificationAlgorithmKind.Sha256,
+                "An unknown persisted verification algorithm should fall back to SHA-256.");
             Assert(!loaded[0].CopyEnabled,
                 "The copy setting should round-trip.");
             Assert(loaded[0].StatusText == "Result.VerificationCompleted" &&
@@ -1161,6 +1222,7 @@ internal static class Program
             Status = JobStatus.Completed,
             CopyEnabled = true,
             VerificationEnabled = true,
+            VerificationAlgorithm = VerificationAlgorithmKind.Md5,
             FileCount = 1,
             CopiedFiles = 1,
             CopiedBytes = 4,
@@ -1181,13 +1243,16 @@ internal static class Program
             CopiedFiles = 1,
             CopiedBytes = 4,
             VerifiedFileCount = 1,
-            VerifiedBytes = 4
+            VerifiedBytes = 4,
+            VerificationAlgorithm = VerificationAlgorithmKind.Md5
         };
 
         ResourceService.SetLanguage(AppLanguage.English);
         string english = TaskReportBuilder.Build(result, job);
         Assert(english.Contains("Task name: Card A", StringComparison.Ordinal) &&
                english.Contains("Copied successfully: 1/1 files", StringComparison.Ordinal) &&
+               english.Contains("Verification algorithm: MD5", StringComparison.Ordinal) &&
+               english.Contains("MD5: AA", StringComparison.Ordinal) &&
                !english.Contains("任务名称", StringComparison.Ordinal),
             "English reports should not contain hard-coded Chinese labels.");
 
