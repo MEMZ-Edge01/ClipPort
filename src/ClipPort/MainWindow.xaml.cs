@@ -19,6 +19,9 @@ namespace ClipPort;
 
 public sealed partial class MainWindow : Window
 {
+    private const double TaskContentMaximumWidth = 1180;
+    private const double TaskContentHorizontalMargin = 92;
+
     private readonly FileCopyService _copyService = new();
     private readonly AppSettings _appSettings = App.Settings;
     private readonly JobHistoryService _historyService;
@@ -126,6 +129,15 @@ public sealed partial class MainWindow : Window
         }
         _historyLoaded = true;
         await LoadHistoryAsync();
+    }
+
+    private void TaskContentScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // An explicit width avoids a WinUI ScrollViewer layout jump when a stretched
+        // child crosses MaxWidth, while retaining the same 1180-DIP reading width.
+        TaskContentGrid.Width = Math.Min(
+            TaskContentMaximumWidth,
+            Math.Max(0, e.NewSize.Width - TaskContentHorizontalMargin));
     }
 
     private async Task LoadHistoryAsync()

@@ -227,8 +227,10 @@
                 </Grid>
             </Grid>
 
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <Grid Margin="46,32,46,38" MaxWidth="1180" HorizontalAlignment="Stretch">
+            <ScrollViewer x:Name="TaskContentScrollViewer" Grid.Column="1"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          SizeChanged="TaskContentScrollViewer_SizeChanged">
+                <Grid x:Name="TaskContentGrid" Margin="46,32,46,38" HorizontalAlignment="Left">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
