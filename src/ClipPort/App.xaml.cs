@@ -25,11 +25,36 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         _window = new MainWindow();
+        if (_window.Content is FrameworkElement content)
+        {
+            // A cold-start Explorer request can arrive before WinUI assigns a
+            // XamlRoot. Keep it queued until ContentDialog can be shown safely.
+            void RegisterAfterLoaded(object sender, RoutedEventArgs eventArgs)
+            {
+                content.Loaded -= RegisterAfterLoaded;
+                RegisterActivationHandler();
+            }
+
+            content.Loaded += RegisterAfterLoaded;
+        }
         _window.Activate();
+        if (_window.Content is not FrameworkElement)
+        {
+            RegisterActivationHandler();
+        }
+        ApplicationRestartService.CleanupRegistrationFromCommandLine();
+    }
+
+    private void RegisterActivationHandler()
+    {
+        if (_window is null)
+        {
+            return;
+        }
+
         ActivationRouter.Register(
             _window.DispatcherQueue,
             HandleActivationAsync);
-        ApplicationRestartService.CleanupRegistrationFromCommandLine();
     }
 
     private Task HandleActivationAsync(AppActivationRequest request)
