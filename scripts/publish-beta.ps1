@@ -1,22 +1,25 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = 'Release',
-    [string]$Runtime = 'win-x64'
+    [string]$Runtime = 'win-x64',
+    [string]$ShellPackagePublisher = $env:CLIPPORT_SHELL_PACKAGE_PUBLISHER,
+    [string]$ShellPackageCertificateThumbprint = $env:CLIPPORT_SHELL_PACKAGE_CERTIFICATE_THUMBPRINT,
+    [switch]$UnsignedShellPackageForDevelopment
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$solutionPath = Join-Path $repoRoot 'EZDIT.sln'
-$projectPath = Join-Path $repoRoot 'src\EZDIT\EZDIT.csproj'
+$solutionPath = Join-Path $repoRoot 'ClipPort.sln'
+$projectPath = Join-Path $repoRoot 'src\ClipPort\ClipPort.csproj'
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 
 [xml]$project = Get-Content -LiteralPath $projectPath -Raw
 $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
 if ([string]::IsNullOrWhiteSpace($version)) {
-    throw 'EZDIT.csproj does not define a Version.'
+    throw 'ClipPort.csproj does not define a Version.'
 }
 
-$publishName = "EZDIT-$version-$Runtime"
+$publishName = "ClipPort-$version-$Runtime"
 $publishPath = Join-Path $artifactRoot $publishName
 $operationId = [Guid]::NewGuid().ToString('N')
 $stagingRoot = Join-Path $artifactRoot ".staging-$operationId"
@@ -75,7 +78,7 @@ try {
         throw "Solution build failed with exit code $LASTEXITCODE."
     }
 
-    $managedBuildRoot = Join-Path $repoRoot "src\EZDIT\bin\x64\$Configuration"
+    $managedBuildRoot = Join-Path $repoRoot "src\ClipPort\bin\x64\$Configuration"
     $requiredBuildFiles = @(
         'App.xbf',
         'MainWindow.xbf',
@@ -105,9 +108,10 @@ try {
     }
 
     $requiredFiles = @(
-        'EZDIT.exe',
-        'EZDIT.dll',
-        'EZDIT.NativeCopy.dll',
+        'ClipPort.exe',
+        'ClipPort.dll',
+        'ClipPort.NativeCopy.dll',
+        'ClipPort.ShellExtension.dll',
         'resources.pri',
         'Strings\zh-CN\Resources.resw',
         'Strings\en-US\Resources.resw'
@@ -117,6 +121,56 @@ try {
         if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
             throw "Publish validation failed; required file is missing: $relativePath"
         }
+    }
+
+    $hasShellPublisher = -not [string]::IsNullOrWhiteSpace($ShellPackagePublisher)
+    $hasShellCertificate = -not [string]::IsNullOrWhiteSpace($ShellPackageCertificateThumbprint)
+    if (-not $UnsignedShellPackageForDevelopment -and $hasShellPublisher -ne $hasShellCertificate) {
+        throw 'Shell package publisher and certificate thumbprint must be supplied together.'
+    }
+    if ($UnsignedShellPackageForDevelopment) {
+        & (Join-Path $PSScriptRoot 'build-shell-package.ps1') `
+            -ExternalContentDirectory $stagingPublishPath `
+            -OutputPath (Join-Path $stagingPublishPath 'ClipPort.ShellIntegration.msix') `
+            -Publisher 'CN=ClipPort Development' `
+            -UnsignedDevelopmentPackage
+    }
+    elseif ($hasShellPublisher) {
+        & (Join-Path $PSScriptRoot 'build-shell-package.ps1') `
+            -ExternalContentDirectory $stagingPublishPath `
+            -OutputPath (Join-Path $stagingPublishPath 'ClipPort.ShellIntegration.msix') `
+            -Publisher $ShellPackagePublisher `
+            -CertificateThumbprint $ShellPackageCertificateThumbprint
+        if ($LASTEXITCODE -ne 0) {
+            throw "Shell integration package build failed with exit code $LASTEXITCODE."
+        }
+
+        $normalizedThumbprint = $ShellPackageCertificateThumbprint.Replace(' ', '')
+        $signingCertificate = Get-Item -LiteralPath (
+            "Cert:\CurrentUser\My\$normalizedThumbprint"
+        ) -ErrorAction SilentlyContinue
+        if ($null -eq $signingCertificate) {
+            $signingCertificate = Get-Item -LiteralPath (
+                "Cert:\LocalMachine\My\$normalizedThumbprint"
+            ) -ErrorAction SilentlyContinue
+        }
+        if ($null -eq $signingCertificate) {
+            throw "Shell package signing certificate was not found after signing: $normalizedThumbprint"
+        }
+
+        # Export only the public certificate. The settings page can open the
+        # Windows certificate wizard later without ever handling a private key.
+        $certificateOutputPath = Join-Path $stagingPublishPath 'ClipPort.ShellIntegration.cer'
+        [IO.File]::WriteAllBytes(
+            $certificateOutputPath,
+            $signingCertificate.Export(
+                [Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+        if (-not (Test-Path -LiteralPath $certificateOutputPath -PathType Leaf)) {
+            throw 'Shell integration public certificate export failed.'
+        }
+    }
+    else {
+        Write-Warning 'Shell integration MSIX was skipped because signing parameters were not supplied.'
     }
 
     if (Test-Path -LiteralPath $publishPath) {
@@ -137,4 +191,4 @@ finally {
     Remove-SafeArtifactChild -Path $stagingRoot
 }
 
-Get-Item -LiteralPath (Join-Path $publishPath 'EZDIT.exe')
+Get-Item -LiteralPath (Join-Path $publishPath 'ClipPort.exe')

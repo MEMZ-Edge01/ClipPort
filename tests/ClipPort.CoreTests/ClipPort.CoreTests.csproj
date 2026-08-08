@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseAppHost>false</UseAppHost>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\ClipPort\Models\AppSettings.cs" Link="Models\AppSettings.cs" />
+    <Compile Include="..\..\src\ClipPort\Models\CopyModels.cs" Link="Models\CopyModels.cs" />
+    <Compile Include="..\..\src\ClipPort\Models\CopyThroughputSampler.cs" Link="Models\CopyThroughputSampler.cs" />
+    <Compile Include="..\..\src\ClipPort\Models\DisplayFormatting.cs" Link="Models\DisplayFormatting.cs" />
+    <Compile Include="..\..\src\ClipPort\Models\JobHistoryItem.cs" Link="Models\JobHistoryItem.cs" />
+    <Compile Include="..\..\src\ClipPort\Models\QuickStartModels.cs" Link="Models\QuickStartModels.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\FileCopyService.cs" Link="Services\FileCopyService.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\HistoryRetentionPolicy.cs" Link="Services\HistoryRetentionPolicy.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\NativeCopyEngine.cs" Link="Services\NativeCopyEngine.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\JobHistoryService.cs" Link="Services\JobHistoryService.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\AppSettingsService.cs" Link="Services\AppSettingsService.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\CopyJobScheduler.cs" Link="Services\CopyJobScheduler.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\ResourceService.cs" Link="Services\ResourceService.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\PathSafety.cs" Link="Services\PathSafety.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\TaskReportBuilder.cs" Link="Services\TaskReportBuilder.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\src\ClipPort\MainWindow.xaml"
+             Link="Localization\MainWindow.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\ClipPort\Views\SettingsView.xaml"
+             Link="Localization\SettingsView.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\ClipPort\TraeWorkTheme.xaml"
+             Link="Themes\TraeWorkTheme.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\ClipPort\Strings\zh-CN\Resources.resw"
+             Link="Strings\zh-CN\Resources.resw"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\ClipPort\Strings\en-US\Resources.resw"
+             Link="Strings\en-US\Resources.resw"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\ClipPort\Strings\lzh\Resources.resw"
+             Link="Strings\lzh\Resources.resw"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

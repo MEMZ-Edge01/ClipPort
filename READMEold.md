@@ -1,4 +1,4 @@
-# EZ DIT
+# ClipPort
 
 一个使用 C#、WinUI 3 和 Fluent Design 构建的 Windows 自动拷卡工具。
 
@@ -16,7 +16,7 @@
 - 导出包含每个文件哈希值与验证结果的文本报告
 - 开始前检查目标磁盘可用空间
 - 防止源目录与目标目录相同、或目标位于源目录内部
-- 使用 `.ezdit-partial` 临时文件；完整写入后才替换目标文件，取消或失败不会破坏已有目标文件
+- 使用 `.clipport-partial` 临时文件；完整写入后才替换目标文件，取消或失败不会破坏已有目标文件
 - 跳过目录联接和符号链接，避免意外递归复制
 
 ## 使用
@@ -30,11 +30,11 @@
 
 目标目录中同名文件只会在新文件完整写入后被替换。取消任务时，已经完成的文件会保留，当前未完成的临时文件会自动清理。
 
-历史任务和报告完全保存在本机 `%LOCALAPPDATA%\EZDIT`，不使用账号、云服务或网络数据库。
+历史任务和报告完全保存在本机 `%LOCALAPPDATA%\ClipPort`，不使用账号、云服务或网络数据库。
 
 ## 原生 FastCopy 引擎
 
-启用“使用 FastCopy 算法”后，程序优先调用独立开发的 EZDIT.NativeCopy.dll：
+启用“使用 FastCopy 算法”后，程序优先调用独立开发的 ClipPort.NativeCopy.dll：
 
 - 使用两个原生工作线程重叠执行读取和写入
 - 使用 4 × 4 MiB 有界环形缓冲控制内存和背压
@@ -52,19 +52,19 @@
 - 安装“.NET 桌面开发”“Windows 应用 SDK C# 模板”和“使用 C++ 的桌面开发”工作负载
 - .NET 8 SDK
 
-用 Visual Studio 打开 `EZDIT.sln`，选择 `x64` 后还原 NuGet 包并运行。项目采用非打包、自包含 Windows App SDK 配置。
+用 Visual Studio 打开 `ClipPort.sln`，选择 `x64` 后还原 NuGet 包并运行。项目采用非打包、自包含 Windows App SDK 配置。
 
 命令行构建：
 
 ```powershell
 # 在 Visual Studio Developer PowerShell 中执行
-msbuild .\EZDIT.sln -restore -m -p:Configuration=Release -p:Platform=x64
+msbuild .\ClipPort.sln -restore -m -p:Configuration=Release -p:Platform=x64
 ```
 
 生成无需预装 .NET 的 x64 发布目录：
 
 ```powershell
-dotnet publish .\src\EZDIT\EZDIT.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:PublishSingleFile=false
+dotnet publish .\src\ClipPort\ClipPort.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:PublishSingleFile=false
 ```
 
 ## 核心流程测试
@@ -72,5 +72,5 @@ dotnet publish .\src\EZDIT\EZDIT.csproj -c Release -r win-x64 --self-contained t
 测试覆盖正常复制与哈希一致性、暂停/继续、取消安全、目标篡改检测、空目录、空卡处理和本地历史持久化：
 
 ```powershell
-dotnet run --project .\tests\EZDIT.CoreTests\EZDIT.CoreTests.csproj -c Release
+dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release
 ```
