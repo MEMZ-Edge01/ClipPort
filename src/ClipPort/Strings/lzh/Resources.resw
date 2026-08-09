@@ -255,7 +255,7 @@
   <data name="Settings.PackageUninstallSucceeded" xml:space="preserve"><value>右键单组件已卸，其能亦已闭。</value></data>
   <data name="Settings.PackageUninstallFailed" xml:space="preserve"><value>卸右键单组件而败：{0}</value></data>
   <data name="Settings.PackageUninstallDidNotComplete" xml:space="preserve"><value>Windows 犹报组件已置。</value></data>
-  <data name="Settings.PackageUninstallSettingsSaveFailed" xml:space="preserve"><value>组件已卸，然不能存其关闭之态：{0}</value></data>
+  <data name="Settings.PackageUninstallSettingsSaveFailed" xml:space="preserve"><value>不能存右键单关闭之态，故未卸组件：{0}</value></data>
   <data name="Settings.CertificateUninstallSucceeded" xml:space="preserve"><value>ClipPort 署名凭证已自凭证库除之。</value></data>
   <data name="Settings.CertificateUninstallFailed" xml:space="preserve"><value>卸署名凭证而败：{0}</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>文辞与文卷</value></data>

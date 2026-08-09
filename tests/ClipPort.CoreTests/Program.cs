@@ -36,6 +36,9 @@ internal static class Program
             ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
             ("quick-start requests preserve the opposite directory", TestQuickStartRequestsAsync),
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
+            ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
+            ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
+            ("Explorer integration operations are serialized", TestExplorerIntegrationOperationGateAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
             ("history isolates malformed records", TestHistoryMalformedRecordIsolationAsync),
@@ -53,6 +56,77 @@ internal static class Program
 
         Console.WriteLine($"All {tests.Length} core tests passed.");
         return 0;
+    }
+
+    private static async Task TestPackageUninstallSaveFailureAsync()
+    {
+        var settings = new AppSettings
+        {
+            ExplorerContextMenuEnabled = true
+        };
+        int uninstallCalls = 0;
+
+        ExplorerIntegrationUninstallResult<string> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                settings,
+                _ => Task.FromException(new IOException("simulated save failure")),
+                () =>
+                {
+                    uninstallCalls++;
+                    return Task.FromResult("removed");
+                });
+
+        Assert(result.SettingsSaveError is IOException,
+            "The workflow should report the settings save error.");
+        Assert(uninstallCalls == 0,
+            "The package must not be removed before the disabled state is persisted.");
+        Assert(settings.ExplorerContextMenuEnabled,
+            "A failed save should restore the in-memory setting to its persisted value.");
+    }
+
+    private static async Task TestPackageUninstallSaveOrderAsync()
+    {
+        var settings = new AppSettings
+        {
+            ExplorerContextMenuEnabled = true
+        };
+        var calls = new List<string>();
+
+        ExplorerIntegrationUninstallResult<string> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                settings,
+                currentSettings =>
+                {
+                    Assert(!currentSettings.ExplorerContextMenuEnabled,
+                        "The disabled state must be saved before package removal.");
+                    calls.Add("save");
+                    return Task.CompletedTask;
+                },
+                () =>
+                {
+                    calls.Add("uninstall");
+                    return Task.FromResult("removed");
+                });
+
+        Assert(result.SettingsSaveError is null && result.OperationResult == "removed",
+            "A successful save should allow the package uninstall to complete.");
+        Assert(calls.SequenceEqual(["save", "uninstall"]),
+            "The workflow must persist the disabled state before uninstalling the package.");
+    }
+
+    private static Task TestExplorerIntegrationOperationGateAsync()
+    {
+        var gate = new ExplorerIntegrationOperationGate();
+
+        Assert(gate.TryBegin(),
+            "The first Explorer integration operation should start.");
+        Assert(!gate.TryBegin(),
+            "A conflicting Explorer integration operation must remain blocked.");
+        gate.Complete();
+        Assert(gate.TryBegin(),
+            "A new operation should start after status refresh completes the previous one.");
+
+        return Task.CompletedTask;
     }
 
     private static Task TestLocalizationResourceCoverageAsync()

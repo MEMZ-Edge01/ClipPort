@@ -195,26 +195,29 @@ public sealed partial class MainWindow
             return;
         }
 
-        ExplorerContextMenuStatus status =
-            await _explorerContextMenuService.UninstallPackageAsync();
+        ExplorerIntegrationUninstallResult<ExplorerContextMenuStatus> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                _appSettings,
+                settings => App.SettingsService.SaveAsync(settings),
+                () => _explorerContextMenuService.UninstallPackageAsync());
+        if (result.SettingsSaveError is not null)
+        {
+            ApplyExplorerContextMenuStatus(
+                _explorerContextMenuService.GetStatus(),
+                ResourceService.Format(
+                    "Settings.PackageUninstallSettingsSaveFailed",
+                    result.SettingsSaveError.Message));
+            return;
+        }
+
+        _lastSavedSettings = CloneSettings(_appSettings);
+        ExplorerContextMenuStatus status = result.OperationResult ??
+            _explorerContextMenuService.GetStatus();
         string operationStatus;
         if (!status.IsPackageRegistered && status.ErrorMessage is null)
         {
-            _appSettings.ExplorerContextMenuEnabled = false;
-            try
-            {
-                await App.SettingsService.SaveAsync(_appSettings);
-                _lastSavedSettings = CloneSettings(_appSettings);
-                operationStatus = ResourceService.GetString(
-                    "Settings.PackageUninstallSucceeded");
-            }
-            catch (Exception ex) when (
-                ex is IOException or UnauthorizedAccessException)
-            {
-                operationStatus = ResourceService.Format(
-                    "Settings.PackageUninstallSettingsSaveFailed",
-                    ex.Message);
-            }
+            operationStatus = ResourceService.GetString(
+                "Settings.PackageUninstallSucceeded");
         }
         else
         {

@@ -24,6 +24,8 @@
     <Compile Include="..\..\src\ClipPort\Services\NativeCopyEngine.cs" Link="Services\NativeCopyEngine.cs" />
     <Compile Include="..\..\src\ClipPort\Services\JobHistoryService.cs" Link="Services\JobHistoryService.cs" />
     <Compile Include="..\..\src\ClipPort\Services\AppSettingsService.cs" Link="Services\AppSettingsService.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\ExplorerIntegrationUninstallWorkflow.cs" Link="Services\ExplorerIntegrationUninstallWorkflow.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\ExplorerIntegrationOperationGate.cs" Link="Services\ExplorerIntegrationOperationGate.cs" />
     <Compile Include="..\..\src\ClipPort\Services\CopyJobScheduler.cs" Link="Services\CopyJobScheduler.cs" />
     <Compile Include="..\..\src\ClipPort\Services\ResourceService.cs" Link="Services\ResourceService.cs" />
     <Compile Include="..\..\src\ClipPort\Services\PathSafety.cs" Link="Services\PathSafety.cs" />

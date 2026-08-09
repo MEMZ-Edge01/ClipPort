@@ -11,6 +11,8 @@ public sealed partial class SettingsView : UserControl
 {
     private AppSettings? _settings;
     private bool _initializing;
+    private readonly ExplorerIntegrationOperationGate _explorerIntegrationOperationGate =
+        new();
 
     public event EventHandler? BackRequested;
     public event EventHandler? SettingsChanged;
@@ -180,12 +182,11 @@ public sealed partial class SettingsView : UserControl
 
     private void ExplorerContextMenuToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (_initializing)
+        if (_initializing || !TryBeginExplorerIntegrationOperation())
         {
             return;
         }
 
-        ExplorerContextMenuToggle.IsEnabled = false;
         ExplorerContextMenuToggleRequested?.Invoke(
             this,
             new ExplorerContextMenuToggleRequestedEventArgs(
@@ -194,30 +195,66 @@ public sealed partial class SettingsView : UserControl
 
     private void InstallCertificateButton_Click(object sender, RoutedEventArgs e)
     {
-        InstallCertificateButton.IsEnabled = false;
+        if (!TryBeginExplorerIntegrationOperation())
+        {
+            return;
+        }
         InstallExplorerCertificateRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void InstallShellPackageButton_Click(object sender, RoutedEventArgs e)
     {
-        InstallShellPackageButton.IsEnabled = false;
+        if (!TryBeginExplorerIntegrationOperation())
+        {
+            return;
+        }
         InstallExplorerPackageRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void UninstallCertificateButton_Click(object sender, RoutedEventArgs e)
     {
-        UninstallCertificateButton.IsEnabled = false;
+        if (!TryBeginExplorerIntegrationOperation())
+        {
+            return;
+        }
         UninstallExplorerCertificateRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void UninstallShellPackageButton_Click(object sender, RoutedEventArgs e)
     {
-        UninstallShellPackageButton.IsEnabled = false;
+        if (!TryBeginExplorerIntegrationOperation())
+        {
+            return;
+        }
         UninstallExplorerPackageRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    private void RefreshShellIntegrationButton_Click(object sender, RoutedEventArgs e) =>
+    private void RefreshShellIntegrationButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryBeginExplorerIntegrationOperation())
+        {
+            return;
+        }
         RefreshExplorerIntegrationRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private bool TryBeginExplorerIntegrationOperation()
+    {
+        if (!_explorerIntegrationOperationGate.TryBegin())
+        {
+            return false;
+        }
+
+        // These controls act on the same package, certificate, and registry
+        // state, so none may start while another operation is awaiting Windows.
+        ExplorerContextMenuToggle.IsEnabled = false;
+        InstallCertificateButton.IsEnabled = false;
+        InstallShellPackageButton.IsEnabled = false;
+        UninstallCertificateButton.IsEnabled = false;
+        UninstallShellPackageButton.IsEnabled = false;
+        RefreshShellIntegrationButton.IsEnabled = false;
+        return true;
+    }
 
     public void SetExplorerContextMenuState(
         ExplorerContextMenuStatus status,
@@ -227,6 +264,9 @@ public sealed partial class SettingsView : UserControl
         string? operationStatusText = null)
     {
         _initializing = true;
+        // Release the gate only when the operation's refreshed state is ready
+        // to determine which integration actions are valid again.
+        _explorerIntegrationOperationGate.Complete();
         ExplorerContextMenuToggle.IsOn = status.IsEnabled;
         ExplorerContextMenuToggle.IsEnabled = status.IsSupported;
         ExplorerContextMenuStatusText.Text = menuStatusText;
