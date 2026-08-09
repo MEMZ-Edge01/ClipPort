@@ -619,7 +619,8 @@ public sealed partial class MainWindow : Window
         {
             return progress.CopyPercent;
         }
-        return progress.CopyPercent * 0.8 + progress.VerifyPercent * 0.2;
+        return (progress.CopyPercent * 0.8) +
+            (progress.VerifyPercent * 0.2);
     }
 
     private void ShowHistoryPerformance(JobHistoryItem job)
