@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Security.Cryptography.X509Certificates;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace ClipPort.Services;
@@ -17,7 +18,20 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
 
     public static ExplorerPackageIdentity ReadManifest(Stream manifestStream)
     {
-        XDocument manifest = XDocument.Load(manifestStream);
+        XDocument manifest;
+        try
+        {
+            manifest = XDocument.Load(manifestStream);
+        }
+        catch (XmlException ex)
+        {
+            // Normalize malformed XML to the same package-data failure that
+            // callers already surface as an operation status.
+            throw new InvalidDataException(
+                "The shell integration package manifest is malformed.",
+                ex);
+        }
+
         XElement identity = manifest.Root?
             .Elements()
             .FirstOrDefault(element => element.Name.LocalName == "Identity") ??
@@ -38,6 +52,14 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
         string certificatePath,
         string expectedPackageName)
     {
+        // Development registration can coexist with the unsigned MSIX used to
+        // produce it, so its loose manifest is the authoritative local identity.
+        if (File.Exists(looseManifestPath))
+        {
+            using FileStream manifestStream = File.OpenRead(looseManifestPath);
+            return ReadManifest(manifestStream);
+        }
+
         if (File.Exists(packagePath))
         {
             using ZipArchive archive = ZipFile.OpenRead(packagePath);
@@ -49,13 +71,6 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
                 throw new InvalidDataException(
                     "The shell integration package has no AppxManifest.xml file.");
             using Stream manifestStream = manifestEntry.Open();
-            return ReadManifest(manifestStream);
-        }
-
-        // Development registration deliberately keeps a loose manifest instead of an MSIX.
-        if (File.Exists(looseManifestPath))
-        {
-            using FileStream manifestStream = File.OpenRead(looseManifestPath);
             return ReadManifest(manifestStream);
         }
 

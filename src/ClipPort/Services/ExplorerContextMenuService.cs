@@ -380,41 +380,34 @@ public sealed class ExplorerContextMenuService
     private static ExplorerPackageIdentity ReadAvailablePackageIdentity(
         PackageManager packageManager)
     {
-        try
+        // The package registered for this exact external directory is stronger
+        // evidence than files left beside the application by another workflow.
+        ExplorerPackageIdentity? registeredIdentity =
+            ExplorerPackageIdentity.FindRegisteredForExternalPath(
+                packageManager.FindPackagesForUser(string.Empty)
+                    .Where(package => string.Equals(
+                        package.Id.Name,
+                        PackageIdentityName,
+                        StringComparison.OrdinalIgnoreCase))
+                    .Select(package => new ExplorerPackageRegistration(
+                        package.Id.Name,
+                        package.Id.Publisher,
+                        package.EffectiveExternalPath)),
+                PackageIdentityName,
+                AppContext.BaseDirectory);
+        if (registeredIdentity is not null)
         {
-            return ExplorerPackageIdentity.Resolve(
-                GetPackagePath(),
-                Path.Combine(
-                    AppContext.BaseDirectory,
-                    DevelopmentRegistrationDirectoryName,
-                    "AppxManifest.xml"),
-                GetCertificatePath(),
-                PackageIdentityName);
-        }
-        catch (FileNotFoundException)
-        {
-            // The registered sparse package remains authoritative even when a later
-            // unsigned publish replaces the MSIX and loose-manifest files.
-            ExplorerPackageIdentity? registeredIdentity =
-                ExplorerPackageIdentity.FindRegisteredForExternalPath(
-                    packageManager.FindPackagesForUser(string.Empty)
-                        .Where(package => string.Equals(
-                            package.Id.Name,
-                            PackageIdentityName,
-                            StringComparison.OrdinalIgnoreCase))
-                        .Select(package => new ExplorerPackageRegistration(
-                            package.Id.Name,
-                            package.Id.Publisher,
-                            package.EffectiveExternalPath)),
-                    PackageIdentityName,
-                    AppContext.BaseDirectory);
-            if (registeredIdentity is null)
-            {
-                throw;
-            }
-
             return registeredIdentity;
         }
+
+        return ExplorerPackageIdentity.Resolve(
+            GetPackagePath(),
+            Path.Combine(
+                AppContext.BaseDirectory,
+                DevelopmentRegistrationDirectoryName,
+                "AppxManifest.xml"),
+            GetCertificatePath(),
+            PackageIdentityName);
     }
 
     private static ExplorerContextMenuStatus CreateStatus(
@@ -562,13 +555,24 @@ public sealed class ExplorerContextMenuService
         string thumbprint,
         IReadOnlyList<CertificateStoreTarget> targets)
     {
+        string systemDirectory = Environment.GetFolderPath(
+            Environment.SpecialFolder.System);
+        string certutilPath = Path.Combine(systemDirectory, "certutil.exe");
+        if (!File.Exists(certutilPath))
+        {
+            throw new InvalidOperationException(
+                $"Windows certificate utility is missing: {certutilPath}");
+        }
+
+        string quotedCertutilPath = ToPowerShellSingleQuotedLiteral(certutilPath);
+        string quotedThumbprint = ToPowerShellSingleQuotedLiteral(thumbprint);
         string commands = string.Join(
             "; ",
             targets.Select(target =>
-                $"& certutil.exe -delstore {target.StoreName} '{thumbprint}'; " +
+                $"& {quotedCertutilPath} -delstore {target.StoreName} {quotedThumbprint}; " +
                 "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"));
         string powerShellPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.System),
+            systemDirectory,
             "WindowsPowerShell",
             "v1.0",
             "powershell.exe");
@@ -592,6 +596,9 @@ public sealed class ExplorerContextMenuService
                 $"Certificate removal exited with code {process.ExitCode}.");
         }
     }
+
+    private static string ToPowerShellSingleQuotedLiteral(string value) =>
+        $"'{value.Replace("'", "''", StringComparison.Ordinal)}'";
 
     private static string GetPackagePath() =>
         Path.Combine(AppContext.BaseDirectory, PackageFileName);

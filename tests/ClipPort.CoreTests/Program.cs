@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -191,6 +192,20 @@ internal static class Program
         using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(manifest));
         ExplorerPackageIdentity identity = ExplorerPackageIdentity.ReadManifest(stream);
 
+        using var malformedStream = new MemoryStream(
+            System.Text.Encoding.UTF8.GetBytes("<Package><Identity"));
+        try
+        {
+            ExplorerPackageIdentity.ReadManifest(malformedStream);
+            throw new InvalidOperationException(
+                "A malformed package manifest should not be accepted.");
+        }
+        catch (InvalidDataException ex)
+        {
+            Assert(ex.InnerException is XmlException,
+                "Malformed manifest XML should be translated to InvalidDataException.");
+        }
+
         Assert(identity.Matches(
                 "MEMZEdge01.ClipPort.ShellIntegration",
                 "CN=ClipPort Development"),
@@ -215,14 +230,27 @@ internal static class Program
         try
         {
             File.WriteAllText(looseManifestPath, manifest);
+            string packagePath = Path.Combine(
+                testDirectory,
+                "ClipPort.ShellIntegration.msix");
+            using (ZipArchive archive = ZipFile.Open(packagePath, ZipArchiveMode.Create))
+            {
+                ZipArchiveEntry entry = archive.CreateEntry("AppxManifest.xml");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write(manifest.Replace(
+                    "CN=ClipPort Development",
+                    "CN=ClipPort Development, OID.2.25.311729368913984317654407730594956997722=1",
+                    StringComparison.Ordinal));
+            }
+
             ExplorerPackageIdentity looseIdentity = ExplorerPackageIdentity.Resolve(
-                Path.Combine(testDirectory, "missing.msix"),
+                packagePath,
                 looseManifestPath,
                 Path.Combine(testDirectory, "missing.cer"),
                 "MEMZEdge01.ClipPort.ShellIntegration");
 
             Assert(looseIdentity == identity,
-                "A loose development manifest should identify a registered package when the MSIX is absent.");
+                "A loose development manifest should take precedence over its retained unsigned MSIX.");
 
             File.Delete(looseManifestPath);
             string certificatePath = Path.Combine(testDirectory, "package.cer");
