@@ -16,10 +16,17 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
         string.Equals(Name, name, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(Publisher, publisher, StringComparison.OrdinalIgnoreCase);
 
-    public bool MatchesAny(IEnumerable<ExplorerPackageRegistration> registrations) =>
-        registrations.Any(registration => Matches(
-            registration.Name,
-            registration.Publisher));
+    public bool MatchesRegistration(
+        ExplorerPackageRegistration registration,
+        string expectedExternalPath) =>
+        Matches(registration.Name, registration.Publisher) &&
+        PathsEqual(registration.EffectiveExternalPath, expectedExternalPath);
+
+    public bool MatchesAny(
+        IEnumerable<ExplorerPackageRegistration> registrations,
+        string expectedExternalPath) =>
+        registrations.Any(registration =>
+            MatchesRegistration(registration, expectedExternalPath));
 
     public static ExplorerPackageIdentity ReadManifest(Stream manifestStream)
     {

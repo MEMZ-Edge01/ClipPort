@@ -224,15 +224,26 @@ internal static class Program
                         "MEMZEdge01.ClipPort.ShellIntegration",
                         "CN=ClipPort Production",
                         "C:\\AnotherApp")
-                ]),
+                ],
+                "C:\\ClipPort"),
             "A same-name package from another publisher must not make this installation appear registered.");
+        Assert(!identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Development",
+                        "C:\\AnotherApp")
+                ],
+                "C:\\ClipPort"),
+            "A matching package identity from another application directory must not appear removable.");
         Assert(identity.MatchesAny(
                 [
                     new ExplorerPackageRegistration(
                         "MEMZEdge01.ClipPort.ShellIntegration",
                         "CN=ClipPort Development",
                         "C:\\ClipPort")
-                ]),
+                ],
+                "C:\\ClipPort\\"),
             "The selected package identity should recognize its matching registration.");
 
         string testDirectory = Path.Combine(
@@ -296,6 +307,26 @@ internal static class Program
                     "MEMZEdge01.ClipPort.ShellIntegration",
                     "CN=ClipPort Development"),
                 "A certificate identity must not match a same-name package from another publisher.");
+
+            string malformedCertificatePath = Path.Combine(
+                testDirectory,
+                "malformed.cer");
+            File.WriteAllBytes(malformedCertificatePath, [0x01, 0x02, 0x03]);
+            try
+            {
+                ExplorerPackageIdentity.Resolve(
+                    Path.Combine(testDirectory, "missing.msix"),
+                    looseManifestPath,
+                    malformedCertificatePath,
+                    "MEMZEdge01.ClipPort.ShellIntegration");
+                throw new InvalidOperationException(
+                    "Malformed certificate data should not be accepted as a package identity.");
+            }
+            catch (CryptographicException)
+            {
+                // Synchronization translates this recoverable package-data failure
+                // into an Explorer integration status instead of escaping startup.
+            }
 
             ExplorerPackageIdentity? registeredIdentity =
                 ExplorerPackageIdentity.FindRegisteredForExternalPath(

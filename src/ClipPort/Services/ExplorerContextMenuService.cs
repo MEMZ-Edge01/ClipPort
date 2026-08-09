@@ -158,12 +158,8 @@ public sealed class ExplorerContextMenuService
 
         ExplorerPackageIdentity packageIdentity =
             ReadAvailablePackageIdentity(packageManager);
-        List<Windows.ApplicationModel.Package> packages = packageManager
-            .FindPackagesForUser(string.Empty)
-            .Where(package => packageIdentity.Matches(
-                package.Id.Name,
-                package.Id.Publisher))
-            .ToList();
+        List<Windows.ApplicationModel.Package> packages =
+            FindRegisteredPackagesForCurrentDirectory(packageManager, packageIdentity);
 
         foreach (Windows.ApplicationModel.Package package in packages)
         {
@@ -178,6 +174,21 @@ public sealed class ExplorerContextMenuService
                 "Windows still reports the shell integration package after removal.");
         }
     }
+
+    [SupportedOSPlatform("windows10.0.19041.0")]
+    private static List<Windows.ApplicationModel.Package>
+        FindRegisteredPackagesForCurrentDirectory(
+            PackageManager packageManager,
+            ExplorerPackageIdentity packageIdentity) =>
+        packageManager
+            .FindPackagesForUser(string.Empty)
+            .Where(package => packageIdentity.MatchesRegistration(
+                new ExplorerPackageRegistration(
+                    package.Id.Name,
+                    package.Id.Publisher,
+                    package.EffectiveExternalPath),
+                AppContext.BaseDirectory))
+            .ToList();
 
     public async Task<ExplorerContextMenuStatus> UninstallCertificateAsync()
     {
@@ -259,7 +270,7 @@ public sealed class ExplorerContextMenuService
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
-                System.Runtime.InteropServices.COMException)
+                System.Runtime.InteropServices.COMException or CryptographicException)
         {
             return CreateStatus(
                 true,
@@ -382,11 +393,13 @@ public sealed class ExplorerContextMenuService
             return false;
         }
 
-        return identity.MatchesAny(packageManager.FindPackagesForUser(string.Empty)
-            .Select(package => new ExplorerPackageRegistration(
-                package.Id.Name,
-                package.Id.Publisher,
-                package.EffectiveExternalPath)));
+        return identity.MatchesAny(
+            packageManager.FindPackagesForUser(string.Empty)
+                .Select(package => new ExplorerPackageRegistration(
+                    package.Id.Name,
+                    package.Id.Publisher,
+                    package.EffectiveExternalPath)),
+            AppContext.BaseDirectory);
     }
 
     private static bool ReadEnabledState()
