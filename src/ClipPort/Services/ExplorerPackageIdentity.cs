@@ -1,6 +1,13 @@
+using System.IO.Compression;
+using System.Security.Cryptography.X509Certificates;
 using System.Xml.Linq;
 
 namespace ClipPort.Services;
+
+public sealed record ExplorerPackageRegistration(
+    string Name,
+    string Publisher,
+    string EffectiveExternalPath);
 
 public sealed record ExplorerPackageIdentity(string Name, string Publisher)
 {
@@ -23,5 +30,91 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
             throw new InvalidDataException(
                 "The shell integration package manifest has no publisher.");
         return new ExplorerPackageIdentity(name, publisher);
+    }
+
+    public static ExplorerPackageIdentity Resolve(
+        string packagePath,
+        string looseManifestPath,
+        string certificatePath,
+        string expectedPackageName)
+    {
+        if (File.Exists(packagePath))
+        {
+            using ZipArchive archive = ZipFile.OpenRead(packagePath);
+            ZipArchiveEntry manifestEntry = archive.Entries.FirstOrDefault(entry =>
+                string.Equals(
+                    entry.FullName,
+                    "AppxManifest.xml",
+                    StringComparison.OrdinalIgnoreCase)) ??
+                throw new InvalidDataException(
+                    "The shell integration package has no AppxManifest.xml file.");
+            using Stream manifestStream = manifestEntry.Open();
+            return ReadManifest(manifestStream);
+        }
+
+        // Development registration deliberately keeps a loose manifest instead of an MSIX.
+        if (File.Exists(looseManifestPath))
+        {
+            using FileStream manifestStream = File.OpenRead(looseManifestPath);
+            return ReadManifest(manifestStream);
+        }
+
+        // A signed installation can outlive the MSIX that originally registered it.
+        if (File.Exists(certificatePath))
+        {
+            using var certificate = new X509Certificate2(certificatePath);
+            return new ExplorerPackageIdentity(expectedPackageName, certificate.Subject);
+        }
+
+        throw new FileNotFoundException(
+            "No shell integration package, development manifest, or certificate is available to identify the registered publisher.");
+    }
+
+    public static ExplorerPackageIdentity? FindRegisteredForExternalPath(
+        IEnumerable<ExplorerPackageRegistration> registrations,
+        string expectedPackageName,
+        string expectedExternalPath)
+    {
+        List<ExplorerPackageIdentity> identities = registrations
+            .Where(registration =>
+                string.Equals(
+                    registration.Name,
+                    expectedPackageName,
+                    StringComparison.OrdinalIgnoreCase) &&
+                PathsEqual(
+                    registration.EffectiveExternalPath,
+                    expectedExternalPath))
+            .Select(registration => new ExplorerPackageIdentity(
+                registration.Name,
+                registration.Publisher))
+            .DistinctBy(
+                identity => $"{identity.Name}\0{identity.Publisher}",
+                StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return identities.Count switch
+        {
+            0 => null,
+            1 => identities[0],
+            _ => throw new InvalidOperationException(
+                "Multiple shell integration publishers are registered for this application directory.")
+        };
+    }
+
+    private static bool PathsEqual(string left, string right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+
+        string normalizedLeft = Path.TrimEndingDirectorySeparator(
+            Path.GetFullPath(left));
+        string normalizedRight = Path.TrimEndingDirectorySeparator(
+            Path.GetFullPath(right));
+        return string.Equals(
+            normalizedLeft,
+            normalizedRight,
+            StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -39,7 +40,7 @@ internal static class Program
             ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
             ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
             ("package removal disables the live menu before deployment", TestPackageRemovalDisablesLiveStateAsync),
-            ("package removal matches the bundled publisher", TestExplorerPackageIdentityAsync),
+            ("Explorer package identity stays publisher-scoped", TestExplorerPackageIdentityAsync),
             ("Explorer integration operations are serialized", TestExplorerIntegrationOperationGateAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
@@ -202,6 +203,90 @@ internal static class Program
                 "MEMZEdge01.AnotherPackage",
                 "CN=ClipPort Development"),
             "A package with another identity name must never be removed.");
+
+        string testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"ClipPort.PackageIdentity.{Guid.NewGuid():N}");
+        string looseManifestPath = Path.Combine(
+            testDirectory,
+            "ShellIntegration.Development",
+            "AppxManifest.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(looseManifestPath)!);
+        try
+        {
+            File.WriteAllText(looseManifestPath, manifest);
+            ExplorerPackageIdentity looseIdentity = ExplorerPackageIdentity.Resolve(
+                Path.Combine(testDirectory, "missing.msix"),
+                looseManifestPath,
+                Path.Combine(testDirectory, "missing.cer"),
+                "MEMZEdge01.ClipPort.ShellIntegration");
+
+            Assert(looseIdentity == identity,
+                "A loose development manifest should identify a registered package when the MSIX is absent.");
+
+            File.Delete(looseManifestPath);
+            string certificatePath = Path.Combine(testDirectory, "package.cer");
+            using RSA key = RSA.Create(2048);
+            var request = new CertificateRequest(
+                "CN=ClipPort Production",
+                key,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            using X509Certificate2 certificate = request.CreateSelfSigned(
+                DateTimeOffset.UtcNow.AddMinutes(-1),
+                DateTimeOffset.UtcNow.AddDays(1));
+            File.WriteAllBytes(
+                certificatePath,
+                certificate.Export(X509ContentType.Cert));
+
+            ExplorerPackageIdentity certificateIdentity = ExplorerPackageIdentity.Resolve(
+                Path.Combine(testDirectory, "missing.msix"),
+                looseManifestPath,
+                certificatePath,
+                "MEMZEdge01.ClipPort.ShellIntegration");
+            Assert(certificateIdentity.Matches(
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    certificate.Subject),
+                "A remaining certificate should identify its signed package publisher when the MSIX is absent.");
+            Assert(!certificateIdentity.Matches(
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    "CN=ClipPort Development"),
+                "A certificate identity must not match a same-name package from another publisher.");
+
+            ExplorerPackageIdentity? registeredIdentity =
+                ExplorerPackageIdentity.FindRegisteredForExternalPath(
+                    [
+                        new ExplorerPackageRegistration(
+                            "MEMZEdge01.ClipPort.ShellIntegration",
+                            "CN=ClipPort Production",
+                            Path.Combine(testDirectory, "another-app")),
+                        new ExplorerPackageRegistration(
+                            "MEMZEdge01.ClipPort.ShellIntegration",
+                            "CN=ClipPort Development",
+                            testDirectory)
+                    ],
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    testDirectory + Path.DirectorySeparatorChar);
+            Assert(registeredIdentity == identity,
+                "The registered package bound to this application directory should remain identifiable after all package files are removed.");
+
+            ExplorerPackageIdentity? unrelatedIdentity =
+                ExplorerPackageIdentity.FindRegisteredForExternalPath(
+                    [
+                        new ExplorerPackageRegistration(
+                            "MEMZEdge01.ClipPort.ShellIntegration",
+                            "CN=ClipPort Production",
+                            Path.Combine(testDirectory, "another-app"))
+                    ],
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    testDirectory);
+            Assert(unrelatedIdentity is null,
+                "A same-name package bound to another application directory must not block certificate removal.");
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
 
         return Task.CompletedTask;
     }

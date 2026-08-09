@@ -2,7 +2,6 @@ using ClipPort.Models;
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Runtime.Versioning;
@@ -35,6 +34,8 @@ public sealed class ExplorerContextMenuService
     public const string RegistryPath = @"Software\ClipPort\ExplorerContextMenu";
     public const string PackageFileName = "ClipPort.ShellIntegration.msix";
     public const string CertificateFileName = "ClipPort.ShellIntegration.cer";
+    public const string DevelopmentRegistrationDirectoryName =
+        "ShellIntegration.Development";
 
     public bool IsSupported =>
         OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
@@ -149,7 +150,14 @@ public sealed class ExplorerContextMenuService
     private static async Task RemoveBundledPackagesAsync(
         PackageManager packageManager)
     {
-        ExplorerPackageIdentity packageIdentity = ReadBundledPackageIdentity();
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            throw new PlatformNotSupportedException(
+                "Shell integration package removal requires Windows 10 version 2004 or later.");
+        }
+
+        ExplorerPackageIdentity packageIdentity =
+            ReadAvailablePackageIdentity(packageManager);
         List<Windows.ApplicationModel.Package> packages = packageManager
             .FindPackagesForUser(string.Empty)
             .Where(package => packageIdentity.Matches(
@@ -180,7 +188,10 @@ public sealed class ExplorerContextMenuService
 
         try
         {
-            if (IsPackageRegistered())
+            var packageManager = new PackageManager();
+            ExplorerPackageIdentity packageIdentity =
+                ReadAvailablePackageIdentity(packageManager);
+            if (IsPackageRegistered(packageIdentity))
             {
                 throw new InvalidOperationException(
                     "Uninstall the shell integration package before removing its certificate.");
@@ -365,19 +376,45 @@ public sealed class ExplorerContextMenuService
         }
     }
 
-    private static ExplorerPackageIdentity ReadBundledPackageIdentity()
+    [SupportedOSPlatform("windows10.0.19041.0")]
+    private static ExplorerPackageIdentity ReadAvailablePackageIdentity(
+        PackageManager packageManager)
     {
-        string packagePath = GetPackagePath();
-        using ZipArchive archive = ZipFile.OpenRead(packagePath);
-        ZipArchiveEntry manifestEntry = archive.Entries.FirstOrDefault(entry =>
-            string.Equals(
-                entry.FullName,
-                "AppxManifest.xml",
-                StringComparison.OrdinalIgnoreCase)) ??
-            throw new InvalidDataException(
-                "The shell integration package has no AppxManifest.xml file.");
-        using Stream manifestStream = manifestEntry.Open();
-        return ExplorerPackageIdentity.ReadManifest(manifestStream);
+        try
+        {
+            return ExplorerPackageIdentity.Resolve(
+                GetPackagePath(),
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    DevelopmentRegistrationDirectoryName,
+                    "AppxManifest.xml"),
+                GetCertificatePath(),
+                PackageIdentityName);
+        }
+        catch (FileNotFoundException)
+        {
+            // The registered sparse package remains authoritative even when a later
+            // unsigned publish replaces the MSIX and loose-manifest files.
+            ExplorerPackageIdentity? registeredIdentity =
+                ExplorerPackageIdentity.FindRegisteredForExternalPath(
+                    packageManager.FindPackagesForUser(string.Empty)
+                        .Where(package => string.Equals(
+                            package.Id.Name,
+                            PackageIdentityName,
+                            StringComparison.OrdinalIgnoreCase))
+                        .Select(package => new ExplorerPackageRegistration(
+                            package.Id.Name,
+                            package.Id.Publisher,
+                            package.EffectiveExternalPath)),
+                    PackageIdentityName,
+                    AppContext.BaseDirectory);
+            if (registeredIdentity is null)
+            {
+                throw;
+            }
+
+            return registeredIdentity;
+        }
     }
 
     private static ExplorerContextMenuStatus CreateStatus(
