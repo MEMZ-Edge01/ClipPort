@@ -2,6 +2,7 @@ using ClipPort.Models;
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Runtime.Versioning;
@@ -123,42 +124,50 @@ public sealed class ExplorerContextMenuService
         try
         {
             var packageManager = new PackageManager();
-            List<Windows.ApplicationModel.Package> packages = packageManager
-                .FindPackagesForUser(string.Empty)
-                .Where(package => string.Equals(
-                    package.Id.Name,
-                    PackageIdentityName,
-                    StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            foreach (Windows.ApplicationModel.Package package in packages)
-            {
-                DeploymentResult result = await packageManager.RemovePackageAsync(
-                    package.Id.FullName);
-                ThrowIfDeploymentFailed(result);
-            }
-
-            Registry.CurrentUser.DeleteSubKeyTree(
-                RegistryPath,
-                throwOnMissingSubKey: false);
-
-            if (IsPackageRegistered())
-            {
-                throw new InvalidOperationException(
-                    "Windows still reports the shell integration package after removal.");
-            }
+            await ExplorerIntegrationPackageRemovalWorkflow.RunAsync(
+                () => WriteExplorerContextMenuEnabledState(false),
+                () => RemoveBundledPackagesAsync(packageManager),
+                () => Registry.CurrentUser.DeleteSubKeyTree(
+                    RegistryPath,
+                    throwOnMissingSubKey: false));
 
             return CreateStatus(true, false, false);
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
-                System.Runtime.InteropServices.COMException)
+                System.Runtime.InteropServices.COMException or InvalidDataException)
         {
+            bool packageRegistered = IsPackageRegisteredSafe();
             return CreateStatus(
                 true,
-                IsPackageRegisteredSafe(),
-                false,
+                packageRegistered,
+                packageRegistered && ReadEnabledStateSafe(),
                 ex.Message);
+        }
+    }
+
+    private static async Task RemoveBundledPackagesAsync(
+        PackageManager packageManager)
+    {
+        ExplorerPackageIdentity packageIdentity = ReadBundledPackageIdentity();
+        List<Windows.ApplicationModel.Package> packages = packageManager
+            .FindPackagesForUser(string.Empty)
+            .Where(package => packageIdentity.Matches(
+                package.Id.Name,
+                package.Id.Publisher))
+            .ToList();
+
+        foreach (Windows.ApplicationModel.Package package in packages)
+        {
+            DeploymentResult result =
+                await packageManager.RemovePackageAsync(package.Id.FullName);
+            ThrowIfDeploymentFailed(result);
+        }
+
+        if (IsPackageRegistered(packageIdentity))
+        {
+            throw new InvalidOperationException(
+                "Windows still reports the shell integration package after removal.");
         }
     }
 
@@ -277,7 +286,7 @@ public sealed class ExplorerContextMenuService
         AppLanguage language)
     {
         using RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath, true);
-        key.SetValue("Enabled", enabled ? 1 : 0, RegistryValueKind.DWord);
+        WriteExplorerContextMenuEnabledState(key, enabled);
         key.SetValue(
             "Language",
             AppLanguages.Get(language).LanguageTag,
@@ -287,6 +296,17 @@ public sealed class ExplorerContextMenuService
             Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory),
             RegistryValueKind.String);
     }
+
+    private static void WriteExplorerContextMenuEnabledState(bool enabled)
+    {
+        using RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath, true);
+        WriteExplorerContextMenuEnabledState(key, enabled);
+    }
+
+    private static void WriteExplorerContextMenuEnabledState(
+        RegistryKey key,
+        bool enabled) =>
+        key.SetValue("Enabled", enabled ? 1 : 0, RegistryValueKind.DWord);
 
     public async Task<ExplorerContextMenuStatus> SynchronizeAsync(AppSettings settings)
     {
@@ -314,13 +334,50 @@ public sealed class ExplorerContextMenuService
             .Any(package => string.Equals(
                 package.Id.Name,
                 PackageIdentityName,
-                StringComparison.OrdinalIgnoreCase));
+            StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsPackageRegistered(ExplorerPackageIdentity identity)
+    {
+        var packageManager = new PackageManager();
+        return packageManager.FindPackagesForUser(string.Empty)
+            .Any(package => identity.Matches(
+                package.Id.Name,
+                package.Id.Publisher));
     }
 
     private static bool ReadEnabledState()
     {
         using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RegistryPath);
         return Convert.ToInt32(key?.GetValue("Enabled", 0)) == 1;
+    }
+
+    private static bool ReadEnabledStateSafe()
+    {
+        try
+        {
+            return ReadEnabledState();
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private static ExplorerPackageIdentity ReadBundledPackageIdentity()
+    {
+        string packagePath = GetPackagePath();
+        using ZipArchive archive = ZipFile.OpenRead(packagePath);
+        ZipArchiveEntry manifestEntry = archive.Entries.FirstOrDefault(entry =>
+            string.Equals(
+                entry.FullName,
+                "AppxManifest.xml",
+                StringComparison.OrdinalIgnoreCase)) ??
+            throw new InvalidDataException(
+                "The shell integration package has no AppxManifest.xml file.");
+        using Stream manifestStream = manifestEntry.Open();
+        return ExplorerPackageIdentity.ReadManifest(manifestStream);
     }
 
     private static ExplorerContextMenuStatus CreateStatus(

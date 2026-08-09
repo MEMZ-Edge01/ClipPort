@@ -255,7 +255,7 @@ public sealed partial class SettingsView : UserControl
             new ExplorerIntegrationOperationRequestedEventArgs(operationId));
     }
 
-    private bool TryBeginExplorerIntegrationOperation(out long operationId)
+    internal bool TryBeginExplorerIntegrationOperation(out long operationId)
     {
         if (!_explorerIntegrationOperationGate.TryBegin(out operationId))
         {

@@ -38,6 +38,8 @@ internal static class Program
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
             ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
             ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
+            ("package removal disables the live menu before deployment", TestPackageRemovalDisablesLiveStateAsync),
+            ("package removal matches the bundled publisher", TestExplorerPackageIdentityAsync),
             ("Explorer integration operations are serialized", TestExplorerIntegrationOperationGateAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
@@ -118,16 +120,88 @@ internal static class Program
     {
         var gate = new ExplorerIntegrationOperationGate();
 
-        Assert(gate.TryBegin(out long operationId),
-            "The first Explorer integration operation should start.");
-        Assert(!gate.Complete(operationId + 1),
-            "A refresh without the owning operation token must not release the gate.");
+        Assert(gate.TryBegin(out long startupOperationId),
+            "Startup synchronization should acquire the integration operation gate.");
         Assert(gate.IsBusy && !gate.TryBegin(out _),
+            "UI maintenance actions must remain blocked during startup synchronization.");
+        Assert(!gate.Complete(startupOperationId + 1),
+            "A refresh without the owning operation token must not release the gate.");
+        Assert(gate.IsBusy,
             "An unrelated status refresh must not release the active operation gate.");
-        Assert(gate.Complete(operationId),
+        Assert(gate.Complete(startupOperationId),
             "The operation that acquired the gate should release it.");
         Assert(!gate.IsBusy && gate.TryBegin(out _),
             "A new operation should start after the owner applies its final status.");
+
+        return Task.CompletedTask;
+    }
+
+    private static async Task TestPackageRemovalDisablesLiveStateAsync()
+    {
+        var calls = new List<string>();
+
+        try
+        {
+            await ExplorerIntegrationPackageRemovalWorkflow.RunAsync(
+                () => calls.Add("disable-live-state"),
+                () =>
+                {
+                    calls.Add("remove-package");
+                    return Task.FromException(new IOException("simulated deployment failure"));
+                },
+                () => calls.Add("clear-configuration"));
+            throw new InvalidOperationException(
+                "The simulated deployment failure should escape the removal workflow.");
+        }
+        catch (IOException)
+        {
+            // Expected: the live state remains disabled while configuration is
+            // retained for a later retry.
+        }
+
+        Assert(calls.SequenceEqual(["disable-live-state", "remove-package"]),
+            "A failed deployment must leave the live menu disabled and retain configuration.");
+
+        calls.Clear();
+        await ExplorerIntegrationPackageRemovalWorkflow.RunAsync(
+            () => calls.Add("disable-live-state"),
+            () =>
+            {
+                calls.Add("remove-package");
+                return Task.CompletedTask;
+            },
+            () => calls.Add("clear-configuration"));
+        Assert(calls.SequenceEqual(
+                ["disable-live-state", "remove-package", "clear-configuration"]),
+            "Configuration should be removed only after deployment succeeds.");
+    }
+
+    private static Task TestExplorerPackageIdentityAsync()
+    {
+        const string manifest = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
+              <Identity Name="MEMZEdge01.ClipPort.ShellIntegration"
+                        Publisher="CN=ClipPort Development"
+                        Version="1.0.0.0"
+                        ProcessorArchitecture="x64" />
+            </Package>
+            """;
+        using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(manifest));
+        ExplorerPackageIdentity identity = ExplorerPackageIdentity.ReadManifest(stream);
+
+        Assert(identity.Matches(
+                "MEMZEdge01.ClipPort.ShellIntegration",
+                "CN=ClipPort Development"),
+            "The bundled package identity should match its own name and publisher.");
+        Assert(!identity.Matches(
+                "MEMZEdge01.ClipPort.ShellIntegration",
+                "CN=ClipPort Production"),
+            "A same-name package from another publisher must never be removed.");
+        Assert(!identity.Matches(
+                "MEMZEdge01.AnotherPackage",
+                "CN=ClipPort Development"),
+            "A package with another identity name must never be removed.");
 
         return Task.CompletedTask;
     }

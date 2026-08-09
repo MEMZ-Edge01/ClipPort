@@ -137,9 +137,19 @@ public sealed partial class MainWindow
 
     private async Task SynchronizeExplorerContextMenuAsync()
     {
+        if (!SettingsPage.TryBeginExplorerIntegrationOperation(
+                out long operationId))
+        {
+            // A user-started maintenance action already owns the same package
+            // and certificate state, so startup synchronization must not race it.
+            return;
+        }
+
         ExplorerContextMenuStatus status =
             await _explorerContextMenuService.SynchronizeAsync(_appSettings);
-        ApplyExplorerContextMenuStatus(status);
+        ApplyExplorerContextMenuStatus(
+            status,
+            completingOperationId: operationId);
     }
 
     private void RefreshExplorerContextMenuStatus() =>
