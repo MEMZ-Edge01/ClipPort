@@ -9,6 +9,10 @@
     <a href="#构建与测试">构建与测试</a> ·
     <a href="#english-summary">English</a>
   </p>
+  <p>
+    <a href="https://github.com/MEMZ-Edge01/ClipPort/actions/workflows/ci.yml"><img src="https://github.com/MEMZ-Edge01/ClipPort/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="GPL-3.0" /></a>
+  </p>
 </div>
 
 ## 项目简介
@@ -277,8 +281,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 
 ## 许可证
 
-本仓库目前未声明开源许可证。
-除非仓库所有者另行授权，否则不应假定代码可以自由复制、修改或重新分发。
+Copyright (C) 2026 MEMZ-Edge01
+
+本项目采用 [GNU General Public License v3.0](LICENSE) 授权。
+你可以依照 GPL-3.0 使用、研究、修改和重新分发本项目；分发修改版或衍生作品时，需要继续采用 GPL-3.0、保留相应版权与许可证声明，并按许可证要求提供对应源代码。
+本项目不提供任何明示或默示担保，完整条款请参阅 [LICENSE](LICENSE)。
+
+## 参与贡献与安全
+
+- 提交代码或文档前，请阅读 [贡献指南](CONTRIBUTING.md) 和 [行为准则](CODE_OF_CONDUCT.md)。
+- 普通缺陷和功能建议请使用仓库的 Issue 模板。
+- 安全漏洞不要提交公开 Issue，请按照 [安全策略](SECURITY.md) 通过 GitHub 的私密漏洞报告入口提交。
 
 ---
 
@@ -307,3 +320,11 @@ Build the self-contained Release package:
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-beta.ps1
 ```
+
+## License
+
+Copyright (C) 2026 MEMZ-Edge01
+
+ClipPort is licensed under the [GNU General Public License v3.0](LICENSE).
+You may use, study, modify, and redistribute the project under GPL-3.0.
+Distributed modified versions and derivative works must remain under GPL-3.0, retain the applicable notices, and provide the corresponding source code as required by the license.

@@ -1,0 +1,60 @@
+name: 缺陷报告 / Bug report
+description: 报告可以稳定重现的问题 / Report a reproducible problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢报告问题。安全漏洞请使用 Security 页面的私密报告入口，不要填写此表单。
+        Thank you for reporting a problem. Use private vulnerability reporting for security issues.
+
+  - type: checkboxes
+    attributes:
+      label: 提交前确认 / Before submitting
+      options:
+        - label: 我已搜索现有 Issue，未发现相同问题 / I searched existing issues for duplicates
+          required: true
+        - label: 这不是尚未修复的安全漏洞 / This is not an unpatched security vulnerability
+          required: true
+
+  - type: input
+    attributes:
+      label: ClipPort 版本 / Version
+      placeholder: 例如 1.0.0-beta 或提交哈希
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Windows 版本 / Windows version
+      options:
+        - Windows 11
+        - Windows 10
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: 问题描述 / Problem
+      description: 说明实际行为、预期行为和影响 / Describe the actual behavior, expected behavior, and impact
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: 重现步骤 / Reproduction steps
+      placeholder: |
+        1. 打开……
+        2. 选择……
+        3. 观察到……
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: 日志与补充信息 / Logs and additional context
+      description: 请移除私人路径、素材名称和其他敏感信息 / Remove private paths, media names, and other sensitive data
+      render: shell
