@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞 / Security vulnerability
+    url: https://github.com/MEMZ-Edge01/ClipPort/security
+    about: 请使用 Security 页面的私密漏洞报告入口 / Use private vulnerability reporting

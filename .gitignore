@@ -7,12 +7,24 @@ artifacts/
 # IDE
 .vs/
 .vscode/
+.agents/
+.claude/
 .codex/
+.mimocode/
 .reasonix/
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
+
+# Local environments and signing secrets
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
 
 # NuGet
 *.nupkg
