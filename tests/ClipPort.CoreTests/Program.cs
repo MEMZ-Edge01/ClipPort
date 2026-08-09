@@ -118,13 +118,16 @@ internal static class Program
     {
         var gate = new ExplorerIntegrationOperationGate();
 
-        Assert(gate.TryBegin(),
+        Assert(gate.TryBegin(out long operationId),
             "The first Explorer integration operation should start.");
-        Assert(!gate.TryBegin(),
-            "A conflicting Explorer integration operation must remain blocked.");
-        gate.Complete();
-        Assert(gate.TryBegin(),
-            "A new operation should start after status refresh completes the previous one.");
+        Assert(!gate.Complete(operationId + 1),
+            "A refresh without the owning operation token must not release the gate.");
+        Assert(gate.IsBusy && !gate.TryBegin(out _),
+            "An unrelated status refresh must not release the active operation gate.");
+        Assert(gate.Complete(operationId),
+            "The operation that acquired the gate should release it.");
+        Assert(!gate.IsBusy && gate.TryBegin(out _),
+            "A new operation should start after the owner applies its final status.");
 
         return Task.CompletedTask;
     }
