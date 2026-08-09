@@ -1,5 +1,6 @@
 using ClipPort.Models;
 using Microsoft.Win32;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -103,6 +104,117 @@ public sealed class ExplorerContextMenuService
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
                 System.Runtime.InteropServices.COMException or CryptographicException)
+        {
+            return CreateStatus(
+                true,
+                IsPackageRegisteredSafe(),
+                false,
+                ex.Message);
+        }
+    }
+
+    public async Task<ExplorerContextMenuStatus> UninstallPackageAsync()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            return CreateStatus(false, false, false);
+        }
+
+        try
+        {
+            var packageManager = new PackageManager();
+            List<Windows.ApplicationModel.Package> packages = packageManager
+                .FindPackagesForUser(string.Empty)
+                .Where(package => string.Equals(
+                    package.Id.Name,
+                    PackageIdentityName,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (Windows.ApplicationModel.Package package in packages)
+            {
+                DeploymentResult result = await packageManager.RemovePackageAsync(
+                    package.Id.FullName);
+                ThrowIfDeploymentFailed(result);
+            }
+
+            Registry.CurrentUser.DeleteSubKeyTree(
+                RegistryPath,
+                throwOnMissingSubKey: false);
+
+            if (IsPackageRegistered())
+            {
+                throw new InvalidOperationException(
+                    "Windows still reports the shell integration package after removal.");
+            }
+
+            return CreateStatus(true, false, false);
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                System.Runtime.InteropServices.COMException)
+        {
+            return CreateStatus(
+                true,
+                IsPackageRegisteredSafe(),
+                false,
+                ex.Message);
+        }
+    }
+
+    public async Task<ExplorerContextMenuStatus> UninstallCertificateAsync()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            return CreateStatus(false, false, false);
+        }
+
+        try
+        {
+            if (IsPackageRegistered())
+            {
+                throw new InvalidOperationException(
+                    "Uninstall the shell integration package before removing its certificate.");
+            }
+
+            string certificatePath = GetCertificatePath();
+            if (!File.Exists(certificatePath))
+            {
+                throw new InvalidOperationException(
+                    $"Shell integration certificate is missing: {certificatePath}");
+            }
+
+            using var certificate = new X509Certificate2(certificatePath);
+            List<CertificateStoreTarget> targets = FindCertificateStoreTargets(
+                certificate.Thumbprint);
+
+            foreach (CertificateStoreTarget target in targets.Where(
+                         target => target.Location == StoreLocation.CurrentUser))
+            {
+                RemoveCertificateFromCurrentUserStore(certificate, target.StoreName);
+            }
+
+            List<CertificateStoreTarget> machineTargets = targets
+                .Where(target => target.Location == StoreLocation.LocalMachine)
+                .ToList();
+            if (machineTargets.Count > 0)
+            {
+                await RemoveCertificateFromLocalMachineStoresAsync(
+                    certificate.Thumbprint,
+                    machineTargets);
+            }
+
+            if (FindCertificateStoreTargets(certificate.Thumbprint).Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "The certificate is still present in a Windows certificate store.");
+            }
+
+            return CreateStatus(true, false, false);
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                CryptographicException or Win32Exception)
         {
             return CreateStatus(
                 true,
@@ -280,6 +392,99 @@ public sealed class ExplorerContextMenuService
         return false;
     }
 
+    private static List<CertificateStoreTarget> FindCertificateStoreTargets(
+        string thumbprint)
+    {
+        var targets = new List<CertificateStoreTarget>();
+        foreach (StoreLocation location in new[]
+                 {
+                     StoreLocation.CurrentUser,
+                     StoreLocation.LocalMachine
+                 })
+        {
+            foreach (StoreName storeName in new[]
+                     {
+                         StoreName.Root,
+                         StoreName.TrustedPeople
+                     })
+            {
+                if (ContainsCertificate(location, storeName, thumbprint))
+                {
+                    targets.Add(new CertificateStoreTarget(location, storeName));
+                }
+            }
+        }
+        return targets;
+    }
+
+    private static bool ContainsCertificate(
+        StoreLocation location,
+        StoreName storeName,
+        string thumbprint)
+    {
+        try
+        {
+            using var store = new X509Store(storeName, location);
+            store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+            return store.Certificates.Find(
+                X509FindType.FindByThumbprint,
+                thumbprint,
+                validOnly: false).Count > 0;
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
+    }
+
+    private static void RemoveCertificateFromCurrentUserStore(
+        X509Certificate2 certificate,
+        StoreName storeName)
+    {
+        using var store = new X509Store(storeName, StoreLocation.CurrentUser);
+        store.Open(OpenFlags.ReadWrite | OpenFlags.OpenExistingOnly);
+        X509Certificate2Collection matches = store.Certificates.Find(
+            X509FindType.FindByThumbprint,
+            certificate.Thumbprint,
+            validOnly: false);
+        store.RemoveRange(matches);
+    }
+
+    private static async Task RemoveCertificateFromLocalMachineStoresAsync(
+        string thumbprint,
+        IReadOnlyList<CertificateStoreTarget> targets)
+    {
+        string commands = string.Join(
+            "; ",
+            targets.Select(target =>
+                $"& certutil.exe -delstore {target.StoreName} '{thumbprint}'; " +
+                "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"));
+        string powerShellPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "WindowsPowerShell",
+            "v1.0",
+            "powershell.exe");
+        var startInfo = new ProcessStartInfo(powerShellPath)
+        {
+            Arguments = $"-NoProfile -NonInteractive -Command \"& {{ {commands} }}\"",
+            UseShellExecute = true,
+            Verb = "runas"
+        };
+        using Process? process = Process.Start(startInfo);
+        if (process is null)
+        {
+            throw new InvalidOperationException(
+                "Windows did not start the elevated certificate removal process.");
+        }
+
+        await process.WaitForExitAsync();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Certificate removal exited with code {process.ExitCode}.");
+        }
+    }
+
     private static string GetPackagePath() =>
         Path.Combine(AppContext.BaseDirectory, PackageFileName);
 
@@ -306,14 +511,25 @@ public sealed class ExplorerContextMenuService
         DeploymentResult result = await packageManager.AddPackageByUriAsync(
             new Uri(packagePath),
             options);
-        if (result.ExtendedErrorCode is Exception extendedError &&
-            extendedError.HResult != 0)
-        {
-            throw new InvalidOperationException(
-                string.IsNullOrWhiteSpace(result.ErrorText)
-                    ? extendedError.Message
-                    : result.ErrorText,
-                extendedError);
-        }
+        ThrowIfDeploymentFailed(result);
     }
+
+    private static void ThrowIfDeploymentFailed(DeploymentResult result)
+    {
+        if (result.ExtendedErrorCode is not Exception extendedError ||
+            extendedError.HResult == 0)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            string.IsNullOrWhiteSpace(result.ErrorText)
+                ? extendedError.Message
+                : result.ErrorText,
+            extendedError);
+    }
+
+    private sealed record CertificateStoreTarget(
+        StoreLocation Location,
+        StoreName StoreName);
 }

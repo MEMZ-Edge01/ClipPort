@@ -18,7 +18,9 @@ public sealed partial class SettingsView : UserControl
     public event EventHandler<ExplorerContextMenuToggleRequestedEventArgs>?
         ExplorerContextMenuToggleRequested;
     public event EventHandler? InstallExplorerCertificateRequested;
+    public event EventHandler? UninstallExplorerCertificateRequested;
     public event EventHandler? InstallExplorerPackageRequested;
+    public event EventHandler? UninstallExplorerPackageRequested;
     public event EventHandler? RefreshExplorerIntegrationRequested;
 
     public SettingsView()
@@ -202,6 +204,18 @@ public sealed partial class SettingsView : UserControl
         InstallExplorerPackageRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private void UninstallCertificateButton_Click(object sender, RoutedEventArgs e)
+    {
+        UninstallCertificateButton.IsEnabled = false;
+        UninstallExplorerCertificateRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void UninstallShellPackageButton_Click(object sender, RoutedEventArgs e)
+    {
+        UninstallShellPackageButton.IsEnabled = false;
+        UninstallExplorerPackageRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     private void RefreshShellIntegrationButton_Click(object sender, RoutedEventArgs e) =>
         RefreshExplorerIntegrationRequested?.Invoke(this, EventArgs.Empty);
 
@@ -229,6 +243,15 @@ public sealed partial class SettingsView : UserControl
             status.IsSupported &&
             status.IsPackageFileAvailable &&
             !status.IsPackageRegistered;
+        UninstallCertificateButton.IsEnabled =
+            status.IsSupported &&
+            !status.IsPackageRegistered &&
+            status.CertificateTrustScope is (
+                CertificateTrustScope.CurrentUser or
+                CertificateTrustScope.LocalMachine);
+        UninstallShellPackageButton.IsEnabled =
+            status.IsSupported &&
+            status.IsPackageRegistered;
         RefreshShellIntegrationButton.IsEnabled = status.IsSupported;
         if (operationStatusText is not null)
         {

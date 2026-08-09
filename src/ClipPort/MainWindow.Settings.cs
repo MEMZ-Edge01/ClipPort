@@ -176,6 +176,90 @@ public sealed partial class MainWindow
         ApplyExplorerContextMenuStatus(status, operationStatus);
     }
 
+    private async void SettingsPage_UninstallExplorerPackageRequested(
+        object? sender,
+        EventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = ResourceService.GetString("Settings.PackageUninstallConfirmTitle"),
+            Content = ResourceService.GetString("Settings.PackageUninstallConfirmMessage"),
+            PrimaryButtonText = ResourceService.GetString("Settings.UninstallPackageAction"),
+            CloseButtonText = ResourceService.GetString("Common.Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = Content.XamlRoot
+        };
+        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
+        {
+            RefreshExplorerContextMenuStatus();
+            return;
+        }
+
+        ExplorerContextMenuStatus status =
+            await _explorerContextMenuService.UninstallPackageAsync();
+        string operationStatus;
+        if (!status.IsPackageRegistered && status.ErrorMessage is null)
+        {
+            _appSettings.ExplorerContextMenuEnabled = false;
+            try
+            {
+                await App.SettingsService.SaveAsync(_appSettings);
+                _lastSavedSettings = CloneSettings(_appSettings);
+                operationStatus = ResourceService.GetString(
+                    "Settings.PackageUninstallSucceeded");
+            }
+            catch (Exception ex) when (
+                ex is IOException or UnauthorizedAccessException)
+            {
+                operationStatus = ResourceService.Format(
+                    "Settings.PackageUninstallSettingsSaveFailed",
+                    ex.Message);
+            }
+        }
+        else
+        {
+            operationStatus = ResourceService.Format(
+                "Settings.PackageUninstallFailed",
+                status.ErrorMessage ??
+                    ResourceService.GetString(
+                        "Settings.PackageUninstallDidNotComplete"));
+        }
+
+        ApplyExplorerContextMenuStatus(status, operationStatus);
+    }
+
+    private async void SettingsPage_UninstallExplorerCertificateRequested(
+        object? sender,
+        EventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = ResourceService.GetString(
+                "Settings.CertificateUninstallConfirmTitle"),
+            Content = ResourceService.GetString(
+                "Settings.CertificateUninstallConfirmMessage"),
+            PrimaryButtonText = ResourceService.GetString(
+                "Settings.UninstallCertificateAction"),
+            CloseButtonText = ResourceService.GetString("Common.Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = Content.XamlRoot
+        };
+        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
+        {
+            RefreshExplorerContextMenuStatus();
+            return;
+        }
+
+        ExplorerContextMenuStatus status =
+            await _explorerContextMenuService.UninstallCertificateAsync();
+        string operationStatus = status.ErrorMessage is null
+            ? ResourceService.GetString("Settings.CertificateUninstallSucceeded")
+            : ResourceService.Format(
+                "Settings.CertificateUninstallFailed",
+                status.ErrorMessage);
+        ApplyExplorerContextMenuStatus(status, operationStatus);
+    }
+
     private void SettingsPage_RefreshExplorerIntegrationRequested(
         object? sender,
         EventArgs e) =>

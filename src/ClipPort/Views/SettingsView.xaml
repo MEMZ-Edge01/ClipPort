@@ -306,11 +306,18 @@
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource MutedTextBrush}" />
                                 </StackPanel>
-                                <Button x:Name="InstallCertificateButton" Grid.Column="1"
-                                        x:Uid="InstallCertificateButton"
-                                        Content="打开证书安装向导"
-                                        Click="InstallCertificateButton_Click"
-                                        VerticalAlignment="Center" Padding="16,0" Height="40" />
+                                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                                    <Button x:Name="InstallCertificateButton"
+                                            x:Uid="InstallCertificateButton"
+                                            Content="打开证书安装向导"
+                                            Click="InstallCertificateButton_Click"
+                                            HorizontalAlignment="Stretch" Padding="16,0" Height="40" />
+                                    <Button x:Name="UninstallCertificateButton"
+                                            x:Uid="UninstallCertificateButton"
+                                            Content="卸载证书"
+                                            Click="UninstallCertificateButton_Click"
+                                            HorizontalAlignment="Stretch" Padding="16,0" Height="40" />
+                                </StackPanel>
                             </Grid>
 
                             <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />
@@ -333,11 +340,18 @@
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource MutedTextBrush}" />
                                 </StackPanel>
-                                <Button x:Name="InstallShellPackageButton" Grid.Column="1"
-                                        x:Uid="InstallShellPackageButton"
-                                        Content="安装组件"
-                                        Click="InstallShellPackageButton_Click"
-                                        VerticalAlignment="Center" Padding="16,0" Height="40" />
+                                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                                    <Button x:Name="InstallShellPackageButton"
+                                            x:Uid="InstallShellPackageButton"
+                                            Content="安装组件"
+                                            Click="InstallShellPackageButton_Click"
+                                            HorizontalAlignment="Stretch" Padding="16,0" Height="40" />
+                                    <Button x:Name="UninstallShellPackageButton"
+                                            x:Uid="UninstallShellPackageButton"
+                                            Content="卸载组件"
+                                            Click="UninstallShellPackageButton_Click"
+                                            HorizontalAlignment="Stretch" Padding="16,0" Height="40" />
+                                </StackPanel>
                             </Grid>
 
                             <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />

@@ -73,8 +73,12 @@ public sealed partial class MainWindow : Window
             SettingsPage_ExplorerContextMenuToggleRequested;
         SettingsPage.InstallExplorerCertificateRequested +=
             SettingsPage_InstallExplorerCertificateRequested;
+        SettingsPage.UninstallExplorerCertificateRequested +=
+            SettingsPage_UninstallExplorerCertificateRequested;
         SettingsPage.InstallExplorerPackageRequested +=
             SettingsPage_InstallExplorerPackageRequested;
+        SettingsPage.UninstallExplorerPackageRequested +=
+            SettingsPage_UninstallExplorerPackageRequested;
         SettingsPage.RefreshExplorerIntegrationRequested +=
             SettingsPage_RefreshExplorerIntegrationRequested;
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
