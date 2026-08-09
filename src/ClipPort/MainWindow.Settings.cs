@@ -298,7 +298,18 @@ public sealed partial class MainWindow
         string? operationStatus = null,
         long? completingOperationId = null)
     {
-        string statusText = !status.IsSupported
+        SettingsPage.SetExplorerContextMenuState(
+            status,
+            GetExplorerMenuStatusText(status),
+            GetExplorerCertificateStatusText(status),
+            GetExplorerPackageStatusText(status),
+            operationStatus,
+            completingOperationId);
+    }
+
+    private static string GetExplorerMenuStatusText(
+        ExplorerContextMenuStatus status) =>
+        !status.IsSupported
             ? ResourceService.GetString("Settings.ExplorerMenuUnsupported")
             : status.ErrorMessage is not null
                 ? ResourceService.Format(
@@ -310,6 +321,9 @@ public sealed partial class MainWindow
                         ? ResourceService.GetString("Settings.ExplorerMenuInstalledDisabled")
                         : ResourceService.GetString("Settings.ExplorerMenuDisabled");
 
+    private static string GetExplorerCertificateStatusText(
+        ExplorerContextMenuStatus status)
+    {
         string certificateStatus = status.CertificateErrorMessage is not null
             ? ResourceService.Format(
                 "Settings.ExplorerCertificateInvalid",
@@ -334,20 +348,16 @@ public sealed partial class MainWindow
                 status.CertificateThumbprint);
         }
 
-        string packageStatus = status.IsPackageRegistered
+        return certificateStatus;
+    }
+
+    private static string GetExplorerPackageStatusText(
+        ExplorerContextMenuStatus status) =>
+        status.IsPackageRegistered
             ? ResourceService.GetString("Settings.ExplorerPackageInstalled")
             : status.IsPackageFileAvailable
                 ? ResourceService.GetString("Settings.ExplorerPackageReady")
                 : ResourceService.GetString("Settings.ExplorerPackageMissing");
-
-        SettingsPage.SetExplorerContextMenuState(
-            status,
-            statusText,
-            certificateStatus,
-            packageStatus,
-            operationStatus,
-            completingOperationId);
-    }
 
     private async Task ShowLanguageRestartDialogAsync()
     {

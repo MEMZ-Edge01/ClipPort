@@ -235,32 +235,7 @@ public sealed class ExplorerContextMenuService
 
         try
         {
-            bool packageRegistered = IsPackageRegistered();
-            if (enabled && !packageRegistered)
-            {
-                ExplorerContextMenuStatus installationStatus = await InstallPackageAsync();
-                if (installationStatus.ErrorMessage is not null ||
-                    !installationStatus.IsPackageRegistered)
-                {
-                    return installationStatus;
-                }
-                packageRegistered = true;
-            }
-
-            using RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath, true);
-            key.SetValue("Enabled", enabled ? 1 : 0, RegistryValueKind.DWord);
-            key.SetValue(
-                "Language",
-                AppLanguages.Get(language).LanguageTag,
-                RegistryValueKind.String);
-            key.SetValue(
-                "InstallDirectory",
-                Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory),
-                RegistryValueKind.String);
-            return CreateStatus(
-                true,
-                packageRegistered,
-                enabled && packageRegistered);
+            return await SetEnabledOnSupportedWindowsAsync(enabled, language);
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
@@ -272,6 +247,45 @@ public sealed class ExplorerContextMenuService
                 false,
                 ex.Message);
         }
+    }
+
+    private async Task<ExplorerContextMenuStatus> SetEnabledOnSupportedWindowsAsync(
+        bool enabled,
+        AppLanguage language)
+    {
+        bool packageRegistered = IsPackageRegistered();
+        if (enabled && !packageRegistered)
+        {
+            ExplorerContextMenuStatus installationStatus = await InstallPackageAsync();
+            if (installationStatus.ErrorMessage is not null ||
+                !installationStatus.IsPackageRegistered)
+            {
+                return installationStatus;
+            }
+            packageRegistered = true;
+        }
+
+        WriteExplorerContextMenuSettings(enabled, language);
+        return CreateStatus(
+            true,
+            packageRegistered,
+            enabled && packageRegistered);
+    }
+
+    private static void WriteExplorerContextMenuSettings(
+        bool enabled,
+        AppLanguage language)
+    {
+        using RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath, true);
+        key.SetValue("Enabled", enabled ? 1 : 0, RegistryValueKind.DWord);
+        key.SetValue(
+            "Language",
+            AppLanguages.Get(language).LanguageTag,
+            RegistryValueKind.String);
+        key.SetValue(
+            "InstallDirectory",
+            Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory),
+            RegistryValueKind.String);
     }
 
     public async Task<ExplorerContextMenuStatus> SynchronizeAsync(AppSettings settings)

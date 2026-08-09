@@ -298,26 +298,22 @@ public sealed partial class SettingsView : UserControl
         ExplorerContextMenuStatusText.Text = menuStatusText;
         CertificateInstallStatusText.Text = certificateStatusText;
         PackageInstallStatusText.Text = packageStatusText;
-        InstallCertificateButton.IsEnabled =
-            status.IsSupported &&
-            status.IsCertificateFileAvailable &&
-            status.CertificateTrustScope is not (
-                CertificateTrustScope.LocalMachine or
-                CertificateTrustScope.TrustedChain) &&
-            !status.IsPackageRegistered;
-        InstallShellPackageButton.IsEnabled =
-            status.IsSupported &&
-            status.IsPackageFileAvailable &&
-            !status.IsPackageRegistered;
-        UninstallCertificateButton.IsEnabled =
-            status.IsSupported &&
-            !status.IsPackageRegistered &&
-            status.CertificateTrustScope is (
-                CertificateTrustScope.CurrentUser or
-                CertificateTrustScope.LocalMachine);
+        UpdateExplorerIntegrationControlAvailability(status);
+        if (operationStatusText is not null)
+        {
+            ShellIntegrationOperationStatusText.Text = operationStatusText;
+        }
+        _initializing = false;
+    }
+
+    private void UpdateExplorerIntegrationControlAvailability(
+        ExplorerContextMenuStatus status)
+    {
+        InstallCertificateButton.IsEnabled = CanInstallCertificate(status);
+        InstallShellPackageButton.IsEnabled = CanInstallPackage(status);
+        UninstallCertificateButton.IsEnabled = CanUninstallCertificate(status);
         UninstallShellPackageButton.IsEnabled =
-            status.IsSupported &&
-            status.IsPackageRegistered;
+            status.IsSupported && status.IsPackageRegistered;
         RefreshShellIntegrationButton.IsEnabled = status.IsSupported;
         if (_explorerIntegrationOperationGate.IsBusy)
         {
@@ -325,12 +321,27 @@ public sealed partial class SettingsView : UserControl
             // but it must never make a conflicting action available.
             DisableExplorerIntegrationControls();
         }
-        if (operationStatusText is not null)
-        {
-            ShellIntegrationOperationStatusText.Text = operationStatusText;
-        }
-        _initializing = false;
     }
+
+    private static bool CanInstallCertificate(ExplorerContextMenuStatus status) =>
+        status.IsSupported &&
+        status.IsCertificateFileAvailable &&
+        status.CertificateTrustScope is not (
+            CertificateTrustScope.LocalMachine or
+            CertificateTrustScope.TrustedChain) &&
+        !status.IsPackageRegistered;
+
+    private static bool CanInstallPackage(ExplorerContextMenuStatus status) =>
+        status.IsSupported &&
+        status.IsPackageFileAvailable &&
+        !status.IsPackageRegistered;
+
+    private static bool CanUninstallCertificate(ExplorerContextMenuStatus status) =>
+        status.IsSupported &&
+        !status.IsPackageRegistered &&
+        status.CertificateTrustScope is (
+            CertificateTrustScope.CurrentUser or
+            CertificateTrustScope.LocalMachine);
 
     public void SetExplorerIntegrationOperationStatus(string statusText) =>
         ShellIntegrationOperationStatusText.Text = statusText;
