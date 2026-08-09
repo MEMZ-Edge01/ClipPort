@@ -340,21 +340,53 @@ public sealed class ExplorerContextMenuService
 
     private static bool IsPackageRegistered()
     {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return false;
+        }
+
         var packageManager = new PackageManager();
-        return packageManager.FindPackagesForUser(string.Empty)
-            .Any(package => string.Equals(
-                package.Id.Name,
-                PackageIdentityName,
-            StringComparison.OrdinalIgnoreCase));
+        try
+        {
+            // Status and maintenance actions must select the same package.
+            // A same-name package from another publisher or application path
+            // must not make this installation appear removable.
+            ExplorerPackageIdentity identity =
+                ReadAvailablePackageIdentity(packageManager);
+            return IsPackageRegistered(packageManager, identity);
+        }
+        catch (FileNotFoundException)
+        {
+            return false;
+        }
     }
 
     private static bool IsPackageRegistered(ExplorerPackageIdentity identity)
     {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return false;
+        }
+
         var packageManager = new PackageManager();
-        return packageManager.FindPackagesForUser(string.Empty)
-            .Any(package => identity.Matches(
+        return IsPackageRegistered(packageManager, identity);
+    }
+
+    [SupportedOSPlatform("windows10.0.19041.0")]
+    private static bool IsPackageRegistered(
+        PackageManager packageManager,
+        ExplorerPackageIdentity identity)
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return false;
+        }
+
+        return identity.MatchesAny(packageManager.FindPackagesForUser(string.Empty)
+            .Select(package => new ExplorerPackageRegistration(
                 package.Id.Name,
-                package.Id.Publisher));
+                package.Id.Publisher,
+                package.EffectiveExternalPath)));
     }
 
     private static bool ReadEnabledState()

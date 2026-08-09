@@ -16,6 +16,11 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
         string.Equals(Name, name, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(Publisher, publisher, StringComparison.OrdinalIgnoreCase);
 
+    public bool MatchesAny(IEnumerable<ExplorerPackageRegistration> registrations) =>
+        registrations.Any(registration => Matches(
+            registration.Name,
+            registration.Publisher));
+
     public static ExplorerPackageIdentity ReadManifest(Stream manifestStream)
     {
         XDocument manifest;

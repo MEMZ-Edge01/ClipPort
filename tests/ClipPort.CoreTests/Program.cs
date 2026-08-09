@@ -218,6 +218,22 @@ internal static class Program
                 "MEMZEdge01.AnotherPackage",
                 "CN=ClipPort Development"),
             "A package with another identity name must never be removed.");
+        Assert(!identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Production",
+                        "C:\\AnotherApp")
+                ]),
+            "A same-name package from another publisher must not make this installation appear registered.");
+        Assert(identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Development",
+                        "C:\\ClipPort")
+                ]),
+            "The selected package identity should recognize its matching registration.");
 
         string testDirectory = Path.Combine(
             Path.GetTempPath(),
