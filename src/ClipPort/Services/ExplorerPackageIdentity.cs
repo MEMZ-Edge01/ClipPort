@@ -20,7 +20,13 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
         ExplorerPackageRegistration registration,
         string expectedExternalPath) =>
         Matches(registration.Name, registration.Publisher) &&
-        PathsEqual(registration.EffectiveExternalPath, expectedExternalPath);
+        ExternalPathsEqual(registration.EffectiveExternalPath, expectedExternalPath);
+
+    public bool MatchesAny(
+        IEnumerable<ExplorerPackageRegistration> registrations) =>
+        registrations.Any(registration => Matches(
+            registration.Name,
+            registration.Publisher));
 
     public bool MatchesAny(
         IEnumerable<ExplorerPackageRegistration> registrations,
@@ -108,7 +114,7 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
                     registration.Name,
                     expectedPackageName,
                     StringComparison.OrdinalIgnoreCase) &&
-                PathsEqual(
+                ExternalPathsEqual(
                     registration.EffectiveExternalPath,
                     expectedExternalPath))
             .Select(registration => new ExplorerPackageIdentity(
@@ -128,7 +134,7 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
         };
     }
 
-    private static bool PathsEqual(string left, string right)
+    public static bool ExternalPathsEqual(string left, string right)
     {
         if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
         {

@@ -41,6 +41,7 @@ internal static class Program
             ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
             ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
             ("package removal disables the live menu before deployment", TestPackageRemovalDisablesLiveStateAsync),
+            ("package removal preserves sibling integration configuration", TestExplorerContextMenuConfigurationPolicyAsync),
             ("Explorer package identity stays publisher-scoped", TestExplorerPackageIdentityAsync),
             ("Explorer integration operations are serialized", TestExplorerIntegrationOperationGateAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
@@ -241,6 +242,14 @@ internal static class Program
                     new ExplorerPackageRegistration(
                         "MEMZEdge01.ClipPort.ShellIntegration",
                         "CN=ClipPort Development",
+                        "C:\\AnotherApp")
+                ]),
+            "Certificate removal must detect a matching package identity in another application directory.");
+        Assert(identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Development",
                         "C:\\ClipPort")
                 ],
                 "C:\\ClipPort\\"),
@@ -362,6 +371,76 @@ internal static class Program
         {
             Directory.Delete(testDirectory, recursive: true);
         }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestExplorerContextMenuConfigurationPolicyAsync()
+    {
+        const string packageName = "MEMZEdge01.ClipPort.ShellIntegration";
+        var configuration = new ExplorerContextMenuConfiguration(
+            true,
+            "en-US",
+            "C:\\ClipPort");
+        var siblingRegistrations = new[]
+        {
+            new ExplorerPackageRegistration(
+                packageName,
+                "CN=ClipPort Production",
+                "D:\\ClipPort"),
+            new ExplorerPackageRegistration(
+                packageName,
+                "CN=ClipPort Development",
+                "E:\\ClipPort")
+        };
+
+        Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                configuration,
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort\\"),
+            "Removing the configured package should disable its live menu before deployment.");
+        var activeSiblingConfiguration = configuration with
+        {
+            InstallDirectory = "D:\\ClipPort"
+        };
+        Assert(!ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                activeSiblingConfiguration,
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort"),
+            "Removing an inactive sibling package must not disable the configured live menu.");
+        Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                configuration with { InstallDirectory = "Z:\\StaleClipPort" },
+                [],
+                packageName,
+                "C:\\ClipPort"),
+            "A stale shared configuration should still be disabled before the last package is removed.");
+
+        ExplorerContextMenuConfiguration? reconciled =
+            ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+                configuration,
+                siblingRegistrations,
+                packageName);
+        Assert(reconciled == configuration with { InstallDirectory = "D:\\ClipPort" },
+            "After removing the configured package, shared state should move to a remaining registration without changing its enabled state or language.");
+
+        var siblingConfiguration = configuration with
+        {
+            InstallDirectory = "E:\\ClipPort\\"
+        };
+        reconciled = ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+            siblingConfiguration,
+            siblingRegistrations,
+            packageName);
+        Assert(reconciled == configuration with { InstallDirectory = "E:\\ClipPort" },
+            "An already configured sibling registration should remain the shared configuration owner.");
+
+        Assert(ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+                configuration,
+                [],
+                packageName) is null,
+            "Shared configuration should be removed only when no package registration remains.");
 
         return Task.CompletedTask;
     }

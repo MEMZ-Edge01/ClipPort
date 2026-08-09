@@ -27,6 +27,7 @@
     <Compile Include="..\..\src\ClipPort\Services\ExplorerIntegrationUninstallWorkflow.cs" Link="Services\ExplorerIntegrationUninstallWorkflow.cs" />
     <Compile Include="..\..\src\ClipPort\Services\ExplorerIntegrationPackageRemovalWorkflow.cs" Link="Services\ExplorerIntegrationPackageRemovalWorkflow.cs" />
     <Compile Include="..\..\src\ClipPort\Services\ExplorerIntegrationOperationGate.cs" Link="Services\ExplorerIntegrationOperationGate.cs" />
+    <Compile Include="..\..\src\ClipPort\Services\ExplorerContextMenuConfigurationPolicy.cs" Link="Services\ExplorerContextMenuConfigurationPolicy.cs" />
     <Compile Include="..\..\src\ClipPort\Services\ExplorerPackageIdentity.cs" Link="Services\ExplorerPackageIdentity.cs" />
     <Compile Include="..\..\src\ClipPort\Services\CopyJobScheduler.cs" Link="Services\CopyJobScheduler.cs" />
     <Compile Include="..\..\src\ClipPort\Services\ResourceService.cs" Link="Services\ResourceService.cs" />

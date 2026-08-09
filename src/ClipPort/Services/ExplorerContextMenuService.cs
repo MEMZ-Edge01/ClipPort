@@ -125,12 +125,26 @@ public sealed class ExplorerContextMenuService
         try
         {
             var packageManager = new PackageManager();
+            ExplorerContextMenuConfiguration? configuration =
+                ReadExplorerContextMenuConfiguration();
+            List<ExplorerPackageRegistration> registrations =
+                GetPackageRegistrations(packageManager);
             await ExplorerIntegrationPackageRemovalWorkflow.RunAsync(
-                () => WriteExplorerContextMenuEnabledState(false),
+                () =>
+                {
+                    if (ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                            configuration,
+                            registrations,
+                            PackageIdentityName,
+                            AppContext.BaseDirectory))
+                    {
+                        WriteExplorerContextMenuEnabledState(false);
+                    }
+                },
                 () => RemoveBundledPackagesAsync(packageManager),
-                () => Registry.CurrentUser.DeleteSubKeyTree(
-                    RegistryPath,
-                    throwOnMissingSubKey: false));
+                () => ReconcileExplorerContextMenuConfiguration(
+                    packageManager,
+                    configuration));
 
             return CreateStatus(true, false, false);
         }
@@ -202,7 +216,7 @@ public sealed class ExplorerContextMenuService
             var packageManager = new PackageManager();
             ExplorerPackageIdentity packageIdentity =
                 ReadAvailablePackageIdentity(packageManager);
-            if (IsPackageRegistered(packageIdentity))
+            if (IsPackageRegisteredForAnyExternalPath(packageIdentity))
             {
                 throw new InvalidOperationException(
                     "Uninstall the shell integration package before removing its certificate.");
@@ -305,18 +319,67 @@ public sealed class ExplorerContextMenuService
 
     private static void WriteExplorerContextMenuSettings(
         bool enabled,
-        AppLanguage language)
+        AppLanguage language) =>
+        WriteExplorerContextMenuConfiguration(
+            new ExplorerContextMenuConfiguration(
+                enabled,
+                AppLanguages.Get(language).LanguageTag,
+                Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory)));
+
+    private static ExplorerContextMenuConfiguration?
+        ReadExplorerContextMenuConfiguration()
+    {
+        using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RegistryPath);
+        if (key is null)
+        {
+            return null;
+        }
+
+        return new ExplorerContextMenuConfiguration(
+            key.GetValue("Enabled", 0) is int enabled && enabled == 1,
+            key.GetValue("Language") as string ?? "zh-CN",
+            key.GetValue("InstallDirectory") as string ?? string.Empty);
+    }
+
+    private static void WriteExplorerContextMenuConfiguration(
+        ExplorerContextMenuConfiguration configuration)
     {
         using RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath, true);
-        WriteExplorerContextMenuEnabledState(key, enabled);
+        WriteExplorerContextMenuEnabledState(key, configuration.Enabled);
         key.SetValue(
             "Language",
-            AppLanguages.Get(language).LanguageTag,
+            configuration.Language,
             RegistryValueKind.String);
         key.SetValue(
             "InstallDirectory",
-            Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory),
+            configuration.InstallDirectory,
             RegistryValueKind.String);
+    }
+
+    private static void ReconcileExplorerContextMenuConfiguration(
+        PackageManager packageManager,
+        ExplorerContextMenuConfiguration? configuration)
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            throw new PlatformNotSupportedException(
+                "Shell integration package maintenance requires Windows 10 version 2004 or later.");
+        }
+
+        ExplorerContextMenuConfiguration? reconciled =
+            ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+                configuration,
+                GetPackageRegistrations(packageManager),
+                PackageIdentityName);
+        if (reconciled is null)
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(
+                RegistryPath,
+                throwOnMissingSubKey: false);
+            return;
+        }
+
+        WriteExplorerContextMenuConfiguration(reconciled);
     }
 
     private static void WriteExplorerContextMenuEnabledState(bool enabled)
@@ -383,6 +446,18 @@ public sealed class ExplorerContextMenuService
         return IsPackageRegistered(packageManager, identity);
     }
 
+    private static bool IsPackageRegisteredForAnyExternalPath(
+        ExplorerPackageIdentity identity)
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return false;
+        }
+
+        var packageManager = new PackageManager();
+        return identity.MatchesAny(GetPackageRegistrations(packageManager));
+    }
+
     [SupportedOSPlatform("windows10.0.19041.0")]
     private static bool IsPackageRegistered(
         PackageManager packageManager,
@@ -401,6 +476,28 @@ public sealed class ExplorerContextMenuService
                     package.EffectiveExternalPath)),
             AppContext.BaseDirectory);
     }
+
+    private static List<ExplorerPackageRegistration> GetPackageRegistrations(
+        PackageManager packageManager)
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return [];
+        }
+
+        return GetPackageRegistrationsOnSupportedWindows(packageManager);
+    }
+
+    [SupportedOSPlatform("windows10.0.19041.0")]
+    private static List<ExplorerPackageRegistration>
+        GetPackageRegistrationsOnSupportedWindows(
+            PackageManager packageManager) =>
+        packageManager.FindPackagesForUser(string.Empty)
+            .Select(package => new ExplorerPackageRegistration(
+                package.Id.Name,
+                package.Id.Publisher,
+                package.EffectiveExternalPath))
+            .ToList();
 
     private static bool ReadEnabledState()
     {
