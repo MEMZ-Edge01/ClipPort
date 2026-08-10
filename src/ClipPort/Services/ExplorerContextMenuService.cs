@@ -249,6 +249,15 @@ public sealed class ExplorerContextMenuService
 
             List<CertificateStoreTarget> targets = FindCertificateStoreTargets(
                 certificate.Thumbprint);
+            List<CertificateStoreTarget> machineTargets = targets
+                .Where(target => target.Location == StoreLocation.LocalMachine)
+                .ToList();
+            if (machineTargets.Count > 0 &&
+                IsPackageRegisteredForAnyUser(certificateIdentity))
+            {
+                throw new InvalidOperationException(
+                    "Uninstall the shell integration package for every user before removing its certificate.");
+            }
 
             foreach (CertificateStoreTarget target in targets.Where(
                          target => target.Location == StoreLocation.CurrentUser))
@@ -256,9 +265,6 @@ public sealed class ExplorerContextMenuService
                 RemoveCertificateFromCurrentUserStore(certificate, target.StoreName);
             }
 
-            List<CertificateStoreTarget> machineTargets = targets
-                .Where(target => target.Location == StoreLocation.LocalMachine)
-                .ToList();
             if (machineTargets.Count > 0)
             {
                 await RemoveCertificateFromLocalMachineStoresAsync(
@@ -515,6 +521,37 @@ public sealed class ExplorerContextMenuService
 
         var packageManager = new PackageManager();
         return identity.MatchesAny(GetPackageRegistrations(packageManager));
+    }
+
+    [SupportedOSPlatform("windows10.0.19041.0")]
+    private static bool IsPackageRegisteredForAnyUser(
+        ExplorerPackageIdentity identity)
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return false;
+        }
+
+        var packageManager = new PackageManager();
+        try
+        {
+            return identity.MatchesAny(
+                packageManager.FindPackages()
+                    .Select(package => new ExplorerPackageRegistration(
+                        package.Id.Name,
+                        package.Id.Publisher,
+                        package.EffectiveExternalPath)));
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or
+                System.Runtime.InteropServices.COMException or SystemException)
+        {
+            // Other users' registrations cannot be verified, so removing a
+            // machine-wide trust entry could break their signed packages.
+            throw new InvalidOperationException(
+                "Verify that no other user has the shell integration package before removing its certificate.",
+                ex);
+        }
     }
 
     [SupportedOSPlatform("windows10.0.19041.0")]
