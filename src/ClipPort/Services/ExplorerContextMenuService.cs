@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Runtime.Versioning;
+using System.Text;
 using Windows.Management.Deployment;
 
 namespace ClipPort.Services;
@@ -762,7 +763,9 @@ public sealed class ExplorerContextMenuService
         string quotedPublisher = ToPowerShellSingleQuotedLiteral(
             certificateSubject);
         // The all-user package check requires elevation, so it runs inside the
-        // same elevated helper that owns the machine store removal.
+        // same elevated helper that owns the machine store removal. The script
+        // is passed with -EncodedCommand so publisher DN characters (including
+        // quotes) survive Windows command-line parsing unchanged.
         string guardCommands =
             "try { " +
             $"$clipPortPackages = @(Get-AppxPackage -Name {quotedPackageName} " +
@@ -775,7 +778,9 @@ public sealed class ExplorerContextMenuService
             targets.Select(target =>
                 $"& {quotedCertutilPath} -delstore {target.StoreName} {quotedThumbprint}; " +
                 "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"));
-        string commands = guardCommands + removalCommands;
+        string powerShellScript = guardCommands + removalCommands;
+        string encodedScript = Convert.ToBase64String(
+            Encoding.Unicode.GetBytes(powerShellScript));
         string powerShellPath = Path.Combine(
             systemDirectory,
             "WindowsPowerShell",
@@ -783,7 +788,7 @@ public sealed class ExplorerContextMenuService
             "powershell.exe");
         var startInfo = new ProcessStartInfo(powerShellPath)
         {
-            Arguments = $"-NoProfile -NonInteractive -Command \"& {{ {commands} }}\"",
+            Arguments = $"-NoProfile -NonInteractive -EncodedCommand {encodedScript}",
             UseShellExecute = true,
             Verb = "runas"
         };
