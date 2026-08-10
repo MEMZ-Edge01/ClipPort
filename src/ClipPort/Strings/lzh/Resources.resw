@@ -246,6 +246,19 @@
   <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>置右键单组件而败：{0}</value></data>
   <data name="Settings.PackageInstallDidNotComplete" xml:space="preserve"><value>Windows 未报安置既成。</value></data>
   <data name="Settings.ExplorerStatusRefreshed" xml:space="preserve"><value>凭证与组件状态已刷新。</value></data>
+  <data name="Settings.PackageUninstallConfirmTitle" xml:space="preserve"><value>卸右键单组件乎？</value></data>
+  <data name="Settings.PackageUninstallConfirmMessage" xml:space="preserve"><value>卸之，则 ClipPort 不复见于文卷司右键单；复制校验诸能无损，后仍可复置于此。</value></data>
+  <data name="Settings.CertificateUninstallConfirmTitle" xml:space="preserve"><value>卸 ClipPort 署名凭证乎？</value></data>
+  <data name="Settings.CertificateUninstallConfirmMessage" xml:space="preserve"><value>惟删与今发布目录凭证指纹全同者。请先卸右键单组件；删本地计算机凭证时，Windows 将请管理员之权。</value></data>
+  <data name="Settings.UninstallPackageAction" xml:space="preserve"><value>卸组件</value></data>
+  <data name="Settings.UninstallCertificateAction" xml:space="preserve"><value>卸凭证</value></data>
+  <data name="Settings.PackageUninstallSucceeded" xml:space="preserve"><value>右键单组件已卸，其能亦已闭。</value></data>
+  <data name="Settings.PackageUninstallSucceededSiblingRemains" xml:space="preserve"><value>已卸本机右键单组件；他处 ClipPort 仍供文卷司右键单。</value></data>
+  <data name="Settings.PackageUninstallFailed" xml:space="preserve"><value>卸右键单组件而败：{0}</value></data>
+  <data name="Settings.PackageUninstallDidNotComplete" xml:space="preserve"><value>Windows 犹报组件已置。</value></data>
+  <data name="Settings.PackageUninstallSettingsSaveFailed" xml:space="preserve"><value>不能存右键单关闭之态，故未卸组件：{0}</value></data>
+  <data name="Settings.CertificateUninstallSucceeded" xml:space="preserve"><value>ClipPort 署名凭证已自凭证库除之。</value></data>
+  <data name="Settings.CertificateUninstallFailed" xml:space="preserve"><value>卸署名凭证而败：{0}</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>文辞与文卷</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>文辞</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>日志与录默认所存</value></data>
@@ -315,9 +328,11 @@
   <data name="CertificateGuideStep8Refresh.Text" xml:space="preserve"><value>刷新状态</value></data>
   <data name="CertificateGuideStep8Suffix.Text" xml:space="preserve"><value>；俟页面称凭证已置于本地计算机，乃续置组件。</value></data>
   <data name="InstallCertificateButton.Content" xml:space="preserve"><value>启凭证安置导引</value></data>
+  <data name="UninstallCertificateButton.Content" xml:space="preserve"><value>卸凭证</value></data>
   <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>二、置右键单组件</value></data>
   <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>凭证既正确安置，点击右侧“置组件”，俟页面称安置成功。</value></data>
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>置组件</value></data>
+  <data name="UninstallShellPackageButton.Content" xml:space="preserve"><value>卸组件</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>三、启右键单</value></data>
   <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件既置，启上方“注于文卷司右键单”开关。复启一新文卷司窗口，右击目录或空处以试之。</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>刷新状态</value></data>

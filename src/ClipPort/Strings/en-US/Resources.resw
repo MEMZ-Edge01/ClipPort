@@ -246,6 +246,19 @@
   <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>Could not install the context-menu component: {0}</value></data>
   <data name="Settings.PackageInstallDidNotComplete" xml:space="preserve"><value>Windows did not report a completed installation.</value></data>
   <data name="Settings.ExplorerStatusRefreshed" xml:space="preserve"><value>The certificate and component status was refreshed.</value></data>
+  <data name="Settings.PackageUninstallConfirmTitle" xml:space="preserve"><value>Uninstall the context-menu component?</value></data>
+  <data name="Settings.PackageUninstallConfirmMessage" xml:space="preserve"><value>ClipPort will no longer appear in the File Explorer context menu. Copy and verification features are unaffected, and the component can be installed again here later.</value></data>
+  <data name="Settings.CertificateUninstallConfirmTitle" xml:space="preserve"><value>Uninstall the ClipPort signing certificate?</value></data>
+  <data name="Settings.CertificateUninstallConfirmMessage" xml:space="preserve"><value>Only certificates with the exact thumbprint of the certificate in this release directory will be removed. Uninstall the context-menu component first. Windows will request administrator permission when removing a Local Machine certificate.</value></data>
+  <data name="Settings.UninstallPackageAction" xml:space="preserve"><value>Uninstall component</value></data>
+  <data name="Settings.UninstallCertificateAction" xml:space="preserve"><value>Uninstall certificate</value></data>
+  <data name="Settings.PackageUninstallSucceeded" xml:space="preserve"><value>The context-menu component was uninstalled and the feature was turned off.</value></data>
+  <data name="Settings.PackageUninstallSucceededSiblingRemains" xml:space="preserve"><value>The context-menu component was uninstalled for this installation. Another ClipPort installation still provides the Explorer context menu.</value></data>
+  <data name="Settings.PackageUninstallFailed" xml:space="preserve"><value>Could not uninstall the context-menu component: {0}</value></data>
+  <data name="Settings.PackageUninstallDidNotComplete" xml:space="preserve"><value>Windows still reports that the component is installed.</value></data>
+  <data name="Settings.PackageUninstallSettingsSaveFailed" xml:space="preserve"><value>The disabled state could not be saved, so the component was not uninstalled: {0}</value></data>
+  <data name="Settings.CertificateUninstallSucceeded" xml:space="preserve"><value>The ClipPort signing certificate was removed from the certificate stores.</value></data>
+  <data name="Settings.CertificateUninstallFailed" xml:space="preserve"><value>Could not uninstall the signing certificate: {0}</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>Language and files</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>Language</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>Default log and report location</value></data>
@@ -315,9 +328,11 @@
   <data name="CertificateGuideStep8Refresh.Text" xml:space="preserve"><value>Refresh status</value></data>
   <data name="CertificateGuideStep8Suffix.Text" xml:space="preserve"><value>. Continue only after the page says the certificate is trusted by the local machine.</value></data>
   <data name="InstallCertificateButton.Content" xml:space="preserve"><value>Open certificate wizard</value></data>
+  <data name="UninstallCertificateButton.Content" xml:space="preserve"><value>Uninstall certificate</value></data>
   <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>2. Install the context-menu component</value></data>
   <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>After the certificate is trusted correctly, select Install component and wait for the success message.</value></data>
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>Install component</value></data>
+  <data name="UninstallShellPackageButton.Content" xml:space="preserve"><value>Uninstall component</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>3. Turn on the context menu</value></data>
   <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>After installation succeeds, turn on Register in the File Explorer context menu above. Open a new File Explorer window, then right-click a folder or folder background to test it.</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>Refresh status</value></data>

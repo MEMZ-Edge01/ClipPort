@@ -1,4 +1,7 @@
+using System.IO.Compression;
+using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -36,6 +39,15 @@ internal static class Program
             ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
             ("quick-start requests preserve the opposite directory", TestQuickStartRequestsAsync),
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
+            ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
+            ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
+            ("package uninstall preserves enabled sibling state", TestPackageUninstallPreservesSiblingSettingAsync),
+            ("package removal disables the live menu before deployment", TestPackageRemovalDisablesLiveStateAsync),
+            ("package removal preserves sibling integration configuration", TestExplorerContextMenuConfigurationPolicyAsync),
+            ("Explorer package identity stays publisher-scoped", TestExplorerPackageIdentityAsync),
+            ("certificate store access failures remain visible", TestCertificateStoreSearchAsync),
+            ("Explorer integration operations are serialized", TestExplorerIntegrationOperationGateAsync),
+            ("certificate installer lifetime remains awaited", TestCertificateInstallerWorkflowAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
             ("history isolates malformed records", TestHistoryMalformedRecordIsolationAsync),
@@ -53,6 +65,564 @@ internal static class Program
 
         Console.WriteLine($"All {tests.Length} core tests passed.");
         return 0;
+    }
+
+    private static async Task TestPackageUninstallSaveFailureAsync()
+    {
+        var settings = new AppSettings
+        {
+            ExplorerContextMenuEnabled = true
+        };
+        int uninstallCalls = 0;
+
+        ExplorerIntegrationUninstallResult<string> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                settings,
+                true,
+                _ => Task.FromException(new IOException("simulated save failure")),
+                () =>
+                {
+                    uninstallCalls++;
+                    return Task.FromResult("removed");
+                });
+
+        Assert(result.SettingsSaveError is IOException,
+            "The workflow should report the settings save error.");
+        Assert(uninstallCalls == 0,
+            "The package must not be removed before the disabled state is persisted.");
+        Assert(settings.ExplorerContextMenuEnabled,
+            "A failed save should restore the in-memory setting to its persisted value.");
+    }
+
+    private static async Task TestPackageUninstallSaveOrderAsync()
+    {
+        var settings = new AppSettings
+        {
+            ExplorerContextMenuEnabled = true
+        };
+        var calls = new List<string>();
+
+        ExplorerIntegrationUninstallResult<string> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                settings,
+                true,
+                currentSettings =>
+                {
+                    Assert(!currentSettings.ExplorerContextMenuEnabled,
+                        "The disabled state must be saved before package removal.");
+                    calls.Add("save");
+                    return Task.CompletedTask;
+                },
+                () =>
+                {
+                    calls.Add("uninstall");
+                    return Task.FromResult("removed");
+                });
+
+        Assert(result.SettingsSaveError is null && result.OperationResult == "removed",
+            "A successful save should allow the package uninstall to complete.");
+        Assert(calls.SequenceEqual(["save", "uninstall"]),
+            "The workflow must persist the disabled state before uninstalling the package.");
+    }
+
+    private static async Task TestPackageUninstallPreservesSiblingSettingAsync()
+    {
+        var settings = new AppSettings
+        {
+            ExplorerContextMenuEnabled = true
+        };
+        int saveCalls = 0;
+
+        ExplorerIntegrationUninstallResult<string> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                settings,
+                disableSavedSettingBeforeUninstall: false,
+                _ =>
+                {
+                    saveCalls++;
+                    return Task.CompletedTask;
+                },
+                () => Task.FromResult("removed"));
+
+        Assert(result.SettingsSaveError is null && result.OperationResult == "removed",
+            "A sibling-preserving uninstall should still remove the selected package.");
+        Assert(saveCalls == 0 && settings.ExplorerContextMenuEnabled,
+            "Removing one package must retain the shared enabled setting when a sibling remains.");
+    }
+
+    private static Task TestExplorerIntegrationOperationGateAsync()
+    {
+        var gate = new ExplorerIntegrationOperationGate();
+
+        Assert(gate.TryBegin(out long startupOperationId),
+            "Startup synchronization should acquire the integration operation gate.");
+        Assert(gate.IsBusy && !gate.TryBegin(out _),
+            "UI maintenance actions must remain blocked during startup synchronization.");
+        Assert(!gate.CanUpdateSharedConfiguration,
+            "Language-driven shared configuration updates must remain disabled while maintenance is active.");
+        Assert(!gate.Complete(startupOperationId + 1),
+            "A refresh without the owning operation token must not release the gate.");
+        Assert(gate.IsBusy,
+            "An unrelated status refresh must not release the active operation gate.");
+        Assert(gate.Complete(startupOperationId),
+            "The operation that acquired the gate should release it.");
+        Assert(!gate.IsBusy && gate.TryBegin(out _),
+            "A new operation should start after the owner applies its final status.");
+        Assert(!gate.CanUpdateSharedConfiguration,
+            "A newly acquired operation should immediately gate shared configuration updates.");
+
+        return Task.CompletedTask;
+    }
+
+    private static async Task TestCertificateInstallerWorkflowAsync()
+    {
+        var installerExited = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        Task waitTask = CertificateInstallerWorkflow.WaitForExitAsync(
+            Process.GetCurrentProcess(),
+            _ => installerExited.Task);
+
+        Assert(!waitTask.IsCompleted,
+            "Certificate maintenance must stay active until the installer exits.");
+        installerExited.SetResult();
+        await waitTask;
+        Assert(waitTask.IsCompletedSuccessfully,
+            "Certificate maintenance should complete after the installer exits.");
+    }
+
+    private static async Task TestPackageRemovalDisablesLiveStateAsync()
+    {
+        var calls = new List<string>();
+
+        try
+        {
+            await ExplorerIntegrationPackageRemovalWorkflow.RunAsync(
+                () => calls.Add("disable-live-state"),
+                () =>
+                {
+                    calls.Add("remove-package");
+                    return Task.FromException(new IOException("simulated deployment failure"));
+                },
+                () => calls.Add("clear-configuration"));
+            throw new InvalidOperationException(
+                "The simulated deployment failure should escape the removal workflow.");
+        }
+        catch (IOException)
+        {
+            // Expected: the live state remains disabled while configuration is
+            // retained for a later retry.
+        }
+
+        Assert(calls.SequenceEqual(["disable-live-state", "remove-package"]),
+            "A failed deployment must leave the live menu disabled and retain configuration.");
+
+        calls.Clear();
+        await ExplorerIntegrationPackageRemovalWorkflow.RunAsync(
+            () => calls.Add("disable-live-state"),
+            () =>
+            {
+                calls.Add("remove-package");
+                return Task.CompletedTask;
+            },
+            () => calls.Add("clear-configuration"));
+        Assert(calls.SequenceEqual(
+                ["disable-live-state", "remove-package", "clear-configuration"]),
+            "Configuration should be removed only after deployment succeeds.");
+    }
+
+    private static Task TestExplorerPackageIdentityAsync()
+    {
+        const string manifest = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
+              <Identity Name="MEMZEdge01.ClipPort.ShellIntegration"
+                        Publisher="CN=ClipPort Development"
+                        Version="1.0.0.0"
+                        ProcessorArchitecture="x64" />
+            </Package>
+            """;
+        using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(manifest));
+        ExplorerPackageIdentity identity = ExplorerPackageIdentity.ReadManifest(stream);
+
+        using var malformedStream = new MemoryStream(
+            System.Text.Encoding.UTF8.GetBytes("<Package><Identity"));
+        try
+        {
+            ExplorerPackageIdentity.ReadManifest(malformedStream);
+            throw new InvalidOperationException(
+                "A malformed package manifest should not be accepted.");
+        }
+        catch (InvalidDataException ex)
+        {
+            Assert(ex.InnerException is XmlException,
+                "Malformed manifest XML should be translated to InvalidDataException.");
+        }
+
+        Assert(identity.Matches(
+                "MEMZEdge01.ClipPort.ShellIntegration",
+                "CN=ClipPort Development"),
+            "The bundled package identity should match its own name and publisher.");
+        Assert(!identity.Matches(
+                "MEMZEdge01.ClipPort.ShellIntegration",
+                "CN=ClipPort Production"),
+            "A same-name package from another publisher must never be removed.");
+        Assert(!identity.Matches(
+                "MEMZEdge01.AnotherPackage",
+                "CN=ClipPort Development"),
+            "A package with another identity name must never be removed.");
+        Assert(!identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Production",
+                        "C:\\AnotherApp")
+                ],
+                "C:\\ClipPort"),
+            "A same-name package from another publisher must not make this installation appear registered.");
+        Assert(!identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Development",
+                        "C:\\AnotherApp")
+                ],
+                "C:\\ClipPort"),
+            "A matching package identity from another application directory must not appear removable.");
+        Assert(identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Development",
+                        "C:\\AnotherApp")
+                ]),
+            "Certificate removal must detect a matching package identity in another application directory.");
+        Assert(identity.MatchesAny(
+                [
+                    new ExplorerPackageRegistration(
+                        "MEMZEdge01.ClipPort.ShellIntegration",
+                        "CN=ClipPort Development",
+                        "C:\\ClipPort")
+                ],
+                "C:\\ClipPort\\"),
+            "The selected package identity should recognize its matching registration.");
+
+        string testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"ClipPort.PackageIdentity.{Guid.NewGuid():N}");
+        string looseManifestPath = Path.Combine(
+            testDirectory,
+            "ShellIntegration.Development",
+            "AppxManifest.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(looseManifestPath)!);
+        try
+        {
+            File.WriteAllText(looseManifestPath, manifest);
+            string packagePath = Path.Combine(
+                testDirectory,
+                "ClipPort.ShellIntegration.msix");
+            using (ZipArchive archive = ZipFile.Open(packagePath, ZipArchiveMode.Create))
+            {
+                ZipArchiveEntry entry = archive.CreateEntry("AppxManifest.xml");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write(manifest.Replace(
+                    "CN=ClipPort Development",
+                    "CN=ClipPort Development, OID.2.25.311729368913984317654407730594956997722=1",
+                    StringComparison.Ordinal));
+            }
+
+            ExplorerPackageIdentity looseIdentity = ExplorerPackageIdentity.Resolve(
+                packagePath,
+                looseManifestPath,
+                Path.Combine(testDirectory, "missing.cer"),
+                "MEMZEdge01.ClipPort.ShellIntegration");
+
+            Assert(looseIdentity == identity,
+                "A loose development manifest should take precedence over its retained unsigned MSIX.");
+
+            File.Delete(looseManifestPath);
+            string certificatePath = Path.Combine(testDirectory, "package.cer");
+            using RSA key = RSA.Create(2048);
+            var request = new CertificateRequest(
+                "CN=ClipPort Production",
+                key,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            using X509Certificate2 certificate = request.CreateSelfSigned(
+                DateTimeOffset.UtcNow.AddMinutes(-1),
+                DateTimeOffset.UtcNow.AddDays(1));
+            File.WriteAllBytes(
+                certificatePath,
+                certificate.Export(X509ContentType.Cert));
+
+            ExplorerPackageIdentity certificateIdentity = ExplorerPackageIdentity.Resolve(
+                Path.Combine(testDirectory, "missing.msix"),
+                looseManifestPath,
+                certificatePath,
+                "MEMZEdge01.ClipPort.ShellIntegration");
+            Assert(certificateIdentity.Matches(
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    certificate.Subject),
+                "A remaining certificate should identify its signed package publisher when the MSIX is absent.");
+            Assert(!certificateIdentity.Matches(
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    "CN=ClipPort Development"),
+                "A certificate identity must not match a same-name package from another publisher.");
+
+            File.WriteAllText(looseManifestPath, manifest);
+            ExplorerPackageIdentity preferredPackageIdentity =
+                ExplorerPackageIdentity.Resolve(
+                    Path.Combine(testDirectory, "missing.msix"),
+                    looseManifestPath,
+                    certificatePath,
+                    "MEMZEdge01.ClipPort.ShellIntegration");
+            ExplorerPackageIdentity certificateRemovalIdentity =
+                ExplorerPackageIdentity.FromCertificate(
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    certificate);
+            Assert(preferredPackageIdentity == identity,
+                "Package maintenance should continue to prefer the loose development registration.");
+            Assert(certificateRemovalIdentity == certificateIdentity,
+                "Certificate removal must use the certificate publisher even when a loose development manifest remains.");
+            File.Delete(looseManifestPath);
+
+            string malformedCertificatePath = Path.Combine(
+                testDirectory,
+                "malformed.cer");
+            File.WriteAllBytes(malformedCertificatePath, [0x01, 0x02, 0x03]);
+            try
+            {
+                ExplorerPackageIdentity.Resolve(
+                    Path.Combine(testDirectory, "missing.msix"),
+                    looseManifestPath,
+                    malformedCertificatePath,
+                    "MEMZEdge01.ClipPort.ShellIntegration");
+                throw new InvalidOperationException(
+                    "Malformed certificate data should not be accepted as a package identity.");
+            }
+            catch (CryptographicException)
+            {
+                // Synchronization translates this recoverable package-data failure
+                // into an Explorer integration status instead of escaping startup.
+            }
+
+            ExplorerPackageIdentity? registeredIdentity =
+                ExplorerPackageIdentity.FindRegisteredForExternalPath(
+                    [
+                        new ExplorerPackageRegistration(
+                            "MEMZEdge01.ClipPort.ShellIntegration",
+                            "CN=ClipPort Production",
+                            Path.Combine(testDirectory, "another-app")),
+                        new ExplorerPackageRegistration(
+                            "MEMZEdge01.ClipPort.ShellIntegration",
+                            "CN=ClipPort Development",
+                            testDirectory)
+                    ],
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    testDirectory + Path.DirectorySeparatorChar);
+            Assert(registeredIdentity == identity,
+                "The registered package bound to this application directory should remain identifiable after all package files are removed.");
+
+            ExplorerPackageIdentity? unrelatedIdentity =
+                ExplorerPackageIdentity.FindRegisteredForExternalPath(
+                    [
+                        new ExplorerPackageRegistration(
+                            "MEMZEdge01.ClipPort.ShellIntegration",
+                            "CN=ClipPort Production",
+                            Path.Combine(testDirectory, "another-app"))
+                    ],
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    testDirectory);
+            Assert(unrelatedIdentity is null,
+                "A same-name package bound to another application directory must not block certificate removal.");
+
+            Assert(!ExplorerPackageIdentity.ExternalPathsEqual(
+                    "C:\\ClipPort\\bad<path",
+                    "C:\\ClipPort"),
+                "A malformed stored path must compare safely instead of crashing maintenance.");
+            Assert(ExplorerPackageIdentity.ExternalPathsEqual(
+                    "C:\\ClipPort\\",
+                    "C:\\ClipPort"),
+                "Normalized equal paths should still compare as equal.");
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestExplorerContextMenuConfigurationPolicyAsync()
+    {
+        const string packageName = "MEMZEdge01.ClipPort.ShellIntegration";
+        var configuration = new ExplorerContextMenuConfiguration(
+            true,
+            "en-US",
+            "C:\\ClipPort");
+        var siblingRegistrations = new[]
+        {
+            new ExplorerPackageRegistration(
+                packageName,
+                "CN=ClipPort Production",
+                "D:\\ClipPort"),
+            new ExplorerPackageRegistration(
+                packageName,
+                "CN=ClipPort Development",
+                "E:\\ClipPort")
+        };
+        ExplorerPackageRegistration[] registrationsWithCurrent =
+        [
+            .. siblingRegistrations,
+            new ExplorerPackageRegistration(
+                packageName,
+                "CN=ClipPort Production",
+                "C:\\ClipPort")
+        ];
+
+        Assert(ExplorerContextMenuConfigurationPolicy.HasSiblingRegistration(
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort"),
+            "A same-name registration in another directory should preserve the shared enabled setting.");
+        Assert(!ExplorerContextMenuConfigurationPolicy.HasSiblingRegistration(
+                [
+                    new ExplorerPackageRegistration(
+                        packageName,
+                        "CN=ClipPort Production",
+                        "C:\\ClipPort\\")
+                ],
+                packageName,
+                "C:\\ClipPort"),
+            "The registration being removed must not count as its own sibling.");
+
+        Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                configuration,
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort\\"),
+            "Removing the configured package should disable its live menu before deployment.");
+        var activeSiblingConfiguration = configuration with
+        {
+            InstallDirectory = "D:\\ClipPort"
+        };
+        Assert(!ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                activeSiblingConfiguration,
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort"),
+            "Removing an inactive sibling package must not disable the configured live menu.");
+        Assert(ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    activeSiblingConfiguration,
+                    siblingRegistrations,
+                    packageName,
+                    "C:\\ClipPort"),
+            "Startup must not overwrite a shared configuration owned by another registered copy.");
+        Assert(!ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    configuration,
+                    registrationsWithCurrent,
+                    packageName,
+                    "C:\\ClipPort\\"),
+            "The configured owner should continue synchronizing its own registration.");
+        Assert(!ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    configuration with { InstallDirectory = "Z:\\StaleClipPort" },
+                    registrationsWithCurrent,
+                    packageName,
+                    "C:\\ClipPort"),
+            "A stale configuration owner must not block a valid copy from repairing shared state.");
+        Assert(ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    null,
+                    siblingRegistrations,
+                    packageName,
+                    "C:\\ClipPort"),
+            "An unregistered copy must not reinstall itself while a sibling registration remains.");
+        Assert(!ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    null,
+                    [
+                        new ExplorerPackageRegistration(
+                            packageName,
+                            "CN=ClipPort Production",
+                            "C:\\ClipPort")
+                    ],
+                    packageName,
+                    "C:\\ClipPort"),
+            "A registered copy should repair missing shared configuration during startup.");
+        Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                configuration with { InstallDirectory = "Z:\\StaleClipPort" },
+                [],
+                packageName,
+                "C:\\ClipPort"),
+            "A stale shared configuration should still be disabled before the last package is removed.");
+        Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                configuration with { InstallDirectory = "C:\\bad<path" },
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort"),
+            "A malformed shared configuration should still disable the live menu before removal.");
+
+        ExplorerContextMenuConfiguration? reconciled =
+            ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+                configuration,
+                siblingRegistrations,
+                packageName);
+        Assert(reconciled == configuration with { InstallDirectory = "D:\\ClipPort" },
+            "After removing the configured package, shared state should move to a remaining registration without changing its enabled state or language.");
+        reconciled = ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+            configuration with { InstallDirectory = "C:\\bad<path" },
+            siblingRegistrations,
+            packageName);
+        Assert(reconciled == configuration with { InstallDirectory = "D:\\ClipPort" },
+            "A malformed stored path should fall back to a remaining registration instead of crashing.");
+
+        var siblingConfiguration = configuration with
+        {
+            InstallDirectory = "E:\\ClipPort\\"
+        };
+        reconciled = ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+            siblingConfiguration,
+            siblingRegistrations,
+            packageName);
+        Assert(reconciled == configuration with { InstallDirectory = "E:\\ClipPort" },
+            "An already configured sibling registration should remain the shared configuration owner.");
+
+        Assert(ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+                configuration,
+                [],
+                packageName) is null,
+            "Shared configuration should be removed only when no package registration remains.");
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestCertificateStoreSearchAsync()
+    {
+        string[] targets = ["CurrentUser/Root", "LocalMachine/Root"];
+        List<string> matches = CertificateStoreSearch.FindMatches(
+            targets,
+            target => target == "CurrentUser/Root");
+
+        Assert(matches.SequenceEqual(["CurrentUser/Root"]),
+            "Certificate store search should return only matching stores.");
+
+        try
+        {
+            CertificateStoreSearch.FindMatches(
+                targets,
+                _ => throw new CryptographicException("store unavailable"));
+            throw new InvalidOperationException(
+                "Certificate store access failures must not be treated as an empty store.");
+        }
+        catch (CryptographicException ex)
+        {
+            Assert(ex.Message == "store unavailable",
+                "Certificate store access failures should propagate to the operation status.");
+        }
+
+        return Task.CompletedTask;
     }
 
     private static Task TestLocalizationResourceCoverageAsync()

@@ -73,8 +73,12 @@ public sealed partial class MainWindow : Window
             SettingsPage_ExplorerContextMenuToggleRequested;
         SettingsPage.InstallExplorerCertificateRequested +=
             SettingsPage_InstallExplorerCertificateRequested;
+        SettingsPage.UninstallExplorerCertificateRequested +=
+            SettingsPage_UninstallExplorerCertificateRequested;
         SettingsPage.InstallExplorerPackageRequested +=
             SettingsPage_InstallExplorerPackageRequested;
+        SettingsPage.UninstallExplorerPackageRequested +=
+            SettingsPage_UninstallExplorerPackageRequested;
         SettingsPage.RefreshExplorerIntegrationRequested +=
             SettingsPage_RefreshExplorerIntegrationRequested;
         RootGrid.ActualThemeChanged += RootGrid_ActualThemeChanged;
@@ -452,81 +456,181 @@ public sealed partial class MainWindow : Window
 
     private void ShowHistoryJob(JobHistoryItem job)
     {
-        HeroNameText.Text = job.DisplayName;
-        SourcePathText.Text = job.SourcePath;
-        DestinationPathText.Text = job.DestinationPath;
-        TotalSizeText.Text = FormatBytes(job.TotalBytes);
-        TotalCountText.Text = job.FileCount.ToString("N0", CultureInfo.InvariantCulture);
-        StartTimeText.Text = job.StartedAt.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture);
-        EndTimeText.Text = job.FinishedAt?.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "--";
-        DurationText.Text = job.DurationText;
+        ShowHistorySummary(job);
         CurrentFileText.Text = job.ErrorMessage ?? $"{job.SourcePath} → {job.DestinationPath}";
         ShowDuplicateHistory(job);
         ShowFailedFileHistory(job);
 
-        bool taskFinished = job.Status is JobStatus.Completed or JobStatus.CompletedWithErrors or JobStatus.VerificationFailed;
-        bool copyFinished = !job.CopyEnabled || taskFinished ||
-            (job.FileCount > 0 && job.CopiedFiles >= job.FileCount && job.CopiedBytes >= job.TotalBytes);
+        HistoryProgressState progress = CalculateHistoryProgress(job);
+        ShowHistoryProgress(job, progress);
+        ShowHistoryPerformance(job);
+        ShowHistoryActions(job);
+        ShowHistoryOutcome(job);
+    }
+
+    private void ShowHistorySummary(JobHistoryItem job)
+    {
+        HeroNameText.Text = job.DisplayName;
+        SourcePathText.Text = job.SourcePath;
+        DestinationPathText.Text = job.DestinationPath;
+        TotalSizeText.Text = FormatBytes(job.TotalBytes);
+        TotalCountText.Text = job.FileCount.ToString(
+            "N0",
+            CultureInfo.InvariantCulture);
+        StartTimeText.Text = job.StartedAt.ToString(
+            "MM/dd HH:mm:ss",
+            CultureInfo.InvariantCulture);
+        EndTimeText.Text = job.FinishedAt?.ToString(
+            "MM/dd HH:mm:ss",
+            CultureInfo.InvariantCulture) ?? "--";
+        DurationText.Text = job.DurationText;
+    }
+
+    private static HistoryProgressState CalculateHistoryProgress(JobHistoryItem job)
+    {
+        bool taskFinished = IsTaskFinished(job);
+        bool copyFinished = IsCopyFinished(job, taskFinished);
         bool verificationFinished = job.VerificationEnabled && taskFinished;
-        double copyPercent = !job.CopyEnabled
-            ? 0
-            : job.TotalBytes <= 0
-            ? (copyFinished ? 100 : 0)
-            : Math.Clamp(job.CopiedBytes * 100d / job.TotalBytes, 0, 100);
-        double verifyPercent = job.FileCount <= 0
-            ? (verificationFinished ? 100 : 0)
-            : Math.Clamp(job.VerifiedFiles * 100d / job.FileCount, 0, 100);
+        double copyPercent = CalculateCopyPercent(job, copyFinished);
+        double verifyPercent = CalculateVerifyPercent(job, verificationFinished);
+
         if (taskFinished)
         {
             copyPercent = job.CopyEnabled ? 100 : 0;
             verifyPercent = job.VerificationEnabled ? 100 : 0;
         }
 
-        CopyProgress.Value = copyPercent;
-        VerifyProgress.Value = verifyPercent;
-        CopyProgressRow.Visibility = job.CopyEnabled
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        VerifyProgressRow.Visibility = job.VerificationEnabled
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        CopyProgress.Visibility = copyFinished ? Visibility.Collapsed : Visibility.Visible;
-        CopyCompletedBadge.Visibility = copyFinished ? Visibility.Visible : Visibility.Collapsed;
-        CopyCompletedText.Text = !job.CopyEnabled
-            ? ResourceService.GetString("Common.Disabled")
-            : job.Status == JobStatus.CompletedWithErrors
-                ? ResourceService.GetString("Result.CompletedWithErrors")
-                : ResourceService.GetString("Common.Completed");
-        VerifyProgress.Visibility = verificationFinished || !job.VerificationEnabled
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        VerifyCompletedBadge.Visibility = verificationFinished || !job.VerificationEnabled
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        VerifyCompletedText.Text = !job.VerificationEnabled
-            ? ResourceService.GetString("Common.Disabled")
-            : job.Status == JobStatus.VerificationFailed
-                ? ResourceService.GetString("Error.VerificationFailed")
-                : job.Status == JobStatus.CompletedWithErrors
-                    ? ResourceService.GetString("Result.CompletedWithErrors")
-                    : ResourceService.GetString("Common.Completed");
-        VerifyCompletedBadge.Background = new SolidColorBrush(
-            job.Status == JobStatus.VerificationFailed
-                ? ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A) // Error surface
-                : job.VerificationEnabled
-                    ? ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77) // Success surface
-                    : ColorHelper.FromArgb(255, 0xE5, 0xE5, 0xE5));
-        OverallProgress.Value = taskFinished
-            ? 100
-            : !job.CopyEnabled
-                ? verifyPercent
-                : !job.VerificationEnabled
-                    ? copyPercent
-                    : copyPercent * 0.8 + verifyPercent * 0.2;
+        return new HistoryProgressState(
+            taskFinished,
+            copyFinished,
+            verificationFinished,
+            copyPercent,
+            verifyPercent);
+    }
+
+    private static bool IsTaskFinished(JobHistoryItem job) =>
+        job.Status is JobStatus.Completed or
+            JobStatus.CompletedWithErrors or
+            JobStatus.VerificationFailed;
+
+    private static bool IsCopyFinished(JobHistoryItem job, bool taskFinished) =>
+        !job.CopyEnabled ||
+        taskFinished ||
+        (job.FileCount > 0 &&
+            job.CopiedFiles >= job.FileCount &&
+            job.CopiedBytes >= job.TotalBytes);
+
+    private static double CalculateCopyPercent(
+        JobHistoryItem job,
+        bool copyFinished)
+    {
+        if (!job.CopyEnabled)
+        {
+            return 0;
+        }
+
+        return job.TotalBytes <= 0
+            ? (copyFinished ? 100 : 0)
+            : Math.Clamp(job.CopiedBytes * 100d / job.TotalBytes, 0, 100);
+    }
+
+    private static double CalculateVerifyPercent(
+        JobHistoryItem job,
+        bool verificationFinished) =>
+        job.FileCount <= 0
+            ? (verificationFinished ? 100 : 0)
+            : Math.Clamp(job.VerifiedFiles * 100d / job.FileCount, 0, 100);
+
+    private void ShowHistoryProgress(
+        JobHistoryItem job,
+        HistoryProgressState progress)
+    {
+        CopyProgress.Value = progress.CopyPercent;
+        VerifyProgress.Value = progress.VerifyPercent;
+        CopyProgressRow.Visibility = VisibleWhen(job.CopyEnabled);
+        VerifyProgressRow.Visibility = VisibleWhen(job.VerificationEnabled);
+        CopyProgress.Visibility = VisibleWhen(!progress.CopyFinished);
+        CopyCompletedBadge.Visibility = VisibleWhen(progress.CopyFinished);
+        CopyCompletedText.Text = GetCopyCompletedText(job);
+        bool verificationActive =
+            !progress.VerificationFinished && job.VerificationEnabled;
+        VerifyProgress.Visibility = VisibleWhen(verificationActive);
+        VerifyCompletedBadge.Visibility = VisibleWhen(!verificationActive);
+        VerifyCompletedText.Text = GetVerifyCompletedText(job);
+        VerifyCompletedBadge.Background = GetVerificationBadgeBrush(job);
+        OverallProgress.Value = CalculateOverallProgress(job, progress);
+    }
+
+    private static Visibility VisibleWhen(bool visible) =>
+        visible ? Visibility.Visible : Visibility.Collapsed;
+
+    private static string GetCopyCompletedText(JobHistoryItem job)
+    {
+        if (!job.CopyEnabled)
+        {
+            return ResourceService.GetString("Common.Disabled");
+        }
+
+        return job.Status == JobStatus.CompletedWithErrors
+            ? ResourceService.GetString("Result.CompletedWithErrors")
+            : ResourceService.GetString("Common.Completed");
+    }
+
+    private static string GetVerifyCompletedText(JobHistoryItem job)
+    {
+        if (!job.VerificationEnabled)
+        {
+            return ResourceService.GetString("Common.Disabled");
+        }
+
+        return job.Status switch
+        {
+            JobStatus.VerificationFailed =>
+                ResourceService.GetString("Error.VerificationFailed"),
+            JobStatus.CompletedWithErrors =>
+                ResourceService.GetString("Result.CompletedWithErrors"),
+            _ => ResourceService.GetString("Common.Completed")
+        };
+    }
+
+    private static SolidColorBrush GetVerificationBadgeBrush(JobHistoryItem job)
+    {
+        Windows.UI.Color color = job.Status == JobStatus.VerificationFailed
+            ? ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A) // Error surface
+            : job.VerificationEnabled
+                ? ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77) // Success surface
+                : ColorHelper.FromArgb(255, 0xE5, 0xE5, 0xE5);
+        return new SolidColorBrush(color);
+    }
+
+    private static double CalculateOverallProgress(
+        JobHistoryItem job,
+        HistoryProgressState progress)
+    {
+        if (progress.TaskFinished)
+        {
+            return 100;
+        }
+        if (!job.CopyEnabled)
+        {
+            return progress.VerifyPercent;
+        }
+        if (!job.VerificationEnabled)
+        {
+            return progress.CopyPercent;
+        }
+        return (progress.CopyPercent * 0.8) +
+            (progress.VerifyPercent * 0.2);
+    }
+
+    private void ShowHistoryPerformance(JobHistoryItem job)
+    {
         CopySpeedText.Text = job.CopyEnabled && job.CopySeconds > 0
             ? $"{FormatBytes(job.CopiedBytes / job.CopySeconds)}/s"
             : "--";
-        VerifySpeedText.Text = job.VerifySeconds > 0 ? $"{FormatBytes(job.TotalBytes / job.VerifySeconds)}/s" : "--";
+        VerifySpeedText.Text = job.VerifySeconds > 0
+            ? $"{FormatBytes(job.TotalBytes / job.VerifySeconds)}/s"
+            : "--";
         UpdateThroughputCharts(
             job.CopyByteSpeedSamples,
             job.CopyItemSpeedSamples,
@@ -534,11 +638,18 @@ public sealed partial class MainWindow : Window
             job.VerifyByteSpeedSamples,
             job.VerifyItemSpeedSamples,
             job.VerifyThroughputProgressSamples);
-        CopyTimeText.Text = job.CopyEnabled ? FormatDuration(TimeSpan.FromSeconds(job.CopySeconds)) : "--";
+        CopyTimeText.Text = job.CopyEnabled
+            ? FormatDuration(TimeSpan.FromSeconds(job.CopySeconds))
+            : "--";
         VerifyTimeText.Text = FormatDuration(TimeSpan.FromSeconds(job.VerifySeconds));
-        CopyCountText.Text = job.CopyEnabled ? $"{job.CopiedFiles}/{job.FileCount}" : "--";
+        CopyCountText.Text = job.CopyEnabled
+            ? $"{job.CopiedFiles}/{job.FileCount}"
+            : "--";
         VerifyCountText.Text = $"{job.VerifiedFiles}/{job.FileCount}";
+    }
 
+    private void ShowHistoryActions(JobHistoryItem job)
+    {
         CompletionIcon.Visibility = Visibility.Visible;
         CompletionIcon.Glyph = job.StatusGlyph;
         PercentText.Visibility = Visibility.Collapsed;
@@ -546,65 +657,102 @@ public sealed partial class MainWindow : Window
         StatusText.Text = ResourceService.GetString(job.StatusText);
         PauseButton.Visibility = Visibility.Collapsed;
         CancelButton.Visibility = Visibility.Collapsed;
-        DeleteJobButton.Visibility = IsBatchDeletable(job)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        StartVerificationButton.Visibility = CanStartVerification(job)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        DeleteJobButton.Visibility = VisibleWhen(IsBatchDeletable(job));
+        StartVerificationButton.Visibility = VisibleWhen(CanStartVerification(job));
         StartVerificationButtonText.Text = ResourceService.GetString(
             job.VerificationEnabled
                 ? "Button.Reverify"
                 : "Button.StartVerification");
-        ExportReportButton.Visibility = IsReportable(job)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        RestartJobButton.Visibility = job.CanRestart
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        ExportReportButton.Visibility = VisibleWhen(IsReportable(job));
+        RestartJobButton.Visibility = VisibleWhen(job.CanRestart);
         RestartJobButtonText.Text = ResourceService.GetString("Button.Restart");
         StartButton.IsEnabled = false;
         StartButton.Visibility = Visibility.Collapsed;
+    }
 
-        bool succeeded = job.Status == JobStatus.Completed;
-        SolidColorBrush stateBrush = new(succeeded
-            ? ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77) // Success
-            : ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A)); // Error
+    private void ShowHistoryOutcome(JobHistoryItem job)
+    {
+        SolidColorBrush stateBrush = GetHistoryStateBrush(job);
         CompletionIcon.Foreground = stateBrush;
         StatusText.Foreground = stateBrush;
+        PhaseText.Text = GetHistoryPhaseText(job);
+        LogText.Text = GetHistoryLogText(job);
+    }
 
-        PhaseText.Text = job.Status switch
+    private static SolidColorBrush GetHistoryStateBrush(JobHistoryItem job) =>
+        new(job.Status == JobStatus.Completed
+            ? ColorHelper.FromArgb(255, 0x15, 0xA8, 0x77) // Success
+            : ColorHelper.FromArgb(255, 0xE8, 0x46, 0x3A)); // Error
+
+    private static string GetHistoryPhaseText(JobHistoryItem job) =>
+        job.Status switch
         {
             JobStatus.CompletedWithErrors => job.CopyEnabled
                 ? ResourceService.GetString("Result.CopiedFailedFilesSkipped")
                 : ResourceService.GetString("Result.VerifiedFailedFilesSkipped"),
-            JobStatus.Completed => job.CopyEnabled && job.VerificationEnabled
-                ? ResourceService.GetString("Result.CopyAndVerifyCompleted")
-                : job.CopyEnabled
-                    ? ResourceService.GetString("Result.CopyCompleted")
-                    : ResourceService.GetString("Result.SHA256VerificationCompleted"),
+            JobStatus.Completed => GetCompletedHistoryPhaseText(job),
             JobStatus.VerificationFailed => job.CopyEnabled
                 ? ResourceService.GetString("Result.CopyCompletedButVerifyFailed")
                 : ResourceService.GetString("Result.SHA256VerificationFailed"),
-            JobStatus.Cancelled => ResourceService.GetString("Error.TaskCancelledKeptShort"),
-            JobStatus.Interrupted => ResourceService.GetString("Error.AppExitedBeforeFinishShort"),
-            JobStatus.Failed => ResourceService.GetString("Error.TaskExecutionFailed"),
+            JobStatus.Cancelled =>
+                ResourceService.GetString("Error.TaskCancelledKeptShort"),
+            JobStatus.Interrupted =>
+                ResourceService.GetString("Error.AppExitedBeforeFinishShort"),
+            JobStatus.Failed =>
+                ResourceService.GetString("Error.TaskExecutionFailed"),
             _ => ResourceService.GetString("Dialog.TaskRecord")
         };
-        LogText.Text = job.Status switch
+
+    private static string GetCompletedHistoryPhaseText(JobHistoryItem job)
+    {
+        if (!job.CopyEnabled)
         {
-            JobStatus.CompletedWithErrors => ResourceService.Format("Format.TaskPartiallyCompletedSkipped", job.FailedFiles.Count.ToString("N0")),
-            JobStatus.Completed => job.CopyEnabled && job.VerificationEnabled
-                ? ResourceService.Format("Format.TaskCompletedCopiedVerified", job.FileCount.ToString("N0"))
-                : job.CopyEnabled
-                    ? ResourceService.Format("Format.CopyCompletedCopied", job.FileCount.ToString("N0"))
-                    : ResourceService.Format("Format.VerificationCompletedAllPassed", job.FileCount.ToString("N0")),
-            JobStatus.VerificationFailed => job.ErrorMessage ?? ResourceService.GetString("Error.VerificationMismatch"),
-            JobStatus.Cancelled => ResourceService.GetString("Error.TaskCancelledKept"),
-            JobStatus.Interrupted => ResourceService.GetString("Error.InterruptedRecord"),
-            _ => job.ErrorMessage ?? ResourceService.GetString("Error.TaskNotFinished")
-        };
+            return ResourceService.GetString("Result.SHA256VerificationCompleted");
+        }
+
+        return job.VerificationEnabled
+            ? ResourceService.GetString("Result.CopyAndVerifyCompleted")
+            : ResourceService.GetString("Result.CopyCompleted");
     }
+
+    private static string GetHistoryLogText(JobHistoryItem job) =>
+        job.Status switch
+        {
+            JobStatus.CompletedWithErrors => ResourceService.Format(
+                "Format.TaskPartiallyCompletedSkipped",
+                job.FailedFiles.Count.ToString("N0")),
+            JobStatus.Completed => GetCompletedHistoryLogText(job),
+            JobStatus.VerificationFailed => job.ErrorMessage ??
+                ResourceService.GetString("Error.VerificationMismatch"),
+            JobStatus.Cancelled =>
+                ResourceService.GetString("Error.TaskCancelledKept"),
+            JobStatus.Interrupted =>
+                ResourceService.GetString("Error.InterruptedRecord"),
+            _ => job.ErrorMessage ??
+                ResourceService.GetString("Error.TaskNotFinished")
+        };
+
+    private static string GetCompletedHistoryLogText(JobHistoryItem job)
+    {
+        string fileCount = job.FileCount.ToString("N0");
+        if (!job.CopyEnabled)
+        {
+            return ResourceService.Format(
+                "Format.VerificationCompletedAllPassed",
+                fileCount);
+        }
+
+        return job.VerificationEnabled
+            ? ResourceService.Format("Format.TaskCompletedCopiedVerified", fileCount)
+            : ResourceService.Format("Format.CopyCompletedCopied", fileCount);
+    }
+
+    private readonly record struct HistoryProgressState(
+        bool TaskFinished,
+        bool CopyFinished,
+        bool VerificationFinished,
+        double CopyPercent,
+        double VerifyPercent);
 
     private void MultiSelectButton_Click(object sender, RoutedEventArgs e)
     {

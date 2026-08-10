@@ -246,6 +246,19 @@
   <data name="Settings.PackageInstallFailed" xml:space="preserve"><value>右键菜单组件安装失败：{0}</value></data>
   <data name="Settings.PackageInstallDidNotComplete" xml:space="preserve"><value>Windows 未报告安装完成。</value></data>
   <data name="Settings.ExplorerStatusRefreshed" xml:space="preserve"><value>证书和组件状态已刷新。</value></data>
+  <data name="Settings.PackageUninstallConfirmTitle" xml:space="preserve"><value>卸载右键菜单组件？</value></data>
+  <data name="Settings.PackageUninstallConfirmMessage" xml:space="preserve"><value>卸载后，ClipPort 将不再出现在文件资源管理器右键菜单中，其他复制与校验功能不受影响。之后仍可在此重新安装。</value></data>
+  <data name="Settings.CertificateUninstallConfirmTitle" xml:space="preserve"><value>卸载 ClipPort 签名证书？</value></data>
+  <data name="Settings.CertificateUninstallConfirmMessage" xml:space="preserve"><value>只会删除与当前发布目录证书指纹完全一致的证书。请先卸载右键菜单组件；删除本地计算机证书时，Windows 会请求管理员权限。</value></data>
+  <data name="Settings.UninstallPackageAction" xml:space="preserve"><value>卸载组件</value></data>
+  <data name="Settings.UninstallCertificateAction" xml:space="preserve"><value>卸载证书</value></data>
+  <data name="Settings.PackageUninstallSucceeded" xml:space="preserve"><value>右键菜单组件已卸载，功能开关也已关闭。</value></data>
+  <data name="Settings.PackageUninstallSucceededSiblingRemains" xml:space="preserve"><value>已卸载当前安装的右键菜单组件；其他 ClipPort 安装仍提供文件资源管理器右键菜单。</value></data>
+  <data name="Settings.PackageUninstallFailed" xml:space="preserve"><value>右键菜单组件卸载失败：{0}</value></data>
+  <data name="Settings.PackageUninstallDidNotComplete" xml:space="preserve"><value>Windows 仍报告该组件已安装。</value></data>
+  <data name="Settings.PackageUninstallSettingsSaveFailed" xml:space="preserve"><value>无法保存右键菜单的关闭状态，因此没有卸载组件：{0}</value></data>
+  <data name="Settings.CertificateUninstallSucceeded" xml:space="preserve"><value>ClipPort 签名证书已从证书存储中删除。</value></data>
+  <data name="Settings.CertificateUninstallFailed" xml:space="preserve"><value>签名证书卸载失败：{0}</value></data>
   <data name="Settings.LanguageAndFiles" xml:space="preserve"><value>语言与文件</value></data>
   <data name="Settings.Language" xml:space="preserve"><value>语言</value></data>
   <data name="Settings.LogPath" xml:space="preserve"><value>日志与报告默认保存位置</value></data>
@@ -315,9 +328,11 @@
   <data name="CertificateGuideStep8Refresh.Text" xml:space="preserve"><value>刷新状态</value></data>
   <data name="CertificateGuideStep8Suffix.Text" xml:space="preserve"><value>；确认页面提示证书已安装到本地计算机后，再继续安装组件。</value></data>
   <data name="InstallCertificateButton.Content" xml:space="preserve"><value>打开证书安装向导</value></data>
+  <data name="UninstallCertificateButton.Content" xml:space="preserve"><value>卸载证书</value></data>
   <data name="PackageInstallStepTitle.Text" xml:space="preserve"><value>2. 安装右键菜单组件</value></data>
   <data name="PackageInstallStepDesc.Text" xml:space="preserve"><value>证书安装正确后，点击右侧的“安装组件”，等待页面提示安装成功。</value></data>
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>安装组件</value></data>
+  <data name="UninstallShellPackageButton.Content" xml:space="preserve"><value>卸载组件</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>3. 开启右键菜单</value></data>
   <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件安装成功后，打开上方的“注册到文件资源管理器右键菜单”开关。再打开一个新的文件资源管理器窗口，右击文件夹或空白处进行测试。</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>刷新状态</value></data>

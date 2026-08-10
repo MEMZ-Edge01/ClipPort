@@ -4,6 +4,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.ComponentModel;
+using System.Diagnostics;
 
 namespace ClipPort;
 
@@ -36,6 +37,50 @@ public sealed partial class MainWindow
         AppLanguage requestedLanguage = requestedSettings.Language;
         AppLanguage previousLanguage = _previousLanguage;
         bool languageChanged = requestedLanguage != previousLanguage;
+        long? explorerOperationId = null;
+
+        if (languageChanged)
+        {
+            // Commit the pending language before any await so a concurrent
+            // settings change does not re-enter this path and roll back
+            // unrelated values; the old language is restored if saving fails.
+            _previousLanguage = requestedLanguage;
+        }
+
+        if (languageChanged && _appSettings.ExplorerContextMenuEnabled)
+        {
+            bool shouldDeferExplorerUpdate;
+            try
+            {
+                shouldDeferExplorerUpdate = _explorerContextMenuService
+                    .ShouldDeferExplorerSynchronization();
+            }
+            catch (Exception ex) when (
+                ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                    System.Runtime.InteropServices.COMException or ArgumentException or
+                    NotSupportedException)
+            {
+                ApplySettingsSnapshot(_lastSavedSettings);
+                _previousLanguage = previousLanguage;
+                SettingsPage.Initialize(_appSettings);
+                LogText.Text = ResourceService.Format(
+                    "Format.SettingsSaveFailed",
+                    ex.Message);
+                return;
+            }
+
+            if (!shouldDeferExplorerUpdate)
+            {
+                if (SettingsPage.TryBeginExplorerIntegrationOperation(
+                        out long operationId))
+                {
+                    explorerOperationId = operationId;
+                }
+                // When another Explorer operation is active, the language
+                // change is still persisted and its shared-menu update is
+                // deferred instead of discarding this settings change.
+            }
+        }
 
         _historyService.SetReportsDirectory(_appSettings.LogAndReportDirectory);
         _logService.SetDirectory(_appSettings.LogAndReportDirectory);
@@ -50,25 +95,33 @@ public sealed partial class MainWindow
             // A failed save must not leave the visible settings ahead of
             // what will actually be restored on the next launch.
             ApplySettingsSnapshot(_lastSavedSettings);
+            _previousLanguage = previousLanguage;
             _historyService.SetReportsDirectory(_appSettings.LogAndReportDirectory);
             _logService.SetDirectory(_appSettings.LogAndReportDirectory);
             SettingsPage.Initialize(_appSettings);
             ApplyTheme();
             LogText.Text = ResourceService.Format("Format.SettingsSaveFailed", ex.Message);
+            if (explorerOperationId is long operationId)
+            {
+                ApplyExplorerContextMenuStatus(
+                    _explorerContextMenuService.GetStatus(),
+                    completingOperationId: operationId);
+            }
             return;
         }
 
         _lastSavedSettings = requestedSettings;
         if (languageChanged)
         {
-            _previousLanguage = requestedLanguage;
-            if (_appSettings.ExplorerContextMenuEnabled)
+            if (explorerOperationId is long operationId)
             {
                 ExplorerContextMenuStatus contextMenuStatus =
                     await _explorerContextMenuService.SetEnabledAsync(
                         true,
                         requestedLanguage);
-                ApplyExplorerContextMenuStatus(contextMenuStatus);
+                ApplyExplorerContextMenuStatus(
+                    contextMenuStatus,
+                    completingOperationId: operationId);
             }
             await ShowLanguageRestartDialogAsync();
         }
@@ -103,7 +156,9 @@ public sealed partial class MainWindow
                 _appSettings.Language);
         if (status.ErrorMessage is not null || status.IsEnabled != e.Enabled)
         {
-            ApplyExplorerContextMenuStatus(status with { IsEnabled = previousEnabled });
+            ApplyExplorerContextMenuStatus(
+                status with { IsEnabled = previousEnabled },
+                completingOperationId: e.OperationId);
             return;
         }
 
@@ -112,7 +167,9 @@ public sealed partial class MainWindow
         {
             await App.SettingsService.SaveAsync(_appSettings);
             _lastSavedSettings = CloneSettings(_appSettings);
-            ApplyExplorerContextMenuStatus(status);
+            ApplyExplorerContextMenuStatus(
+                status,
+                completingOperationId: e.OperationId);
         }
         catch (Exception ex) when (
             ex is IOException or UnauthorizedAccessException)
@@ -122,33 +179,50 @@ public sealed partial class MainWindow
                 await _explorerContextMenuService.SetEnabledAsync(
                     previousEnabled,
                     _appSettings.Language);
-            ApplyExplorerContextMenuStatus(rollbackStatus with
-            {
-                ErrorMessage = ex.Message
-            });
+            ApplyExplorerContextMenuStatus(
+                rollbackStatus with
+                {
+                    ErrorMessage = ex.Message
+                },
+                completingOperationId: e.OperationId);
         }
     }
 
     private async Task SynchronizeExplorerContextMenuAsync()
     {
+        if (!SettingsPage.TryBeginExplorerIntegrationOperation(
+                out long operationId))
+        {
+            // A user-started maintenance action already owns the same package
+            // and certificate state, so startup synchronization must not race it.
+            return;
+        }
+
         ExplorerContextMenuStatus status =
             await _explorerContextMenuService.SynchronizeAsync(_appSettings);
-        ApplyExplorerContextMenuStatus(status);
+        ApplyExplorerContextMenuStatus(
+            status,
+            completingOperationId: operationId);
     }
 
     private void RefreshExplorerContextMenuStatus() =>
         ApplyExplorerContextMenuStatus(_explorerContextMenuService.GetStatus());
 
-    private void SettingsPage_InstallExplorerCertificateRequested(
+    private async void SettingsPage_InstallExplorerCertificateRequested(
         object? sender,
-        EventArgs e)
+        Views.ExplorerIntegrationOperationRequestedEventArgs e)
     {
         try
         {
-            _explorerContextMenuService.OpenCertificateInstaller();
+            Process installerProcess =
+                _explorerContextMenuService.OpenCertificateInstaller();
+            SettingsPage.SetExplorerIntegrationOperationStatus(
+                ResourceService.GetString("Settings.CertificateWizardOpened"));
+            await CertificateInstallerWorkflow.WaitForExitAsync(installerProcess);
             ApplyExplorerContextMenuStatus(
                 _explorerContextMenuService.GetStatus(),
-                ResourceService.GetString("Settings.CertificateWizardOpened"));
+                ResourceService.GetString("Settings.ExplorerStatusRefreshed"),
+                e.OperationId);
         }
         catch (Exception ex) when (
             ex is InvalidOperationException or Win32Exception)
@@ -157,13 +231,14 @@ public sealed partial class MainWindow
                 _explorerContextMenuService.GetStatus(),
                 ResourceService.Format(
                     "Settings.CertificateOpenFailed",
-                    ex.Message));
+                    ex.Message),
+                e.OperationId);
         }
     }
 
     private async void SettingsPage_InstallExplorerPackageRequested(
         object? sender,
-        EventArgs e)
+        Views.ExplorerIntegrationOperationRequestedEventArgs e)
     {
         ExplorerContextMenuStatus status =
             await _explorerContextMenuService.InstallPackageAsync();
@@ -173,21 +248,162 @@ public sealed partial class MainWindow
                 "Settings.PackageInstallFailed",
                 status.ErrorMessage ??
                     ResourceService.GetString("Settings.PackageInstallDidNotComplete"));
-        ApplyExplorerContextMenuStatus(status, operationStatus);
+        ApplyExplorerContextMenuStatus(
+            status,
+            operationStatus,
+            e.OperationId);
+    }
+
+    private async void SettingsPage_UninstallExplorerPackageRequested(
+        object? sender,
+        Views.ExplorerIntegrationOperationRequestedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = ResourceService.GetString("Settings.PackageUninstallConfirmTitle"),
+            Content = ResourceService.GetString("Settings.PackageUninstallConfirmMessage"),
+            PrimaryButtonText = ResourceService.GetString("Settings.UninstallPackageAction"),
+            CloseButtonText = ResourceService.GetString("Common.Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = Content.XamlRoot
+        };
+        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
+        {
+            ApplyExplorerContextMenuStatus(
+                _explorerContextMenuService.GetStatus(),
+                completingOperationId: e.OperationId);
+            return;
+        }
+
+        bool disableSavedSettingBeforeUninstall;
+        try
+        {
+            disableSavedSettingBeforeUninstall = _explorerContextMenuService
+                .ShouldDisableSavedSettingBeforePackageRemoval();
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                System.Runtime.InteropServices.COMException)
+        {
+            ExplorerContextMenuStatus preparationStatus =
+                _explorerContextMenuService.GetStatus() with
+                {
+                    ErrorMessage = ex.Message
+                };
+            ApplyExplorerContextMenuStatus(
+                preparationStatus,
+                ResourceService.Format(
+                    "Settings.PackageUninstallFailed",
+                    ex.Message),
+                e.OperationId);
+            return;
+        }
+
+        ExplorerIntegrationUninstallResult<ExplorerContextMenuStatus> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                _appSettings,
+                disableSavedSettingBeforeUninstall,
+                settings => App.SettingsService.SaveAsync(settings),
+                () => _explorerContextMenuService.UninstallPackageAsync());
+        if (result.SettingsSaveError is not null)
+        {
+            ApplyExplorerContextMenuStatus(
+                _explorerContextMenuService.GetStatus(),
+                ResourceService.Format(
+                    "Settings.PackageUninstallSettingsSaveFailed",
+                    result.SettingsSaveError.Message),
+                e.OperationId);
+            return;
+        }
+
+        _lastSavedSettings = CloneSettings(_appSettings);
+        ExplorerContextMenuStatus status = result.OperationResult ??
+            _explorerContextMenuService.GetStatus();
+        string operationStatus;
+        if (!status.IsPackageRegistered && status.ErrorMessage is null)
+        {
+            operationStatus = ResourceService.GetString(
+                disableSavedSettingBeforeUninstall
+                    ? "Settings.PackageUninstallSucceeded"
+                    : "Settings.PackageUninstallSucceededSiblingRemains");
+        }
+        else
+        {
+            operationStatus = ResourceService.Format(
+                "Settings.PackageUninstallFailed",
+                status.ErrorMessage ??
+                    ResourceService.GetString(
+                        "Settings.PackageUninstallDidNotComplete"));
+        }
+
+        ApplyExplorerContextMenuStatus(
+            status,
+            operationStatus,
+            e.OperationId);
+    }
+
+    private async void SettingsPage_UninstallExplorerCertificateRequested(
+        object? sender,
+        Views.ExplorerIntegrationOperationRequestedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = ResourceService.GetString(
+                "Settings.CertificateUninstallConfirmTitle"),
+            Content = ResourceService.GetString(
+                "Settings.CertificateUninstallConfirmMessage"),
+            PrimaryButtonText = ResourceService.GetString(
+                "Settings.UninstallCertificateAction"),
+            CloseButtonText = ResourceService.GetString("Common.Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = Content.XamlRoot
+        };
+        if (await ShowLocalizedDialogAsync(dialog) != ContentDialogResult.Primary)
+        {
+            ApplyExplorerContextMenuStatus(
+                _explorerContextMenuService.GetStatus(),
+                completingOperationId: e.OperationId);
+            return;
+        }
+
+        ExplorerContextMenuStatus status =
+            await _explorerContextMenuService.UninstallCertificateAsync();
+        string operationStatus = status.ErrorMessage is null
+            ? ResourceService.GetString("Settings.CertificateUninstallSucceeded")
+            : ResourceService.Format(
+                "Settings.CertificateUninstallFailed",
+                status.ErrorMessage);
+        ApplyExplorerContextMenuStatus(
+            status,
+            operationStatus,
+            e.OperationId);
     }
 
     private void SettingsPage_RefreshExplorerIntegrationRequested(
         object? sender,
-        EventArgs e) =>
+        Views.ExplorerIntegrationOperationRequestedEventArgs e) =>
         ApplyExplorerContextMenuStatus(
             _explorerContextMenuService.GetStatus(),
-            ResourceService.GetString("Settings.ExplorerStatusRefreshed"));
+            ResourceService.GetString("Settings.ExplorerStatusRefreshed"),
+            e.OperationId);
 
     private void ApplyExplorerContextMenuStatus(
         ExplorerContextMenuStatus status,
-        string? operationStatus = null)
+        string? operationStatus = null,
+        long? completingOperationId = null)
     {
-        string statusText = !status.IsSupported
+        SettingsPage.SetExplorerContextMenuState(
+            status,
+            GetExplorerMenuStatusText(status),
+            GetExplorerCertificateStatusText(status),
+            GetExplorerPackageStatusText(status),
+            operationStatus,
+            completingOperationId);
+    }
+
+    private static string GetExplorerMenuStatusText(
+        ExplorerContextMenuStatus status) =>
+        !status.IsSupported
             ? ResourceService.GetString("Settings.ExplorerMenuUnsupported")
             : status.ErrorMessage is not null
                 ? ResourceService.Format(
@@ -199,6 +415,9 @@ public sealed partial class MainWindow
                         ? ResourceService.GetString("Settings.ExplorerMenuInstalledDisabled")
                         : ResourceService.GetString("Settings.ExplorerMenuDisabled");
 
+    private static string GetExplorerCertificateStatusText(
+        ExplorerContextMenuStatus status)
+    {
         string certificateStatus = status.CertificateErrorMessage is not null
             ? ResourceService.Format(
                 "Settings.ExplorerCertificateInvalid",
@@ -223,19 +442,16 @@ public sealed partial class MainWindow
                 status.CertificateThumbprint);
         }
 
-        string packageStatus = status.IsPackageRegistered
+        return certificateStatus;
+    }
+
+    private static string GetExplorerPackageStatusText(
+        ExplorerContextMenuStatus status) =>
+        status.IsPackageRegistered
             ? ResourceService.GetString("Settings.ExplorerPackageInstalled")
             : status.IsPackageFileAvailable
                 ? ResourceService.GetString("Settings.ExplorerPackageReady")
                 : ResourceService.GetString("Settings.ExplorerPackageMissing");
-
-        SettingsPage.SetExplorerContextMenuState(
-            status,
-            statusText,
-            certificateStatus,
-            packageStatus,
-            operationStatus);
-    }
 
     private async Task ShowLanguageRestartDialogAsync()
     {
