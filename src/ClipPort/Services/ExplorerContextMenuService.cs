@@ -418,13 +418,7 @@ public sealed class ExplorerContextMenuService
 
         try
         {
-            var packageManager = new PackageManager();
-            if (ExplorerContextMenuConfigurationPolicy
-                .ShouldDeferSynchronizationToConfigurationOwner(
-                    ReadExplorerContextMenuConfiguration(),
-                    GetPackageRegistrations(packageManager),
-                    PackageIdentityName,
-                    AppContext.BaseDirectory))
+            if (ShouldDeferExplorerSynchronization())
             {
                 // Another registered ClipPort copy owns the shared shell menu.
                 // Startup must not reinstall this copy or overwrite that owner.
@@ -446,6 +440,22 @@ public sealed class ExplorerContextMenuService
         return await SetEnabledAsync(
             settings.ExplorerContextMenuEnabled,
             settings.Language);
+    }
+
+    public bool ShouldDeferExplorerSynchronization()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return false;
+        }
+
+        var packageManager = new PackageManager();
+        return ExplorerContextMenuConfigurationPolicy
+            .ShouldDeferSynchronizationToConfigurationOwner(
+                ReadExplorerContextMenuConfiguration(),
+                GetPackageRegistrations(packageManager),
+                PackageIdentityName,
+                AppContext.BaseDirectory);
     }
 
     private static bool IsPackageRegisteredSafe()

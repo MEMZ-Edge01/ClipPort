@@ -41,17 +41,39 @@ public sealed partial class MainWindow
 
         if (languageChanged && _appSettings.ExplorerContextMenuEnabled)
         {
-            if (!SettingsPage.TryBeginExplorerIntegrationOperation(
-                    out long operationId))
+            bool shouldDeferExplorerUpdate;
+            try
             {
-                // A package or certificate operation already owns the shared
-                // shell state, so this language change cannot safely update it.
+                shouldDeferExplorerUpdate = _explorerContextMenuService
+                    .ShouldDeferExplorerSynchronization();
+            }
+            catch (Exception ex) when (
+                ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                    System.Runtime.InteropServices.COMException or ArgumentException or
+                    NotSupportedException)
+            {
                 ApplySettingsSnapshot(_lastSavedSettings);
                 SettingsPage.Initialize(_appSettings);
+                LogText.Text = ResourceService.Format(
+                    "Format.SettingsSaveFailed",
+                    ex.Message);
                 return;
             }
 
-            explorerOperationId = operationId;
+            if (!shouldDeferExplorerUpdate)
+            {
+                if (!SettingsPage.TryBeginExplorerIntegrationOperation(
+                        out long operationId))
+                {
+                    // A package or certificate operation already owns the shared
+                    // shell state, so this language change cannot safely update it.
+                    ApplySettingsSnapshot(_lastSavedSettings);
+                    SettingsPage.Initialize(_appSettings);
+                    return;
+                }
+
+                explorerOperationId = operationId;
+            }
         }
 
         _historyService.SetReportsDirectory(_appSettings.LogAndReportDirectory);
@@ -85,7 +107,7 @@ public sealed partial class MainWindow
         if (languageChanged)
         {
             _previousLanguage = requestedLanguage;
-            if (_appSettings.ExplorerContextMenuEnabled)
+            if (explorerOperationId is long operationId)
             {
                 ExplorerContextMenuStatus contextMenuStatus =
                     await _explorerContextMenuService.SetEnabledAsync(
@@ -93,7 +115,7 @@ public sealed partial class MainWindow
                         requestedLanguage);
                 ApplyExplorerContextMenuStatus(
                     contextMenuStatus,
-                    completingOperationId: explorerOperationId);
+                    completingOperationId: operationId);
             }
             await ShowLanguageRestartDialogAsync();
         }

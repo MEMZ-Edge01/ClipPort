@@ -146,13 +146,24 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
             return false;
         }
 
-        string normalizedLeft = Path.TrimEndingDirectorySeparator(
-            Path.GetFullPath(left));
-        string normalizedRight = Path.TrimEndingDirectorySeparator(
-            Path.GetFullPath(right));
-        return string.Equals(
-            normalizedLeft,
-            normalizedRight,
-            StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            string normalizedLeft = Path.TrimEndingDirectorySeparator(
+                Path.GetFullPath(left));
+            string normalizedRight = Path.TrimEndingDirectorySeparator(
+                Path.GetFullPath(right));
+            return string.Equals(
+                normalizedLeft,
+                normalizedRight,
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (
+            ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            // A malformed stored path cannot identify a real registration.
+            // Compare as absent so maintenance reports a status instead of
+            // escaping the operation boundary.
+            return false;
+        }
     }
 }

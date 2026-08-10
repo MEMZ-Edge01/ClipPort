@@ -434,6 +434,15 @@ internal static class Program
                     testDirectory);
             Assert(unrelatedIdentity is null,
                 "A same-name package bound to another application directory must not block certificate removal.");
+
+            Assert(!ExplorerPackageIdentity.ExternalPathsEqual(
+                    "C:\\ClipPort\\bad<path",
+                    "C:\\ClipPort"),
+                "A malformed stored path must compare safely instead of crashing maintenance.");
+            Assert(ExplorerPackageIdentity.ExternalPathsEqual(
+                    "C:\\ClipPort\\",
+                    "C:\\ClipPort"),
+                "Normalized equal paths should still compare as equal.");
         }
         finally
         {
@@ -548,6 +557,12 @@ internal static class Program
                 packageName,
                 "C:\\ClipPort"),
             "A stale shared configuration should still be disabled before the last package is removed.");
+        Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
+                configuration with { InstallDirectory = "C:\\bad<path" },
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort"),
+            "A malformed shared configuration should still disable the live menu before removal.");
 
         ExplorerContextMenuConfiguration? reconciled =
             ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
@@ -556,6 +571,12 @@ internal static class Program
                 packageName);
         Assert(reconciled == configuration with { InstallDirectory = "D:\\ClipPort" },
             "After removing the configured package, shared state should move to a remaining registration without changing its enabled state or language.");
+        reconciled = ExplorerContextMenuConfigurationPolicy.ReconcileAfterRemoval(
+            configuration with { InstallDirectory = "C:\\bad<path" },
+            siblingRegistrations,
+            packageName);
+        Assert(reconciled == configuration with { InstallDirectory = "D:\\ClipPort" },
+            "A malformed stored path should fall back to a remaining registration instead of crashing.");
 
         var siblingConfiguration = configuration with
         {
