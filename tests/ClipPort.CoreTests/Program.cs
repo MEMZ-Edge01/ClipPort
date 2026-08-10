@@ -317,6 +317,23 @@ internal static class Program
                     "CN=ClipPort Development"),
                 "A certificate identity must not match a same-name package from another publisher.");
 
+            File.WriteAllText(looseManifestPath, manifest);
+            ExplorerPackageIdentity preferredPackageIdentity =
+                ExplorerPackageIdentity.Resolve(
+                    Path.Combine(testDirectory, "missing.msix"),
+                    looseManifestPath,
+                    certificatePath,
+                    "MEMZEdge01.ClipPort.ShellIntegration");
+            ExplorerPackageIdentity certificateRemovalIdentity =
+                ExplorerPackageIdentity.FromCertificate(
+                    "MEMZEdge01.ClipPort.ShellIntegration",
+                    certificate);
+            Assert(preferredPackageIdentity == identity,
+                "Package maintenance should continue to prefer the loose development registration.");
+            Assert(certificateRemovalIdentity == certificateIdentity,
+                "Certificate removal must use the certificate publisher even when a loose development manifest remains.");
+            File.Delete(looseManifestPath);
+
             string malformedCertificatePath = Path.Combine(
                 testDirectory,
                 "malformed.cer");

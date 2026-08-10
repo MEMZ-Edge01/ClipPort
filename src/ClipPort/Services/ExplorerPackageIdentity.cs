@@ -96,12 +96,17 @@ public sealed record ExplorerPackageIdentity(string Name, string Publisher)
         if (File.Exists(certificatePath))
         {
             using var certificate = new X509Certificate2(certificatePath);
-            return new ExplorerPackageIdentity(expectedPackageName, certificate.Subject);
+            return FromCertificate(expectedPackageName, certificate);
         }
 
         throw new FileNotFoundException(
             "No shell integration package, development manifest, or certificate is available to identify the registered publisher.");
     }
+
+    public static ExplorerPackageIdentity FromCertificate(
+        string expectedPackageName,
+        X509Certificate2 certificate) =>
+        new(expectedPackageName, certificate.Subject);
 
     public static ExplorerPackageIdentity? FindRegisteredForExternalPath(
         IEnumerable<ExplorerPackageRegistration> registrations,

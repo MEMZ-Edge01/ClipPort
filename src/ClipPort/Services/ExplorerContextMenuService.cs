@@ -213,15 +213,6 @@ public sealed class ExplorerContextMenuService
 
         try
         {
-            var packageManager = new PackageManager();
-            ExplorerPackageIdentity packageIdentity =
-                ReadAvailablePackageIdentity(packageManager);
-            if (IsPackageRegisteredForAnyExternalPath(packageIdentity))
-            {
-                throw new InvalidOperationException(
-                    "Uninstall the shell integration package before removing its certificate.");
-            }
-
             string certificatePath = GetCertificatePath();
             if (!File.Exists(certificatePath))
             {
@@ -230,6 +221,16 @@ public sealed class ExplorerContextMenuService
             }
 
             using var certificate = new X509Certificate2(certificatePath);
+            ExplorerPackageIdentity certificateIdentity =
+                ExplorerPackageIdentity.FromCertificate(
+                    PackageIdentityName,
+                    certificate);
+            if (IsPackageRegisteredForAnyExternalPath(certificateIdentity))
+            {
+                throw new InvalidOperationException(
+                    "Uninstall the shell integration package before removing its certificate.");
+            }
+
             List<CertificateStoreTarget> targets = FindCertificateStoreTargets(
                 certificate.Thumbprint);
 
