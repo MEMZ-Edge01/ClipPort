@@ -165,7 +165,8 @@ public sealed class ExplorerContextMenuService
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
-                System.Runtime.InteropServices.COMException or InvalidDataException)
+                System.Runtime.InteropServices.COMException or InvalidDataException or
+                CryptographicException)
         {
             bool packageRegistered = IsPackageRegisteredSafe();
             return CreateStatus(
@@ -631,8 +632,12 @@ public sealed class ExplorerContextMenuService
                 thumbprint = certificate.Thumbprint;
                 trustScope = GetTrustScope(certificate);
             }
-            catch (CryptographicException ex)
+            catch (Exception ex) when (
+                ex is CryptographicException or UnauthorizedAccessException or
+                    IOException or InvalidOperationException)
             {
+                // A failing store must be reported through the status instead
+                // of re-enumerated by the caller's error handling.
                 certificateErrorMessage = ex.Message;
             }
         }
