@@ -130,7 +130,7 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     [JsonIgnore]
     public string StatusText => Status == JobStatus.CompletedWithErrors ? "Result.CompletedWithErrors" : Status switch
     {
-        JobStatus.Queued => IsPriority ? "Status.PriorityTaskStarting" : "Status.Queued",
+        JobStatus.Queued => "Status.Queued",
         JobStatus.Running => CopyEnabled ? "Status.Copying" : "Status.Verifying",
         JobStatus.Completed => CopyEnabled && VerificationEnabled
             ? "Result.TaskCompleted"

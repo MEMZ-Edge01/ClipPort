@@ -54,7 +54,7 @@ internal static class Program
             ("history retention protects active jobs", TestHistoryRetentionProtectsActiveJobsAsync),
             ("legacy failure reasons normalize", TestLegacyFailureReasonNormalizationAsync),
             ("retry results preserve warnings", TestRetryResultWarningsAsync),
-            ("priority jobs gate ordinary jobs", TestPrioritySchedulerAsync)
+            ("tasks run serially with priority at the front of the queue", TestPrioritySchedulerAsync)
         };
 
         foreach (var test in tests)
@@ -1505,36 +1505,81 @@ internal static class Program
     private static async Task TestPrioritySchedulerAsync()
     {
         var scheduler = new CopyJobScheduler();
+
+        // 空队列时第一个任务立即获得执行权，其余任务排队等待。
         using CopyJobScheduler.CopyJobScheduleRegistration firstOrdinary = scheduler.Register(false);
         using CopyJobScheduler.CopyJobScheduleRegistration secondOrdinary = scheduler.Register(false);
+        using CopyJobScheduler.CopyJobScheduleRegistration thirdOrdinary = scheduler.Register(false);
 
-        await Task.WhenAll(
-            scheduler.WaitForTurnAsync(false),
-            scheduler.WaitForTurnAsync(false)).WaitAsync(TimeSpan.FromSeconds(1));
+        Task firstOrdinaryTurn = scheduler.WaitForTurnAsync(firstOrdinary);
+        Task secondOrdinaryTurn = scheduler.WaitForTurnAsync(secondOrdinary);
+        Task thirdOrdinaryTurn = scheduler.WaitForTurnAsync(thirdOrdinary);
 
+        Assert(firstOrdinaryTurn.IsCompletedSuccessfully,
+            "The first task should start immediately when the queue is empty.");
+        Assert(!secondOrdinaryTurn.IsCompleted && !thirdOrdinaryTurn.IsCompleted,
+            "Later tasks must wait while an earlier task is active.");
+        Assert(scheduler.WaitingCount == 2 && scheduler.HasActiveJob,
+            "Two tasks should be queued while one is active.");
+
+        // 后到的优先任务必须插到普通任务前面。
         CopyJobScheduler.CopyJobScheduleRegistration firstPriority = scheduler.Register(true);
-        CopyJobScheduler.CopyJobScheduleRegistration secondPriority = scheduler.Register(true);
-        await Task.WhenAll(
-            scheduler.WaitForTurnAsync(true),
-            scheduler.WaitForTurnAsync(true)).WaitAsync(TimeSpan.FromSeconds(1));
+        Task firstPriorityTurn = scheduler.WaitForTurnAsync(firstPriority);
+        Assert(!firstPriorityTurn.IsCompleted,
+            "A priority task must wait for the active task to finish.");
+        Assert(scheduler.GetWaitingPosition(firstPriority) == 0,
+            "The priority task should queue ahead of ordinary tasks.");
+        Assert(scheduler.GetWaitingPosition(secondOrdinary) == 1,
+            "Ordinary tasks should see the priority task ahead of them.");
 
-        Task waitingOrdinary = scheduler.WaitForTurnAsync(false);
-        await Task.Delay(50);
-        Assert(!waitingOrdinary.IsCompleted,
-            "An ordinary job must wait while priority jobs are active.");
+        // 多个优先任务之间保持先来先执行。
+        CopyJobScheduler.CopyJobScheduleRegistration secondPriority = scheduler.Register(true);
+        Task secondPriorityTurn = scheduler.WaitForTurnAsync(secondPriority);
+        Assert(scheduler.GetWaitingPosition(firstPriority) == 0 &&
+               scheduler.GetWaitingPosition(secondPriority) == 1,
+            "Priority tasks should preserve arrival order among themselves.");
+
+        firstOrdinary.Dispose();
+        await firstPriorityTurn.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(firstPriorityTurn.IsCompletedSuccessfully &&
+               !secondOrdinaryTurn.IsCompleted && !thirdOrdinaryTurn.IsCompleted,
+            "The priority task should run before ordinary tasks once the active task finishes.");
+        Assert(scheduler.GetWaitingPosition(secondPriority) == 0,
+            "The second priority task should move to the front of the queue.");
+
+        // 取消一个排队中的任务应当把它从队列移除。
+        using CopyJobScheduler.CopyJobScheduleRegistration cancelledOrdinary = scheduler.Register(false);
+        Task cancelledOrdinaryTurn = scheduler.WaitForTurnAsync(cancelledOrdinary);
+        Assert(scheduler.GetWaitingPosition(cancelledOrdinary) == 3,
+            "The task should join the queue behind the priority and ordinary tasks.");
+        cancelledOrdinary.Dispose();
+        try
+        {
+            await cancelledOrdinaryTurn.WaitAsync(TimeSpan.FromSeconds(1));
+            throw new InvalidOperationException(
+                "A task removed from the queue should not start.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected: removing a queued task cancels its waiting turn.
+        }
+        Assert(scheduler.GetWaitingPosition(secondOrdinary) == 1,
+            "Removing a queued task should close the gap behind it.");
 
         firstPriority.Dispose();
-        await Task.Delay(50);
-        Assert(!waitingOrdinary.IsCompleted,
-            "An ordinary job must wait until every priority job finishes.");
-
+        await secondPriorityTurn.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(secondPriorityTurn.IsCompletedSuccessfully &&
+               !secondOrdinaryTurn.IsCompleted && !thirdOrdinaryTurn.IsCompleted,
+            "The second priority task should run next, before ordinary tasks.");
         secondPriority.Dispose();
-        await waitingOrdinary.WaitAsync(TimeSpan.FromSeconds(1));
-        Assert(!scheduler.HasActivePriorityJobs,
-            "The priority gate should reopen after the last priority job finishes.");
 
-        using CopyJobScheduler.CopyJobScheduleRegistration laterOrdinary = scheduler.Register(false);
-        await scheduler.WaitForTurnAsync(false).WaitAsync(TimeSpan.FromSeconds(1));
+        await secondOrdinaryTurn.WaitAsync(TimeSpan.FromSeconds(1));
+        secondOrdinary.Dispose();
+        await thirdOrdinaryTurn.WaitAsync(TimeSpan.FromSeconds(1));
+        thirdOrdinary.Dispose();
+
+        Assert(scheduler.WaitingCount == 0 && !scheduler.HasActiveJob,
+            "The scheduler should return to an idle state after all tasks finish.");
     }
 
     private static Task TestPathSafetyAsync()

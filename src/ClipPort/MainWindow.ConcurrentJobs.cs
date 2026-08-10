@@ -178,7 +178,7 @@ public sealed partial class MainWindow
     {
         try
         {
-            await WaitForJobPermissionAsync(runtime, runtime.Cancellation.Token);
+            await WaitForQueueTurnAsync(runtime, runtime.Cancellation.Token);
             runtime.Job.Status = JobStatus.Running;
             RefreshHistoryItem(runtime.Job);
             await SaveHistorySafeAsync();
@@ -194,7 +194,7 @@ public sealed partial class MainWindow
                 progress,
                 duplicateProgress,
                 (conflicts, token) => WaitForJobDuplicateChoicesAsync(runtime, conflicts, token),
-                token => WaitForJobPermissionAsync(runtime, token),
+                token => WaitWhilePausedAsync(runtime, token),
                 runtime.Cancellation.Token);
 
             runtime.Result = result;
@@ -228,7 +228,6 @@ public sealed partial class MainWindow
             runtime.ScheduleRegistration?.Dispose();
             runtime.ScheduleRegistration = null;
             runtime.Cancellation.Dispose();
-            runtime.IsWaitingForPriority = false;
             _jobRuntimes.Remove(runtime.Job.Id);
             bool historyTrimmed = TrimHistory();
             UpdateSleepPreventionState();
@@ -301,13 +300,13 @@ public sealed partial class MainWindow
                         action.Failures,
                         runtime.Options,
                         retryProgress,
-                        token => WaitForJobPermissionAsync(runtime, token),
+                        token => WaitWhilePausedAsync(runtime, token),
                         cancellationToken)
                     : await _copyService.RetryFailedFilesAsync(
                         action.Failures,
                         runtime.Options,
                         retryProgress,
-                        token => WaitForJobPermissionAsync(runtime, token),
+                        token => WaitWhilePausedAsync(runtime, token),
                         cancellationToken);
                 EndThroughputInterval(runtime, runtime.RetryProgress?.Phase, null);
                 retryCopyDuration += retryResult.CopyDuration;
@@ -400,26 +399,28 @@ public sealed partial class MainWindow
         }
     }
 
-    private async Task WaitForJobPermissionAsync(CopyJobRuntime runtime, CancellationToken cancellationToken)
+    private async Task WaitForQueueTurnAsync(
+        CopyJobRuntime runtime,
+        CancellationToken cancellationToken)
     {
-        while (true)
+        while (runtime.IsPaused)
         {
-            while (runtime.IsPaused)
-            {
-                await Task.Delay(120, cancellationToken);
-            }
+            await Task.Delay(120, cancellationToken);
+        }
 
-            bool mustWaitForPriority = !runtime.Job.IsPriority && _jobScheduler.HasActivePriorityJobs;
-            runtime.IsWaitingForPriority = mustWaitForPriority;
-            RefreshSelectedRuntime();
-            if (!mustWaitForPriority)
-            {
-                return;
-            }
+        // 每个任务只在开始时申请一次队列执行权；执行期间的检查点只处理暂停。
+        await _jobScheduler.WaitForTurnAsync(
+            runtime.ScheduleRegistration!,
+            cancellationToken);
+    }
 
-            await _jobScheduler.WaitForTurnAsync(false, cancellationToken);
-            runtime.IsWaitingForPriority = false;
-            RefreshSelectedRuntime();
+    private async Task WaitWhilePausedAsync(
+        CopyJobRuntime runtime,
+        CancellationToken cancellationToken)
+    {
+        while (runtime.IsPaused)
+        {
+            await Task.Delay(120, cancellationToken);
         }
     }
 
@@ -784,18 +785,22 @@ public sealed partial class MainWindow
             PhaseText.Text = ResourceService.GetString("Info.WaitingToResume");
             LogText.Text = ResourceService.GetString("Info.TaskPaused");
         }
-        else if (runtime.IsWaitingForPriority)
-        {
-            StatusText.Text = ResourceService.GetString("Status.WaitingPriorityTasks");
-            PhaseText.Text = ResourceService.GetString("Info.AutoResumeAfterPriority");
-            LogText.Text = ResourceService.GetString("Info.TaskSafelyPaused");
-        }
         else if (job.Status == JobStatus.Queued)
         {
-            StatusText.Text = ResourceService.GetString(
-                job.IsPriority ? "Status.PriorityTaskStarting" : "Status.Queued");
+            StatusText.Text = ResourceService.GetString("Status.Queued");
             PhaseText.Text = ResourceService.GetString("Status.TaskStarting");
-            LogText.Text = ResourceService.GetString("Info.TasksRunningConcurrently");
+            int waitingAhead = _jobScheduler.GetWaitingPosition(
+                runtime.ScheduleRegistration!);
+            LogText.Text = waitingAhead > 0
+                ? ResourceService.Format(
+                    job.IsPriority
+                        ? "Info.PriorityTaskQueuedAhead"
+                        : "Info.TaskQueuedAhead",
+                    waitingAhead.ToString(CultureInfo.InvariantCulture))
+                : ResourceService.GetString(
+                    job.IsPriority
+                        ? "Info.PriorityTaskQueued"
+                        : "Info.TaskQueued");
         }
         else
         {
@@ -813,11 +818,11 @@ public sealed partial class MainWindow
                 CopyPhase.Copying => ResourceService.GetString("Status.CopyingFiles"),
                 CopyPhase.Verifying => ResourceService.GetString("Status.SHA256Verification"),
                 CopyPhase.WaitingForDuplicateDecision => ResourceService.GetString("Info.ChooseActionBelow"),
-                _ => job.IsPriority ? ResourceService.GetString("Status.PriorityTaskStarting") : ResourceService.GetString("Status.TaskStarting")
+                _ => ResourceService.GetString("Status.TaskStarting")
             };
             LogText.Text = job.IsPriority
-                ? ResourceService.GetString("Info.PriorityTasksRunning")
-                : ResourceService.GetString("Info.TasksRunningConcurrently");
+                ? ResourceService.GetString("Info.PriorityTaskRunning")
+                : ResourceService.GetString("Info.TaskRunning");
         }
         ShowRuntimeDuplicateChoices(runtime);
         ShowRuntimeFailedFiles(runtime);
@@ -1454,7 +1459,6 @@ public sealed partial class MainWindow
         public CopyProgressInfo? LastProgress { get; set; }
         public CopyResult? Result { get; set; }
         public bool IsPaused { get; set; }
-        public bool IsWaitingForPriority { get; set; }
         public long CopiedBytes { get; set; }
         public long ProcessedCopyBytes { get; set; }
         public int ProcessedCopyFiles { get; set; }

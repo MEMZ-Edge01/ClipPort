@@ -58,9 +58,7 @@
   <data name="Status.Cancelling" xml:space="preserve"><value>Cancelling</value></data>
   <data name="Status.Paused" xml:space="preserve"><value>Paused</value></data>
   <data name="Status.ProcessingResumed" xml:space="preserve"><value>Processing resumed</value></data>
-  <data name="Status.WaitingPriorityTasks" xml:space="preserve"><value>Waiting for priority tasks</value></data>
   <data name="Status.Preparing" xml:space="preserve"><value>Preparing</value></data>
-  <data name="Status.PriorityTaskStarting" xml:space="preserve"><value>Priority task is about to start</value></data>
   <data name="Status.TaskStarting" xml:space="preserve"><value>Task is about to start</value></data>
   <data name="Status.OverwritingMismatched" xml:space="preserve"><value>Overwriting mismatched files</value></data>
   <data name="Status.RetryingFailedFiles" xml:space="preserve"><value>Retrying failed files</value></data>
@@ -79,10 +77,12 @@
   <data name="Info.ChooseActionPerFile" xml:space="preserve"><value>Choose an action for every duplicate file</value></data>
   <data name="Info.ChooseActionEach" xml:space="preserve"><value>Choose an action for each file</value></data>
   <data name="Info.OtherFilesContinue" xml:space="preserve"><value>Other files continue copying and verification. Complete every choice below to continue processing duplicates.</value></data>
-  <data name="Info.PriorityTasksRunning" xml:space="preserve"><value>A priority task is running; ordinary tasks will wait at safe checkpoints.</value></data>
-  <data name="Info.TasksRunningConcurrently" xml:space="preserve"><value>Tasks are running concurrently.</value></data>
-  <data name="Info.TaskSafelyPaused" xml:space="preserve"><value>This task is safely paused and will resume after all priority tasks finish.</value></data>
-  <data name="Info.AutoResumeAfterPriority" xml:space="preserve"><value>Will resume after priority tasks finish</value></data>
+  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>The priority task is at the front of the queue and will run before ordinary tasks.</value></data>
+  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>The priority task is at the front of the queue with {0} task(s) ahead.</value></data>
+  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>The priority task is running; queued tasks will wait in turn.</value></data>
+  <data name="Info.TaskQueued" xml:space="preserve"><value>The task has joined the queue and will start automatically after the current task finishes.</value></data>
+  <data name="Info.TaskQueuedAhead" xml:space="preserve"><value>The task has joined the queue with {0} task(s) ahead.</value></data>
+  <data name="Info.TaskRunning" xml:space="preserve"><value>The current task is running; queued tasks will wait in turn.</value></data>
   <data name="Info.WaitingToResume" xml:space="preserve"><value>Waiting to resume</value></data>
   <data name="Info.TaskPaused" xml:space="preserve"><value>Task paused.</value></data>
   <data name="Info.TaskResumed" xml:space="preserve"><value>Task resumed.</value></data>
@@ -230,14 +230,14 @@
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>Not currently registered in the File Explorer context menu.</value></data>
   <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>The context-menu component is installed, but the feature is currently turned off.</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>Failed to update the context menu: {0}</value></data>
-  <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>No separate certificate file is included. A package with a publicly trusted signature can normally be installed directly.</value></data>
+  <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>The certificate file (ClipPort.ShellIntegration.cer) is missing from the release directory and no ClipPort certificate was found in the system stores. Use a complete release package to install the certificate.</value></data>
   <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>The certificate file could not be read: {0}</value></data>
   <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>The certificate is not installed yet. Follow every step below.</value></data>
   <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>The certificate was installed for Current User, which is not enough to install the component. Reinstall it to Local Machine → Trusted People by following the steps below.</value></data>
   <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>The certificate is correctly trusted by the local machine. You can now install the component.</value></data>
   <data name="Settings.ExplorerCertificateTrustedChain" xml:space="preserve"><value>The certificate chain is trusted by Windows; manual certificate installation is not required.</value></data>
   <data name="Settings.ExplorerCertificateWithThumbprint" xml:space="preserve"><value>{0} Thumbprint: {1}</value></data>
-  <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>The context-menu component package is missing from the release directory.</value></data>
+  <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>The component package (ClipPort.ShellIntegration.msix) is missing from the release directory, so the component cannot be installed. Use a complete release package.</value></data>
   <data name="Settings.ExplorerPackageReady" xml:space="preserve"><value>The component package is ready but is not installed.</value></data>
   <data name="Settings.ExplorerPackageInstalled" xml:space="preserve"><value>The component package is installed and registered for the current user.</value></data>
   <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>The certificate window is open. Start at substep 2 below, then return here and select Refresh status.</value></data>
@@ -449,7 +449,7 @@
   <data name="PriorityExecutionToggle.Header" xml:space="preserve"><value>Run with priority</value></data>
   <data name="PriorityExecutionToggle.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="PriorityExecutionToggle.OffContent" xml:space="preserve"><value>Off</value></data>
-  <data name="PriorityHintText.Text" xml:space="preserve"><value>Priority tasks run concurrently; other tasks wait at safe checkpoints until all priority tasks finish.</value></data>
+  <data name="PriorityHintText.Text" xml:space="preserve"><value>Tasks run one at a time; priority tasks are queued at the front.</value></data>
   <data name="NewTaskDialog.Title" xml:space="preserve"><value>New copy task</value></data>
   <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>Start task</value></data>
   <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>Cancel</value></data>

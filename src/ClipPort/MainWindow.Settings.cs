@@ -422,8 +422,6 @@ public sealed partial class MainWindow
             ? ResourceService.Format(
                 "Settings.ExplorerCertificateInvalid",
                 status.CertificateErrorMessage)
-            : !status.IsCertificateFileAvailable
-            ? ResourceService.GetString("Settings.ExplorerCertificateMissing")
             : status.CertificateTrustScope switch
             {
                 CertificateTrustScope.LocalMachine =>
@@ -432,7 +430,11 @@ public sealed partial class MainWindow
                     ResourceService.GetString("Settings.ExplorerCertificateTrustedChain"),
                 CertificateTrustScope.CurrentUser =>
                     ResourceService.GetString("Settings.ExplorerCertificateTrustedUser"),
-                _ => ResourceService.GetString("Settings.ExplorerCertificateNotTrusted")
+                // 系统证书存储中找不到 ClipPort 证书时，再区分"文件缺失"
+                // 与"文件在但尚未安装"，避免把已安装的证书误报为缺失。
+                _ => !status.IsCertificateFileAvailable
+                    ? ResourceService.GetString("Settings.ExplorerCertificateMissing")
+                    : ResourceService.GetString("Settings.ExplorerCertificateNotTrusted")
             };
         if (!string.IsNullOrWhiteSpace(status.CertificateThumbprint))
         {

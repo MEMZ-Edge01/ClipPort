@@ -37,9 +37,67 @@ public sealed class ExplorerContextMenuService
     public const string CertificateFileName = "ClipPort.ShellIntegration.cer";
     public const string DevelopmentRegistrationDirectoryName =
         "ShellIntegration.Development";
+    private const string CertificateSubjectMarker = "ClipPort";
+
+    // 与 GetTrustScope 保持一致的存储枚举顺序：LocalMachine 优先，
+    // 这样当发布目录中的证书文件丢失时，仍能按同样的顺序识别已安装的证书。
+    // 除 Root/TrustedPeople 外，还覆盖 CA（中间证书颁发机构）、My（个人）和
+    // TrustedPublisher（受信任的发布者），避免证书装到这些存储后无法识别或卸载。
+    private static readonly (StoreLocation Location, StoreName StoreName)[] TrustStoreTargets =
+    [
+        (StoreLocation.LocalMachine, StoreName.Root),
+        (StoreLocation.LocalMachine, StoreName.TrustedPeople),
+        (StoreLocation.LocalMachine, StoreName.CertificateAuthority),
+        (StoreLocation.LocalMachine, StoreName.My),
+        (StoreLocation.LocalMachine, StoreName.TrustedPublisher),
+        (StoreLocation.CurrentUser, StoreName.Root),
+        (StoreLocation.CurrentUser, StoreName.TrustedPeople),
+        (StoreLocation.CurrentUser, StoreName.CertificateAuthority),
+        (StoreLocation.CurrentUser, StoreName.My),
+        (StoreLocation.CurrentUser, StoreName.TrustedPublisher)
+    ];
 
     public bool IsSupported =>
         OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
+
+    /// <summary>
+    /// 解析当前部署使用的文件目录：优先应用运行目录；当运行目录缺少配套的
+    /// 证书/组件文件（例如从开发或临时目录启动）时，回退到注册表中记录的
+    /// 发布目录，避免"文件在发布目录却找不到"导致安装类按钮被错误禁用。
+    /// </summary>
+    private static string GetDeploymentDirectory()
+    {
+        string baseDirectory = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+        if (File.Exists(Path.Combine(baseDirectory, PackageFileName)) ||
+            File.Exists(Path.Combine(baseDirectory, CertificateFileName)))
+        {
+            return baseDirectory;
+        }
+
+        try
+        {
+            string? installDirectory = ReadExplorerContextMenuConfiguration()?.InstallDirectory;
+            if (!string.IsNullOrWhiteSpace(installDirectory))
+            {
+                string normalizedInstallDirectory =
+                    Path.TrimEndingDirectorySeparator(Path.GetFullPath(installDirectory));
+                if (File.Exists(Path.Combine(normalizedInstallDirectory, PackageFileName)) ||
+                    File.Exists(Path.Combine(normalizedInstallDirectory, CertificateFileName)))
+                {
+                    return normalizedInstallDirectory;
+                }
+            }
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                ArgumentException or NotSupportedException or PathTooLongException or
+                System.Security.SecurityException)
+        {
+            // 注册表记录不可用时保持原行为，仅使用应用运行目录。
+        }
+
+        return baseDirectory;
+    }
 
     public bool ShouldDisableSavedSettingBeforePackageRemoval()
     {
@@ -52,7 +110,7 @@ public sealed class ExplorerContextMenuService
         return !ExplorerContextMenuConfigurationPolicy.HasSiblingRegistration(
             GetPackageRegistrations(packageManager),
             PackageIdentityName,
-            AppContext.BaseDirectory);
+            GetDeploymentDirectory());
     }
 
     public ExplorerContextMenuStatus GetStatus()
@@ -154,7 +212,7 @@ public sealed class ExplorerContextMenuService
                             configuration,
                             registrations,
                             PackageIdentityName,
-                            AppContext.BaseDirectory))
+                            GetDeploymentDirectory()))
                     {
                         WriteExplorerContextMenuEnabledState(false);
                     }
@@ -220,7 +278,7 @@ public sealed class ExplorerContextMenuService
                     package.Id.Name,
                     package.Id.Publisher,
                     package.EffectiveExternalPath),
-                AppContext.BaseDirectory))
+                GetDeploymentDirectory()))
             .ToList();
 
     public async Task<ExplorerContextMenuStatus> UninstallCertificateAsync()
@@ -232,18 +290,20 @@ public sealed class ExplorerContextMenuService
 
         try
         {
-            string certificatePath = GetCertificatePath();
-            if (!File.Exists(certificatePath))
+            // 优先使用发布目录中的证书文件；文件缺失时从系统证书存储中
+            // 识别 ClipPort 证书，避免"证书已安装但文件丢失"时无法卸载的死锁。
+            if (!TryResolveClipPortCertificate(
+                    out string thumbprint,
+                    out string certificateSubject,
+                    out _) ||
+                string.IsNullOrWhiteSpace(thumbprint))
             {
                 throw new InvalidOperationException(
-                    $"Shell integration certificate is missing: {certificatePath}");
+                    "No ClipPort shell integration certificate is available in the certificate stores.");
             }
 
-            using var certificate = new X509Certificate2(certificatePath);
             ExplorerPackageIdentity certificateIdentity =
-                ExplorerPackageIdentity.FromCertificate(
-                    PackageIdentityName,
-                    certificate);
+                new(PackageIdentityName, certificateSubject);
             if (IsPackageRegisteredForAnyExternalPath(certificateIdentity))
             {
                 throw new InvalidOperationException(
@@ -251,26 +311,42 @@ public sealed class ExplorerContextMenuService
             }
 
             List<CertificateStoreTarget> targets = FindCertificateStoreTargets(
-                certificate.Thumbprint);
-            List<CertificateStoreTarget> machineTargets = targets
-                .Where(target => target.Location == StoreLocation.LocalMachine)
-                .ToList();
-
-            foreach (CertificateStoreTarget target in targets.Where(
-                         target => target.Location == StoreLocation.CurrentUser))
+                thumbprint);
+            if (targets.Count == 0)
             {
-                RemoveCertificateFromCurrentUserStore(certificate, target.StoreName);
+                throw new InvalidOperationException(
+                    "No ClipPort shell integration certificate is present in the certificate stores.");
             }
 
-            if (machineTargets.Count > 0)
+            // 当前用户存储通常不需要管理员权限，先直接尝试删除；
+            // 某些环境（受保护存储/策略限制）也会拒绝访问，此时保留目标走提升删除。
+            try
             {
-                await RemoveCertificateFromLocalMachineStoresAsync(
-                    certificate.Thumbprint,
-                    machineTargets,
-                    certificate.Subject);
+                foreach (CertificateStoreTarget target in targets.Where(
+                             target => target.Location == StoreLocation.CurrentUser))
+                {
+                    RemoveCertificateFromCurrentUserStore(thumbprint, target.StoreName);
+                }
+            }
+            catch (Exception ex) when (
+                ex is UnauthorizedAccessException or IOException or CryptographicException)
+            {
+                // 忽略，剩余目标统一走提升删除。
             }
 
-            if (FindCertificateStoreTargets(certificate.Thumbprint).Count > 0)
+            List<CertificateStoreTarget> remainingTargets =
+                FindCertificateStoreTargets(thumbprint);
+            if (remainingTargets.Count > 0)
+            {
+                // 本地计算机存储必然需要管理员权限；当前用户存储若直接删除
+                // 被拒绝，也需要在同一个提升进程里删除。
+                await RemoveCertificateStoresWithElevationAsync(
+                    thumbprint,
+                    remainingTargets,
+                    certificateSubject);
+            }
+
+            if (FindCertificateStoreTargets(thumbprint).Count > 0)
             {
                 throw new InvalidOperationException(
                     "The certificate is still present in a Windows certificate store.");
@@ -283,11 +359,21 @@ public sealed class ExplorerContextMenuService
                 CryptographicException or Win32Exception or
                 System.Runtime.InteropServices.COMException)
         {
+            // 证书删除需要管理员授权；区分"用户取消授权"与"授权窗口未能弹出"
+            // 两种情况，给出可执行的提示，避免界面看起来像"卸载了却没有任何变化"。
+            string errorMessage = ex switch
+            {
+                Win32Exception { NativeErrorCode: 1223 } =>
+                    "用户取消了管理员权限确认，证书未删除。",
+                Win32Exception { NativeErrorCode: 5 } or UnauthorizedAccessException =>
+                    "删除证书需要管理员权限，但系统未弹出授权窗口。请完全退出 ClipPort，右键点击 ClipPort.exe 选择“以管理员身份运行”，再重试卸载证书。",
+                _ => ex.Message
+            };
             return CreateStatus(
                 true,
                 IsPackageRegisteredSafe(),
                 false,
-                ex.Message);
+                errorMessage);
         }
     }
 
@@ -347,7 +433,7 @@ public sealed class ExplorerContextMenuService
             new ExplorerContextMenuConfiguration(
                 enabled,
                 AppLanguages.Get(language).LanguageTag,
-                Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory)));
+                GetDeploymentDirectory()));
 
     private static ExplorerContextMenuConfiguration?
         ReadExplorerContextMenuConfiguration()
@@ -462,7 +548,7 @@ public sealed class ExplorerContextMenuService
                 ReadExplorerContextMenuConfiguration(),
                 GetPackageRegistrations(packageManager),
                 PackageIdentityName,
-                AppContext.BaseDirectory);
+                GetDeploymentDirectory());
     }
 
     private static bool IsPackageRegisteredSafe()
@@ -539,7 +625,7 @@ public sealed class ExplorerContextMenuService
                     package.Id.Name,
                     package.Id.Publisher,
                     package.EffectiveExternalPath)),
-            AppContext.BaseDirectory);
+            GetDeploymentDirectory());
     }
 
     private static List<ExplorerPackageRegistration> GetPackageRegistrations(
@@ -601,7 +687,7 @@ public sealed class ExplorerContextMenuService
                         package.Id.Publisher,
                         package.EffectiveExternalPath)),
                 PackageIdentityName,
-                AppContext.BaseDirectory);
+                GetDeploymentDirectory());
         if (registeredIdentity is not null)
         {
             return registeredIdentity;
@@ -610,7 +696,7 @@ public sealed class ExplorerContextMenuService
         return ExplorerPackageIdentity.Resolve(
             GetPackagePath(),
             Path.Combine(
-                AppContext.BaseDirectory,
+                GetDeploymentDirectory(),
                 DevelopmentRegistrationDirectoryName,
                 "AppxManifest.xml"),
             GetCertificatePath(),
@@ -647,6 +733,16 @@ public sealed class ExplorerContextMenuService
                 certificateErrorMessage = ex.Message;
             }
         }
+        else if (TryFindClipPortCertificateInStores(
+                     out string storedThumbprint,
+                     out _,
+                     out CertificateTrustScope storedTrustScope))
+        {
+            // 发布目录的证书文件缺失时，仍可从系统证书存储识别已安装的
+            // ClipPort 证书，使"卸载证书"不会因为文件丢失而死锁。
+            thumbprint = storedThumbprint;
+            trustScope = storedTrustScope;
+        }
 
         return new ExplorerContextMenuStatus(
             supported,
@@ -658,6 +754,63 @@ public sealed class ExplorerContextMenuService
             thumbprint,
             certificateErrorMessage,
             errorMessage);
+    }
+
+    /// <summary>
+    /// 解析 ClipPort 的签名证书：优先使用发布目录中的证书文件，
+    /// 文件缺失时从系统证书存储中按主题识别（例如开发证书
+    /// "CN=ClipPort Development"）。
+    /// </summary>
+    private static bool TryResolveClipPortCertificate(
+        out string thumbprint,
+        out string subject,
+        out CertificateTrustScope trustScope)
+    {
+        string certificatePath = GetCertificatePath();
+        if (File.Exists(certificatePath))
+        {
+            using var certificate = new X509Certificate2(certificatePath);
+            thumbprint = certificate.Thumbprint;
+            subject = certificate.Subject;
+            trustScope = GetTrustScope(certificate);
+            return true;
+        }
+
+        return TryFindClipPortCertificateInStores(
+            out thumbprint,
+            out subject,
+            out trustScope);
+    }
+
+    private static bool TryFindClipPortCertificateInStores(
+        out string thumbprint,
+        out string subject,
+        out CertificateTrustScope trustScope)
+    {
+        foreach ((StoreLocation location, StoreName storeName) in TrustStoreTargets)
+        {
+            using var store = new X509Store(storeName, location);
+            store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+            foreach (X509Certificate2 candidate in store.Certificates)
+            {
+                if (candidate.Subject.Contains(
+                        CertificateSubjectMarker,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    thumbprint = candidate.Thumbprint;
+                    subject = candidate.Subject;
+                    trustScope = location == StoreLocation.LocalMachine
+                        ? CertificateTrustScope.LocalMachine
+                        : CertificateTrustScope.CurrentUser;
+                    return true;
+                }
+            }
+        }
+
+        thumbprint = string.Empty;
+        subject = string.Empty;
+        trustScope = CertificateTrustScope.None;
+        return false;
     }
 
     private static CertificateTrustScope GetTrustScope(X509Certificate2 certificate)
@@ -682,7 +835,14 @@ public sealed class ExplorerContextMenuService
         StoreLocation location,
         string thumbprint)
     {
-        foreach (StoreName storeName in new[] { StoreName.Root, StoreName.TrustedPeople })
+        foreach (StoreName storeName in new[]
+        {
+            StoreName.Root,
+            StoreName.TrustedPeople,
+            StoreName.CertificateAuthority,
+            StoreName.My,
+            StoreName.TrustedPublisher
+        })
         {
             if (ContainsCertificate(location, storeName, thumbprint))
             {
@@ -705,7 +865,10 @@ public sealed class ExplorerContextMenuService
             from storeName in new[]
             {
                 StoreName.Root,
-                StoreName.TrustedPeople
+                StoreName.TrustedPeople,
+                StoreName.CertificateAuthority,
+                StoreName.My,
+                StoreName.TrustedPublisher
             }
             select new CertificateStoreTarget(location, storeName);
 
@@ -731,19 +894,19 @@ public sealed class ExplorerContextMenuService
     }
 
     private static void RemoveCertificateFromCurrentUserStore(
-        X509Certificate2 certificate,
+        string thumbprint,
         StoreName storeName)
     {
         using var store = new X509Store(storeName, StoreLocation.CurrentUser);
         store.Open(OpenFlags.ReadWrite | OpenFlags.OpenExistingOnly);
         X509Certificate2Collection matches = store.Certificates.Find(
             X509FindType.FindByThumbprint,
-            certificate.Thumbprint,
+            thumbprint,
             validOnly: false);
         store.RemoveRange(matches);
     }
 
-    private static async Task RemoveCertificateFromLocalMachineStoresAsync(
+    private static async Task RemoveCertificateStoresWithElevationAsync(
         string thumbprint,
         IReadOnlyList<CertificateStoreTarget> targets,
         string certificateSubject)
@@ -764,20 +927,26 @@ public sealed class ExplorerContextMenuService
         string quotedPublisher = ToPowerShellSingleQuotedLiteral(
             certificateSubject);
         // The all-user package check requires elevation, so it runs inside the
-        // same elevated helper that owns the machine store removal. The script
-        // is passed with -EncodedCommand so publisher DN characters (including
-        // quotes) survive Windows command-line parsing unchanged.
+        // same elevated helper that owns the machine store removal. A failed
+        // enumeration does not prove another user's registration exists, so it
+        // is treated as empty instead of blocking certificate removal forever.
+        // The script is passed with -EncodedCommand so publisher DN characters
+        // (including quotes) survive Windows command-line parsing unchanged.
         string guardCommands =
             "try { " +
             $"$clipPortPackages = @(Get-AppxPackage -Name {quotedPackageName} " +
             "-AllUsers -ErrorAction Stop); " +
-            "} catch { exit 3 }; " +
+            "} catch { $clipPortPackages = @() }; " +
             $"if ($clipPortPackages | Where-Object {{ $_.Publisher -eq {quotedPublisher} }}) " +
             "{{ exit 2 }}; ";
+        // certutil 不带 -user 时操作本地计算机存储（需要管理员），
+        // 带 -user 时操作当前用户存储，因此两类目标都要在提升进程内覆盖。
         string removalCommands = string.Join(
             "; ",
             targets.Select(target =>
-                $"& {quotedCertutilPath} -delstore {target.StoreName} {quotedThumbprint}; " +
+                $"& {quotedCertutilPath} " +
+                (target.Location == StoreLocation.CurrentUser ? "-user " : "") +
+                $"-delstore {GetCertutilStoreName(target.StoreName)} {quotedThumbprint}; " +
                 "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"));
         string powerShellScript = guardCommands + removalCommands;
         string encodedScript = Convert.ToBase64String(
@@ -817,11 +986,16 @@ public sealed class ExplorerContextMenuService
     private static string ToPowerShellSingleQuotedLiteral(string value) =>
         $"'{value.Replace("'", "''", StringComparison.Ordinal)}'";
 
+    // certutil 使用短存储名，与 X509Store 的 StoreName 枚举字符串并不完全一致
+    // （例如中间证书颁发机构是 "CA" 而非 "CertificateAuthority"）。
+    private static string GetCertutilStoreName(StoreName storeName) =>
+        storeName == StoreName.CertificateAuthority ? "CA" : storeName.ToString();
+
     private static string GetPackagePath() =>
-        Path.Combine(AppContext.BaseDirectory, PackageFileName);
+        Path.Combine(GetDeploymentDirectory(), PackageFileName);
 
     private static string GetCertificatePath() =>
-        Path.Combine(AppContext.BaseDirectory, CertificateFileName);
+        Path.Combine(GetDeploymentDirectory(), CertificateFileName);
 
     [SupportedOSPlatform("windows10.0.19041.0")]
     private static async Task RegisterPackageAsync()
@@ -833,7 +1007,7 @@ public sealed class ExplorerContextMenuService
                 $"Shell integration package is missing: {packagePath}");
         }
 
-        string externalDirectory = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory) +
+        string externalDirectory = Path.TrimEndingDirectorySeparator(GetDeploymentDirectory()) +
             Path.DirectorySeparatorChar;
         var options = new AddPackageOptions
         {

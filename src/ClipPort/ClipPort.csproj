@@ -75,6 +75,24 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <!--
+    将最近一次发布的签名证书与右键菜单组件包复制到输出目录。
+    开发调试（Visual Studio / dotnet build）时输出目录默认不含这两个文件，
+    会导致"安装证书/安装组件"因找不到配套文件而被错误禁用。
+    发布目录不存在时（例如全新克隆的仓库）自动跳过，不阻塞构建。
+  -->
+  <ItemGroup>
+    <ShellIntegrationAsset Include="$(MSBuildThisFileDirectory)..\..\artifacts\ClipPort-1.0.0-beta-win-x64\ClipPort.ShellIntegration.cer"
+                            Condition="Exists('$(MSBuildThisFileDirectory)..\..\artifacts\ClipPort-1.0.0-beta-win-x64\ClipPort.ShellIntegration.cer')" />
+    <ShellIntegrationAsset Include="$(MSBuildThisFileDirectory)..\..\artifacts\ClipPort-1.0.0-beta-win-x64\ClipPort.ShellIntegration.msix"
+                            Condition="Exists('$(MSBuildThisFileDirectory)..\..\artifacts\ClipPort-1.0.0-beta-win-x64\ClipPort.ShellIntegration.msix')" />
+  </ItemGroup>
+  <Target Name="CopyShellIntegrationAssets" AfterTargets="Build">
+    <Copy SourceFiles="@(ShellIntegrationAsset)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="PublishShellExtension" AfterTargets="ComputeFilesToPublish"
           Condition="Exists('$(ShellExtensionOutput)')">
     <ItemGroup>

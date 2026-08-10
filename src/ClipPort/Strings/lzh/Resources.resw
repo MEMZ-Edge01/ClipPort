@@ -58,9 +58,7 @@
   <data name="Status.Cancelling" xml:space="preserve"><value>撤销中</value></data>
   <data name="Status.Paused" xml:space="preserve"><value>已暂止</value></data>
   <data name="Status.ProcessingResumed" xml:space="preserve"><value>续治中</value></data>
-  <data name="Status.WaitingPriorityTasks" xml:space="preserve"><value>候先行之役</value></data>
   <data name="Status.Preparing" xml:space="preserve"><value>备行</value></data>
-  <data name="Status.PriorityTaskStarting" xml:space="preserve"><value>先行之役将启</value></data>
   <data name="Status.TaskStarting" xml:space="preserve"><value>役将启</value></data>
   <data name="Status.OverwritingMismatched" xml:space="preserve"><value>覆写验异之卷</value></data>
   <data name="Status.RetryingFailedFiles" xml:space="preserve"><value>复试败卷</value></data>
@@ -79,10 +77,12 @@
   <data name="Info.ChooseActionPerFile" xml:space="preserve"><value>请为各重文择处置之法</value></data>
   <data name="Info.ChooseActionEach" xml:space="preserve"><value>请逐一择其处置</value></data>
   <data name="Info.OtherFilesContinue" xml:space="preserve"><value>他卷已续传写并验。下列诸项皆择毕，乃续治重文。</value></data>
-  <data name="Info.PriorityTasksRunning" xml:space="preserve"><value>先行之役方行；常役将在安全之处候之。</value></data>
-  <data name="Info.TasksRunningConcurrently" xml:space="preserve"><value>诸役并行。</value></data>
-  <data name="Info.TaskSafelyPaused" xml:space="preserve"><value>此役已安然暂止；诸先行之役皆毕则自续。</value></data>
-  <data name="Info.AutoResumeAfterPriority" xml:space="preserve"><value>先行之役毕则自续</value></data>
+  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>先行之役已居列首，先于常役而行。</value></data>
+  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>先行之役已居列前，其前尚有 {0} 役。</value></data>
+  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>先行之役方行；列中之役依次以俟。</value></data>
+  <data name="Info.TaskQueued" xml:space="preserve"><value>此役已入列，俟今役毕则自行。</value></data>
+  <data name="Info.TaskQueuedAhead" xml:space="preserve"><value>此役已入列，其前尚有 {0} 役。</value></data>
+  <data name="Info.TaskRunning" xml:space="preserve"><value>今役方行；列中之役依次以俟。</value></data>
   <data name="Info.WaitingToResume" xml:space="preserve"><value>候君续行</value></data>
   <data name="Info.TaskPaused" xml:space="preserve"><value>役已暂止。</value></data>
   <data name="Info.TaskResumed" xml:space="preserve"><value>役已续行。</value></data>
@@ -230,14 +230,14 @@
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>今未注于文卷司右键单。</value></data>
   <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>右键单组件已置，今尚闭之。</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>更右键单而败：{0}</value></data>
-  <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>发布目录无别置之凭证；正式署名可信之包，常可径置。</value></data>
+  <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>发布目录无凭证文件（ClipPort.ShellIntegration.cer），系统亦未见已置之 ClipPort 凭证；欲置凭证，宜用全备发布包。</value></data>
   <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>不能读凭证文卷：{0}</value></data>
   <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>凭证尚未安置，请依下列诸步而行。</value></data>
   <data name="Settings.ExplorerCertificateTrustedUser" xml:space="preserve"><value>凭证误置于“当前用户”，不足以置组件。请依下法重置于“本地计算机 → 受信任人”。</value></data>
   <data name="Settings.ExplorerCertificateTrustedMachine" xml:space="preserve"><value>凭证已为本地计算机所信，今可置组件。</value></data>
   <data name="Settings.ExplorerCertificateTrustedChain" xml:space="preserve"><value>Windows 已信其证链，毋须手置凭证。</value></data>
   <data name="Settings.ExplorerCertificateWithThumbprint" xml:space="preserve"><value>{0} 指纹：{1}</value></data>
-  <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>发布目录无右键单组件包。</value></data>
+  <data name="Settings.ExplorerPackageMissing" xml:space="preserve"><value>发布目录无组件包（ClipPort.ShellIntegration.msix），不可置件；宜用全备发布包。</value></data>
   <data name="Settings.ExplorerPackageReady" xml:space="preserve"><value>组件包已备，尚未置。</value></data>
   <data name="Settings.ExplorerPackageInstalled" xml:space="preserve"><value>组件包已置，并注于当前用户。</value></data>
   <data name="Settings.CertificateWizardOpened" xml:space="preserve"><value>凭证窗口已启，请自下列第二小步始；毕后返此，点击“刷新状态”。</value></data>
@@ -449,7 +449,7 @@
   <data name="PriorityExecutionToggle.Header" xml:space="preserve"><value>先行</value></data>
   <data name="PriorityExecutionToggle.OnContent" xml:space="preserve"><value>启</value></data>
   <data name="PriorityExecutionToggle.OffContent" xml:space="preserve"><value>闭</value></data>
-  <data name="PriorityHintText.Text" xml:space="preserve"><value>先行之役将并行；他常役在安全之处候之，直至诸先行之役皆毕。</value></data>
+  <data name="PriorityHintText.Text" xml:space="preserve"><value>诸役依次单行，一役毕则次役启；勾选先行之役者，居列首以行。</value></data>
   <data name="NewTaskDialog.Title" xml:space="preserve"><value>立传写之役</value></data>
   <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>启役</value></data>
   <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>罢</value></data>

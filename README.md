@@ -64,9 +64,9 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 
 ### 多任务、优先级与恢复
 
-- 可以创建多个并发任务，并在“新任务”和“历史任务”区域中分别管理。
+- 可以创建多个任务并加入执行队列；同一时刻只执行一个任务，避免并发执行导致性能骤降或崩溃，任务会在“新任务”和“历史任务”区域中分别管理。
 - 会阻止同时运行的任务使用相互冲突的源路径或目标路径。
-- 优先任务可以并行执行；普通任务会在安全检查点等待，直到全部优先任务结束。
+- 勾选“优先执行”的任务会排到队列最前面，先于普通任务执行。
 - 每个任务都可以独立暂停、继续、取消，并可选择在任务期间阻止电脑进入休眠。
 - 失败、取消或意外中断的任务可以按原配置重新开始。
 - 已完成复制的任务可以再次启动只校验任务，并沿用原任务选择的校验算法。
@@ -298,7 +298,7 @@ Copyright (C) 2026 MEMZ-Edge01
 ## English Summary
 
 ClipPort is a Windows x64 desktop application for reliable media-card and directory transfers.
-It supports safe file copying, verification-only jobs, duplicate-file policies, concurrent and priority tasks, pause and cancellation, failure recovery, local history, localized reports, and real-time byte/item throughput charts.
+It supports safe file copying, verification-only jobs, duplicate-file policies, a serial task queue with priority ordering, pause and cancellation, failure recovery, local history, localized reports, and real-time byte/item throughput charts.
 
 File verification can use SHA-256, SHA-512, SHA-1, MD5, or xxHash64.
 SHA-256 is the default, and the selected algorithm is preserved across retries, re-verification, history, and reports.
