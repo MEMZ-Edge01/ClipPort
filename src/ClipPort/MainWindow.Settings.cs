@@ -317,7 +317,9 @@ public sealed partial class MainWindow
         if (!status.IsPackageRegistered && status.ErrorMessage is null)
         {
             operationStatus = ResourceService.GetString(
-                "Settings.PackageUninstallSucceeded");
+                disableSavedSettingBeforeUninstall
+                    ? "Settings.PackageUninstallSucceeded"
+                    : "Settings.PackageUninstallSucceededSiblingRemains");
         }
         else
         {

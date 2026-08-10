@@ -253,6 +253,7 @@
   <data name="Settings.UninstallPackageAction" xml:space="preserve"><value>卸载组件</value></data>
   <data name="Settings.UninstallCertificateAction" xml:space="preserve"><value>卸载证书</value></data>
   <data name="Settings.PackageUninstallSucceeded" xml:space="preserve"><value>右键菜单组件已卸载，功能开关也已关闭。</value></data>
+  <data name="Settings.PackageUninstallSucceededSiblingRemains" xml:space="preserve"><value>已卸载当前安装的右键菜单组件；其他 ClipPort 安装仍提供文件资源管理器右键菜单。</value></data>
   <data name="Settings.PackageUninstallFailed" xml:space="preserve"><value>右键菜单组件卸载失败：{0}</value></data>
   <data name="Settings.PackageUninstallDidNotComplete" xml:space="preserve"><value>Windows 仍报告该组件已安装。</value></data>
   <data name="Settings.PackageUninstallSettingsSaveFailed" xml:space="preserve"><value>无法保存右键菜单的关闭状态，因此没有卸载组件：{0}</value></data>

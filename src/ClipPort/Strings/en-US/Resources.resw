@@ -253,6 +253,7 @@
   <data name="Settings.UninstallPackageAction" xml:space="preserve"><value>Uninstall component</value></data>
   <data name="Settings.UninstallCertificateAction" xml:space="preserve"><value>Uninstall certificate</value></data>
   <data name="Settings.PackageUninstallSucceeded" xml:space="preserve"><value>The context-menu component was uninstalled and the feature was turned off.</value></data>
+  <data name="Settings.PackageUninstallSucceededSiblingRemains" xml:space="preserve"><value>The context-menu component was uninstalled for this installation. Another ClipPort installation still provides the Explorer context menu.</value></data>
   <data name="Settings.PackageUninstallFailed" xml:space="preserve"><value>Could not uninstall the context-menu component: {0}</value></data>
   <data name="Settings.PackageUninstallDidNotComplete" xml:space="preserve"><value>Windows still reports that the component is installed.</value></data>
   <data name="Settings.PackageUninstallSettingsSaveFailed" xml:space="preserve"><value>The disabled state could not be saved, so the component was not uninstalled: {0}</value></data>

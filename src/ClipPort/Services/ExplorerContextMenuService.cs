@@ -71,7 +71,7 @@ public sealed class ExplorerContextMenuService
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
-                CryptographicException)
+                CryptographicException or InvalidDataException)
         {
             return CreateStatus(true, false, false, ex.Message);
         }
@@ -120,7 +120,8 @@ public sealed class ExplorerContextMenuService
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
-                System.Runtime.InteropServices.COMException or CryptographicException)
+                System.Runtime.InteropServices.COMException or CryptographicException or
+                InvalidDataException)
         {
             return CreateStatus(
                 true,
@@ -302,7 +303,8 @@ public sealed class ExplorerContextMenuService
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
-                System.Runtime.InteropServices.COMException or CryptographicException)
+                System.Runtime.InteropServices.COMException or CryptographicException or
+                InvalidDataException)
         {
             return CreateStatus(
                 true,
