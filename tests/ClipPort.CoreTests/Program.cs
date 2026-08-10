@@ -40,6 +40,7 @@ internal static class Program
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
             ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
             ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
+            ("package uninstall preserves enabled sibling state", TestPackageUninstallPreservesSiblingSettingAsync),
             ("package removal disables the live menu before deployment", TestPackageRemovalDisablesLiveStateAsync),
             ("package removal preserves sibling integration configuration", TestExplorerContextMenuConfigurationPolicyAsync),
             ("Explorer package identity stays publisher-scoped", TestExplorerPackageIdentityAsync),
@@ -75,6 +76,7 @@ internal static class Program
         ExplorerIntegrationUninstallResult<string> result =
             await ExplorerIntegrationUninstallWorkflow.RunAsync(
                 settings,
+                true,
                 _ => Task.FromException(new IOException("simulated save failure")),
                 () =>
                 {
@@ -101,6 +103,7 @@ internal static class Program
         ExplorerIntegrationUninstallResult<string> result =
             await ExplorerIntegrationUninstallWorkflow.RunAsync(
                 settings,
+                true,
                 currentSettings =>
                 {
                     Assert(!currentSettings.ExplorerContextMenuEnabled,
@@ -118,6 +121,31 @@ internal static class Program
             "A successful save should allow the package uninstall to complete.");
         Assert(calls.SequenceEqual(["save", "uninstall"]),
             "The workflow must persist the disabled state before uninstalling the package.");
+    }
+
+    private static async Task TestPackageUninstallPreservesSiblingSettingAsync()
+    {
+        var settings = new AppSettings
+        {
+            ExplorerContextMenuEnabled = true
+        };
+        int saveCalls = 0;
+
+        ExplorerIntegrationUninstallResult<string> result =
+            await ExplorerIntegrationUninstallWorkflow.RunAsync(
+                settings,
+                disableSavedSettingBeforeUninstall: false,
+                _ =>
+                {
+                    saveCalls++;
+                    return Task.CompletedTask;
+                },
+                () => Task.FromResult("removed"));
+
+        Assert(result.SettingsSaveError is null && result.OperationResult == "removed",
+            "A sibling-preserving uninstall should still remove the selected package.");
+        Assert(saveCalls == 0 && settings.ExplorerContextMenuEnabled,
+            "Removing one package must retain the shared enabled setting when a sibling remains.");
     }
 
     private static Task TestExplorerIntegrationOperationGateAsync()
@@ -411,6 +439,30 @@ internal static class Program
                 "CN=ClipPort Development",
                 "E:\\ClipPort")
         };
+        ExplorerPackageRegistration[] registrationsWithCurrent =
+        [
+            .. siblingRegistrations,
+            new ExplorerPackageRegistration(
+                packageName,
+                "CN=ClipPort Production",
+                "C:\\ClipPort")
+        ];
+
+        Assert(ExplorerContextMenuConfigurationPolicy.HasSiblingRegistration(
+                siblingRegistrations,
+                packageName,
+                "C:\\ClipPort"),
+            "A same-name registration in another directory should preserve the shared enabled setting.");
+        Assert(!ExplorerContextMenuConfigurationPolicy.HasSiblingRegistration(
+                [
+                    new ExplorerPackageRegistration(
+                        packageName,
+                        "CN=ClipPort Production",
+                        "C:\\ClipPort\\")
+                ],
+                packageName,
+                "C:\\ClipPort"),
+            "The registration being removed must not count as its own sibling.");
 
         Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
                 configuration,
@@ -428,6 +480,46 @@ internal static class Program
                 packageName,
                 "C:\\ClipPort"),
             "Removing an inactive sibling package must not disable the configured live menu.");
+        Assert(ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    activeSiblingConfiguration,
+                    siblingRegistrations,
+                    packageName,
+                    "C:\\ClipPort"),
+            "Startup must not overwrite a shared configuration owned by another registered copy.");
+        Assert(!ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    configuration,
+                    registrationsWithCurrent,
+                    packageName,
+                    "C:\\ClipPort\\"),
+            "The configured owner should continue synchronizing its own registration.");
+        Assert(!ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    configuration with { InstallDirectory = "Z:\\StaleClipPort" },
+                    registrationsWithCurrent,
+                    packageName,
+                    "C:\\ClipPort"),
+            "A stale configuration owner must not block a valid copy from repairing shared state.");
+        Assert(ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    null,
+                    siblingRegistrations,
+                    packageName,
+                    "C:\\ClipPort"),
+            "An unregistered copy must not reinstall itself while a sibling registration remains.");
+        Assert(!ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    null,
+                    [
+                        new ExplorerPackageRegistration(
+                            packageName,
+                            "CN=ClipPort Production",
+                            "C:\\ClipPort")
+                    ],
+                    packageName,
+                    "C:\\ClipPort"),
+            "A registered copy should repair missing shared configuration during startup.");
         Assert(ExplorerContextMenuConfigurationPolicy.ShouldDisableBeforeRemoval(
                 configuration with { InstallDirectory = "Z:\\StaleClipPort" },
                 [],

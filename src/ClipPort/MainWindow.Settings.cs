@@ -218,9 +218,34 @@ public sealed partial class MainWindow
             return;
         }
 
+        bool disableSavedSettingBeforeUninstall;
+        try
+        {
+            disableSavedSettingBeforeUninstall = _explorerContextMenuService
+                .ShouldDisableSavedSettingBeforePackageRemoval();
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                System.Runtime.InteropServices.COMException)
+        {
+            ExplorerContextMenuStatus preparationStatus =
+                _explorerContextMenuService.GetStatus() with
+                {
+                    ErrorMessage = ex.Message
+                };
+            ApplyExplorerContextMenuStatus(
+                preparationStatus,
+                ResourceService.Format(
+                    "Settings.PackageUninstallFailed",
+                    ex.Message),
+                e.OperationId);
+            return;
+        }
+
         ExplorerIntegrationUninstallResult<ExplorerContextMenuStatus> result =
             await ExplorerIntegrationUninstallWorkflow.RunAsync(
                 _appSettings,
+                disableSavedSettingBeforeUninstall,
                 settings => App.SettingsService.SaveAsync(settings),
                 () => _explorerContextMenuService.UninstallPackageAsync());
         if (result.SettingsSaveError is not null)

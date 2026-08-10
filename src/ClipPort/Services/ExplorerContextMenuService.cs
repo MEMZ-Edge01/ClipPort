@@ -40,6 +40,20 @@ public sealed class ExplorerContextMenuService
     public bool IsSupported =>
         OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
 
+    public bool ShouldDisableSavedSettingBeforePackageRemoval()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+        {
+            return true;
+        }
+
+        var packageManager = new PackageManager();
+        return !ExplorerContextMenuConfigurationPolicy.HasSiblingRegistration(
+            GetPackageRegistrations(packageManager),
+            PackageIdentityName,
+            AppContext.BaseDirectory);
+    }
+
     public ExplorerContextMenuStatus GetStatus()
     {
         if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
@@ -396,6 +410,38 @@ public sealed class ExplorerContextMenuService
 
     public async Task<ExplorerContextMenuStatus> SynchronizeAsync(AppSettings settings)
     {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            return CreateStatus(false, false, false);
+        }
+
+        try
+        {
+            var packageManager = new PackageManager();
+            if (ExplorerContextMenuConfigurationPolicy
+                .ShouldDeferSynchronizationToConfigurationOwner(
+                    ReadExplorerContextMenuConfiguration(),
+                    GetPackageRegistrations(packageManager),
+                    PackageIdentityName,
+                    AppContext.BaseDirectory))
+            {
+                // Another registered ClipPort copy owns the shared shell menu.
+                // Startup must not reinstall this copy or overwrite that owner.
+                return GetStatus();
+            }
+        }
+        catch (Exception ex) when (
+            ex is UnauthorizedAccessException or IOException or InvalidOperationException or
+                System.Runtime.InteropServices.COMException or ArgumentException or
+                NotSupportedException)
+        {
+            return CreateStatus(
+                true,
+                IsPackageRegisteredSafe(),
+                false,
+                ex.Message);
+        }
+
         return await SetEnabledAsync(
             settings.ExplorerContextMenuEnabled,
             settings.Language);

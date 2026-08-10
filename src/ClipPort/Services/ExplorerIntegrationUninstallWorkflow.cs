@@ -10,22 +10,26 @@ public static class ExplorerIntegrationUninstallWorkflow
 {
     public static async Task<ExplorerIntegrationUninstallResult<T>> RunAsync<T>(
         AppSettings settings,
+        bool disableSavedSettingBeforeUninstall,
         Func<AppSettings, Task> saveSettingsAsync,
         Func<Task<T>> uninstallAsync)
     {
-        bool previousEnabled = settings.ExplorerContextMenuEnabled;
-        settings.ExplorerContextMenuEnabled = false;
-        try
+        if (disableSavedSettingBeforeUninstall)
         {
-            // Persist the disabled state before removing the package so a
-            // later startup cannot restore an uninstall from stale settings.
-            await saveSettingsAsync(settings);
-        }
-        catch (Exception ex) when (
-            ex is IOException or UnauthorizedAccessException)
-        {
-            settings.ExplorerContextMenuEnabled = previousEnabled;
-            return new ExplorerIntegrationUninstallResult<T>(default, ex);
+            bool previousEnabled = settings.ExplorerContextMenuEnabled;
+            settings.ExplorerContextMenuEnabled = false;
+            try
+            {
+                // Persist the disabled state before removing the final package
+                // so startup cannot restore an uninstall from stale settings.
+                await saveSettingsAsync(settings);
+            }
+            catch (Exception ex) when (
+                ex is IOException or UnauthorizedAccessException)
+            {
+                settings.ExplorerContextMenuEnabled = previousEnabled;
+                return new ExplorerIntegrationUninstallResult<T>(default, ex);
+            }
         }
 
         T operationResult = await uninstallAsync();
