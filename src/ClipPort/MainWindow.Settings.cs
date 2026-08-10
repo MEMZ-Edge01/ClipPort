@@ -39,6 +39,14 @@ public sealed partial class MainWindow
         bool languageChanged = requestedLanguage != previousLanguage;
         long? explorerOperationId = null;
 
+        if (languageChanged)
+        {
+            // Commit the pending language before any await so a concurrent
+            // settings change does not re-enter this path and roll back
+            // unrelated values; the old language is restored if saving fails.
+            _previousLanguage = requestedLanguage;
+        }
+
         if (languageChanged && _appSettings.ExplorerContextMenuEnabled)
         {
             bool shouldDeferExplorerUpdate;
@@ -53,6 +61,7 @@ public sealed partial class MainWindow
                     NotSupportedException)
             {
                 ApplySettingsSnapshot(_lastSavedSettings);
+                _previousLanguage = previousLanguage;
                 SettingsPage.Initialize(_appSettings);
                 LogText.Text = ResourceService.Format(
                     "Format.SettingsSaveFailed",
@@ -62,17 +71,14 @@ public sealed partial class MainWindow
 
             if (!shouldDeferExplorerUpdate)
             {
-                if (!SettingsPage.TryBeginExplorerIntegrationOperation(
+                if (SettingsPage.TryBeginExplorerIntegrationOperation(
                         out long operationId))
                 {
-                    // A package or certificate operation already owns the shared
-                    // shell state, so this language change cannot safely update it.
-                    ApplySettingsSnapshot(_lastSavedSettings);
-                    SettingsPage.Initialize(_appSettings);
-                    return;
+                    explorerOperationId = operationId;
                 }
-
-                explorerOperationId = operationId;
+                // When another Explorer operation is active, the language
+                // change is still persisted and its shared-menu update is
+                // deferred instead of discarding this settings change.
             }
         }
 
@@ -89,6 +95,7 @@ public sealed partial class MainWindow
             // A failed save must not leave the visible settings ahead of
             // what will actually be restored on the next launch.
             ApplySettingsSnapshot(_lastSavedSettings);
+            _previousLanguage = previousLanguage;
             _historyService.SetReportsDirectory(_appSettings.LogAndReportDirectory);
             _logService.SetDirectory(_appSettings.LogAndReportDirectory);
             SettingsPage.Initialize(_appSettings);
@@ -106,7 +113,6 @@ public sealed partial class MainWindow
         _lastSavedSettings = requestedSettings;
         if (languageChanged)
         {
-            _previousLanguage = requestedLanguage;
             if (explorerOperationId is long operationId)
             {
                 ExplorerContextMenuStatus contextMenuStatus =
