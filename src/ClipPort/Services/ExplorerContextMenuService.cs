@@ -278,7 +278,8 @@ public sealed class ExplorerContextMenuService
         }
         catch (Exception ex) when (
             ex is UnauthorizedAccessException or IOException or InvalidOperationException or
-                CryptographicException or Win32Exception)
+                CryptographicException or Win32Exception or
+                System.Runtime.InteropServices.COMException)
         {
             return CreateStatus(
                 true,
