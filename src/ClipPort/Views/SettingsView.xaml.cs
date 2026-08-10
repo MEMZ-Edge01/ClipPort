@@ -271,6 +271,7 @@ public sealed partial class SettingsView : UserControl
         // These controls act on the same package, certificate, and registry
         // state, so none may start while another operation is awaiting Windows.
         ExplorerContextMenuToggle.IsEnabled = false;
+        LanguageComboBox.IsEnabled = false;
         InstallCertificateButton.IsEnabled = false;
         InstallShellPackageButton.IsEnabled = false;
         UninstallCertificateButton.IsEnabled = false;
@@ -295,6 +296,8 @@ public sealed partial class SettingsView : UserControl
         }
         ExplorerContextMenuToggle.IsOn = status.IsEnabled;
         ExplorerContextMenuToggle.IsEnabled = status.IsSupported;
+        LanguageComboBox.IsEnabled =
+            _explorerIntegrationOperationGate.CanUpdateSharedConfiguration;
         ExplorerContextMenuStatusText.Text = menuStatusText;
         CertificateInstallStatusText.Text = certificateStatusText;
         PackageInstallStatusText.Text = packageStatusText;

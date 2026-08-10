@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -46,6 +47,7 @@ internal static class Program
             ("Explorer package identity stays publisher-scoped", TestExplorerPackageIdentityAsync),
             ("certificate store access failures remain visible", TestCertificateStoreSearchAsync),
             ("Explorer integration operations are serialized", TestExplorerIntegrationOperationGateAsync),
+            ("certificate installer lifetime remains awaited", TestCertificateInstallerWorkflowAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
             ("history isolates malformed records", TestHistoryMalformedRecordIsolationAsync),
@@ -156,6 +158,8 @@ internal static class Program
             "Startup synchronization should acquire the integration operation gate.");
         Assert(gate.IsBusy && !gate.TryBegin(out _),
             "UI maintenance actions must remain blocked during startup synchronization.");
+        Assert(!gate.CanUpdateSharedConfiguration,
+            "Language-driven shared configuration updates must remain disabled while maintenance is active.");
         Assert(!gate.Complete(startupOperationId + 1),
             "A refresh without the owning operation token must not release the gate.");
         Assert(gate.IsBusy,
@@ -164,8 +168,26 @@ internal static class Program
             "The operation that acquired the gate should release it.");
         Assert(!gate.IsBusy && gate.TryBegin(out _),
             "A new operation should start after the owner applies its final status.");
+        Assert(!gate.CanUpdateSharedConfiguration,
+            "A newly acquired operation should immediately gate shared configuration updates.");
 
         return Task.CompletedTask;
+    }
+
+    private static async Task TestCertificateInstallerWorkflowAsync()
+    {
+        var installerExited = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        Task waitTask = CertificateInstallerWorkflow.WaitForExitAsync(
+            Process.GetCurrentProcess(),
+            _ => installerExited.Task);
+
+        Assert(!waitTask.IsCompleted,
+            "Certificate maintenance must stay active until the installer exits.");
+        installerExited.SetResult();
+        await waitTask;
+        Assert(waitTask.IsCompletedSuccessfully,
+            "Certificate maintenance should complete after the installer exits.");
     }
 
     private static async Task TestPackageRemovalDisablesLiveStateAsync()

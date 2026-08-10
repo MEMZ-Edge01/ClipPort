@@ -4,6 +4,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.ComponentModel;
+using System.Diagnostics;
 
 namespace ClipPort;
 
@@ -36,6 +37,22 @@ public sealed partial class MainWindow
         AppLanguage requestedLanguage = requestedSettings.Language;
         AppLanguage previousLanguage = _previousLanguage;
         bool languageChanged = requestedLanguage != previousLanguage;
+        long? explorerOperationId = null;
+
+        if (languageChanged && _appSettings.ExplorerContextMenuEnabled)
+        {
+            if (!SettingsPage.TryBeginExplorerIntegrationOperation(
+                    out long operationId))
+            {
+                // A package or certificate operation already owns the shared
+                // shell state, so this language change cannot safely update it.
+                ApplySettingsSnapshot(_lastSavedSettings);
+                SettingsPage.Initialize(_appSettings);
+                return;
+            }
+
+            explorerOperationId = operationId;
+        }
 
         _historyService.SetReportsDirectory(_appSettings.LogAndReportDirectory);
         _logService.SetDirectory(_appSettings.LogAndReportDirectory);
@@ -55,6 +72,12 @@ public sealed partial class MainWindow
             SettingsPage.Initialize(_appSettings);
             ApplyTheme();
             LogText.Text = ResourceService.Format("Format.SettingsSaveFailed", ex.Message);
+            if (explorerOperationId is long operationId)
+            {
+                ApplyExplorerContextMenuStatus(
+                    _explorerContextMenuService.GetStatus(),
+                    completingOperationId: operationId);
+            }
             return;
         }
 
@@ -68,7 +91,9 @@ public sealed partial class MainWindow
                     await _explorerContextMenuService.SetEnabledAsync(
                         true,
                         requestedLanguage);
-                ApplyExplorerContextMenuStatus(contextMenuStatus);
+                ApplyExplorerContextMenuStatus(
+                    contextMenuStatus,
+                    completingOperationId: explorerOperationId);
             }
             await ShowLanguageRestartDialogAsync();
         }
@@ -155,16 +180,20 @@ public sealed partial class MainWindow
     private void RefreshExplorerContextMenuStatus() =>
         ApplyExplorerContextMenuStatus(_explorerContextMenuService.GetStatus());
 
-    private void SettingsPage_InstallExplorerCertificateRequested(
+    private async void SettingsPage_InstallExplorerCertificateRequested(
         object? sender,
         Views.ExplorerIntegrationOperationRequestedEventArgs e)
     {
         try
         {
-            _explorerContextMenuService.OpenCertificateInstaller();
+            Process installerProcess =
+                _explorerContextMenuService.OpenCertificateInstaller();
+            SettingsPage.SetExplorerIntegrationOperationStatus(
+                ResourceService.GetString("Settings.CertificateWizardOpened"));
+            await CertificateInstallerWorkflow.WaitForExitAsync(installerProcess);
             ApplyExplorerContextMenuStatus(
                 _explorerContextMenuService.GetStatus(),
-                ResourceService.GetString("Settings.CertificateWizardOpened"),
+                ResourceService.GetString("Settings.ExplorerStatusRefreshed"),
                 e.OperationId);
         }
         catch (Exception ex) when (

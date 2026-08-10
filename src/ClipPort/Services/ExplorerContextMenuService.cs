@@ -77,7 +77,7 @@ public sealed class ExplorerContextMenuService
         }
     }
 
-    public void OpenCertificateInstaller()
+    public Process OpenCertificateInstaller()
     {
         string certificatePath = GetCertificatePath();
         if (!File.Exists(certificatePath))
@@ -86,12 +86,13 @@ public sealed class ExplorerContextMenuService
                 $"Shell integration certificate is missing: {certificatePath}");
         }
 
-        Process.Start(new ProcessStartInfo(certificatePath)
+        return Process.Start(new ProcessStartInfo(certificatePath)
         {
             // Windows owns the certificate wizard and the trust decision. ClipPort
             // must never add a certificate to a trusted store silently.
             UseShellExecute = true
-        });
+        }) ?? throw new InvalidOperationException(
+            "Windows did not start the certificate installer.");
     }
 
     public async Task<ExplorerContextMenuStatus> InstallPackageAsync()

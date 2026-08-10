@@ -7,6 +7,8 @@ public sealed class ExplorerIntegrationOperationGate
 
     public bool IsBusy => Volatile.Read(ref _activeOperationId) != 0;
 
+    public bool CanUpdateSharedConfiguration => !IsBusy;
+
     public bool TryBegin(out long operationId)
     {
         long candidateId = Interlocked.Increment(ref _nextOperationId);
