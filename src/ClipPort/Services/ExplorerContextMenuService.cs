@@ -616,49 +616,37 @@ public sealed class ExplorerContextMenuService
     {
         foreach (StoreName storeName in new[] { StoreName.Root, StoreName.TrustedPeople })
         {
-            try
+            if (ContainsCertificate(location, storeName, thumbprint))
             {
-                using var store = new X509Store(storeName, location);
-                store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
-                if (store.Certificates.Find(
-                    X509FindType.FindByThumbprint,
-                    thumbprint,
-                    validOnly: false).Count > 0)
-                {
-                    return true;
-                }
-            }
-            catch (CryptographicException)
-            {
-                // A missing or inaccessible store is treated as not trusted.
+                return true;
             }
         }
+
         return false;
     }
 
     private static List<CertificateStoreTarget> FindCertificateStoreTargets(
         string thumbprint)
     {
-        var targets = new List<CertificateStoreTarget>();
-        foreach (StoreLocation location in new[]
-                 {
-                     StoreLocation.CurrentUser,
-                     StoreLocation.LocalMachine
-                 })
-        {
-            foreach (StoreName storeName in new[]
-                     {
-                         StoreName.Root,
-                         StoreName.TrustedPeople
-                     })
+        IEnumerable<CertificateStoreTarget> targets =
+            from location in new[]
             {
-                if (ContainsCertificate(location, storeName, thumbprint))
-                {
-                    targets.Add(new CertificateStoreTarget(location, storeName));
-                }
+                StoreLocation.CurrentUser,
+                StoreLocation.LocalMachine
             }
-        }
-        return targets;
+            from storeName in new[]
+            {
+                StoreName.Root,
+                StoreName.TrustedPeople
+            }
+            select new CertificateStoreTarget(location, storeName);
+
+        return CertificateStoreSearch.FindMatches(
+            targets,
+            target => ContainsCertificate(
+                target.Location,
+                target.StoreName,
+                thumbprint));
     }
 
     private static bool ContainsCertificate(
@@ -666,19 +654,12 @@ public sealed class ExplorerContextMenuService
         StoreName storeName,
         string thumbprint)
     {
-        try
-        {
-            using var store = new X509Store(storeName, location);
-            store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
-            return store.Certificates.Find(
-                X509FindType.FindByThumbprint,
-                thumbprint,
-                validOnly: false).Count > 0;
-        }
-        catch (CryptographicException)
-        {
-            return false;
-        }
+        using var store = new X509Store(storeName, location);
+        store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+        return store.Certificates.Find(
+            X509FindType.FindByThumbprint,
+            thumbprint,
+            validOnly: false).Count > 0;
     }
 
     private static void RemoveCertificateFromCurrentUserStore(

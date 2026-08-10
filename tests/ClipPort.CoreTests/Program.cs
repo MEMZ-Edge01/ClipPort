@@ -43,6 +43,7 @@ internal static class Program
             ("package removal disables the live menu before deployment", TestPackageRemovalDisablesLiveStateAsync),
             ("package removal preserves sibling integration configuration", TestExplorerContextMenuConfigurationPolicyAsync),
             ("Explorer package identity stays publisher-scoped", TestExplorerPackageIdentityAsync),
+            ("certificate store access failures remain visible", TestCertificateStoreSearchAsync),
             ("Explorer integration operations are serialized", TestExplorerIntegrationOperationGateAsync),
             ("task reports follow the selected language", TestLocalizedTaskReportAsync),
             ("local history persistence", TestHistoryPersistenceAsync),
@@ -458,6 +459,33 @@ internal static class Program
                 [],
                 packageName) is null,
             "Shared configuration should be removed only when no package registration remains.");
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestCertificateStoreSearchAsync()
+    {
+        string[] targets = ["CurrentUser/Root", "LocalMachine/Root"];
+        List<string> matches = CertificateStoreSearch.FindMatches(
+            targets,
+            target => target == "CurrentUser/Root");
+
+        Assert(matches.SequenceEqual(["CurrentUser/Root"]),
+            "Certificate store search should return only matching stores.");
+
+        try
+        {
+            CertificateStoreSearch.FindMatches(
+                targets,
+                _ => throw new CryptographicException("store unavailable"));
+            throw new InvalidOperationException(
+                "Certificate store access failures must not be treated as an empty store.");
+        }
+        catch (CryptographicException ex)
+        {
+            Assert(ex.Message == "store unavailable",
+                "Certificate store access failures should propagate to the operation status.");
+        }
 
         return Task.CompletedTask;
     }
