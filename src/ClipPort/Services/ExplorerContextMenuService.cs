@@ -252,12 +252,6 @@ public sealed class ExplorerContextMenuService
             List<CertificateStoreTarget> machineTargets = targets
                 .Where(target => target.Location == StoreLocation.LocalMachine)
                 .ToList();
-            if (machineTargets.Count > 0 &&
-                IsPackageRegisteredForAnyUser(certificateIdentity))
-            {
-                throw new InvalidOperationException(
-                    "Uninstall the shell integration package for every user before removing its certificate.");
-            }
 
             foreach (CertificateStoreTarget target in targets.Where(
                          target => target.Location == StoreLocation.CurrentUser))
@@ -269,7 +263,8 @@ public sealed class ExplorerContextMenuService
             {
                 await RemoveCertificateFromLocalMachineStoresAsync(
                     certificate.Thumbprint,
-                    machineTargets);
+                    machineTargets,
+                    certificate.Subject);
             }
 
             if (FindCertificateStoreTargets(certificate.Thumbprint).Count > 0)
@@ -524,37 +519,6 @@ public sealed class ExplorerContextMenuService
     }
 
     [SupportedOSPlatform("windows10.0.19041.0")]
-    private static bool IsPackageRegisteredForAnyUser(
-        ExplorerPackageIdentity identity)
-    {
-        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
-        {
-            return false;
-        }
-
-        var packageManager = new PackageManager();
-        try
-        {
-            return identity.MatchesAny(
-                packageManager.FindPackages()
-                    .Select(package => new ExplorerPackageRegistration(
-                        package.Id.Name,
-                        package.Id.Publisher,
-                        package.EffectiveExternalPath)));
-        }
-        catch (Exception ex) when (
-            ex is UnauthorizedAccessException or
-                System.Runtime.InteropServices.COMException or SystemException)
-        {
-            // Other users' registrations cannot be verified, so removing a
-            // machine-wide trust entry could break their signed packages.
-            throw new InvalidOperationException(
-                "Verify that no other user has the shell integration package before removing its certificate.",
-                ex);
-        }
-    }
-
-    [SupportedOSPlatform("windows10.0.19041.0")]
     private static bool IsPackageRegistered(
         PackageManager packageManager,
         ExplorerPackageIdentity identity)
@@ -776,7 +740,8 @@ public sealed class ExplorerContextMenuService
 
     private static async Task RemoveCertificateFromLocalMachineStoresAsync(
         string thumbprint,
-        IReadOnlyList<CertificateStoreTarget> targets)
+        IReadOnlyList<CertificateStoreTarget> targets,
+        string certificateSubject)
     {
         string systemDirectory = Environment.GetFolderPath(
             Environment.SpecialFolder.System);
@@ -789,11 +754,25 @@ public sealed class ExplorerContextMenuService
 
         string quotedCertutilPath = ToPowerShellSingleQuotedLiteral(certutilPath);
         string quotedThumbprint = ToPowerShellSingleQuotedLiteral(thumbprint);
-        string commands = string.Join(
+        string quotedPackageName = ToPowerShellSingleQuotedLiteral(
+            PackageIdentityName);
+        string quotedPublisher = ToPowerShellSingleQuotedLiteral(
+            certificateSubject);
+        // The all-user package check requires elevation, so it runs inside the
+        // same elevated helper that owns the machine store removal.
+        string guardCommands =
+            "try { " +
+            $"$clipPortPackages = @(Get-AppxPackage -Name {quotedPackageName} " +
+            "-AllUsers -ErrorAction Stop); " +
+            "} catch { exit 3 }; " +
+            $"if ($clipPortPackages | Where-Object {{ $_.Publisher -eq {quotedPublisher} }}) " +
+            "{{ exit 2 }}; ";
+        string removalCommands = string.Join(
             "; ",
             targets.Select(target =>
                 $"& {quotedCertutilPath} -delstore {target.StoreName} {quotedThumbprint}; " +
                 "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"));
+        string commands = guardCommands + removalCommands;
         string powerShellPath = Path.Combine(
             systemDirectory,
             "WindowsPowerShell",
@@ -815,8 +794,14 @@ public sealed class ExplorerContextMenuService
         await process.WaitForExitAsync();
         if (process.ExitCode != 0)
         {
+            string message = process.ExitCode switch
+            {
+                2 => "Uninstall the shell integration package for every user before removing its certificate.",
+                3 => "Could not verify other users' registrations before removing the certificate.",
+                _ => $"Certificate removal exited with code {process.ExitCode}."
+            };
             throw new InvalidOperationException(
-                $"Certificate removal exited with code {process.ExitCode}.");
+                message);
         }
     }
 
