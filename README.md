@@ -98,6 +98,12 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 - 切换语言后可以立即安排应用安全重启，也可以稍后手动重启。
 - 可以自定义日志和报告的保存目录。
 
+### 自动更新
+
+- “设置 → 关于 → 检查更新”会从 GitHub Releases 获取最新版本（预发布版本也会纳入检查）。
+- 发现新版本后可以查看发布说明；确认后自动下载并校验 SHA-256，再重启应用完成更新。
+- 更新采用便携目录整体替换，不覆盖设置、任务历史、日志和报告。
+
 ## 校验算法
 
 | 算法 | 速度与摘要 | 兼容性与抗碰撞能力 | 建议用途 |
@@ -111,26 +117,32 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 > 校验摘要用于发现复制错误或文件变化，不等同于数字签名。
 > 如果没有明确的兼容或吞吐量要求，建议保留默认的 SHA-256。
 
-## Windows 11 快速开启
+## 文件资源管理器快速开启
 
-ClipPort 可以通过 Windows 11 现代文件资源管理器右键菜单快速创建任务。
+ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 
 - 右击单个文件夹或文件夹空白处，打开“新建 ClipPort 任务”。
 - 选择“作为源目录”或“作为目标目录”，ClipPort 会打开并预填新任务窗口。
 - 如果 ClipPort 已在运行，请求会转交给现有实例并恢复窗口，不会启动多个主实例。
-- 多选或选择非目录项目时不会显示该命令。
+- 新式菜单在多选或选择非目录项目时不会显示该命令；传统菜单只注册到文件夹与文件夹空白处。
 - 菜单标题跟随简体中文、English 或文言界面语言。
 
 ### 在发布包中启用
 
-快速开启仅支持 Windows 11（版本 22000 或更高）。
-主程序仍是自包含目录发布，右键菜单由单独的稀疏 MSIX 组件提供。
+“设置 → 快速开启”提供两个互相独立的入口：
+
+- **传统右键菜单（无需证书）**：直接注册到当前用户，无需管理员权限、签名证书或 MSIX。Windows 11 中从“显示更多选项”进入，也可用于 Windows 10。
+- **Windows 11 新式右键菜单**：直接显示在首层右键菜单中，仅支持 Windows 11 版本 22000 或更高，由单独的稀疏 MSIX 组件提供。
+
+如果只需要传统菜单，将完整发布目录放到固定位置，运行 `ClipPort.exe` 后打开“设置 → 快速开启”，仅开启“传统右键菜单（无需证书）”即可；下列证书与组件步骤都不需要执行。
+
+若要启用 Windows 11 新式菜单：
 
 1. 将完整发布目录放到固定位置，再运行 `ClipPort.exe`。
 2. 打开“设置 → 快速开启”。
 3. 如果是使用开发证书签名的测试版，先核对证书来源和指纹，再按页面指引将公开证书安装到“受信任人”。
 4. 点击“安装组件”，等待页面确认注册成功。
-5. 打开“注册到文件资源管理器右键菜单”开关。
+5. 打开“Windows 11 新式右键菜单”开关。
 6. 新开一个文件资源管理器窗口，右击文件夹或空白处进行测试。
 
 发布目录需要同时包含 `ClipPort.ShellExtension.dll`、`ClipPort.ShellIntegration.msix` 和签名包所对应的 `ClipPort.ShellIntegration.cer`。
@@ -138,7 +150,7 @@ ClipPort 可以通过 Windows 11 现代文件资源管理器右键菜单快速�
 
 ## 使用方法
 
-1. 点击“创建任务”，或通过 Windows 11 右键菜单预填源目录或目标目录。
+1. 点击“创建任务”，或通过文件资源管理器右键菜单预填源目录或目标目录。
 2. 选择源目录或存储卡。
 3. 如果启用复制，选择目标目录；可以额外填写目标子文件夹名。
 4. 选择任务模式、校验算法、重复文件策略、休眠防止和优先执行选项。
@@ -154,6 +166,7 @@ ClipPort 可以通过 Windows 11 现代文件资源管理器右键菜单快速�
 | 任务历史 | `%LOCALAPPDATA%\ClipPort\history.json` |
 | 日志 | `用户文档目录\ClipPort\ClipPort.log` |
 | 自动报告 | `用户文档目录\ClipPort` |
+| 更新缓存与更新器日志 | `%LOCALAPPDATA%\ClipPort\Updates` |
 
 日志和报告目录可以在设置中更改。
 日志达到 5 MiB 后会轮换为 `ClipPort.old.log`。
@@ -163,6 +176,7 @@ ClipPort 可以通过 Windows 11 现代文件资源管理器右键菜单快速�
 - 当前发布目标仅为 Windows x64。
 - 主程序是自包含目录发布，不是单文件程序，也不是完整应用 MSIX 安装包。
 - Windows 11 右键菜单使用独立的稀疏 MSIX；测试版签名可能需要用户手动信任公开证书。
+- 自动更新依赖 GitHub 网络访问；更新过程中应用会自动重启。
 - C++ 原生复制引擎会随 Release 包构建和发布，但对应开关目前在界面中隐藏并禁用。
 - 普通用户当前使用默认顺序复制路径；原生引擎和托管流水线仅用于代码级实验与回归测试，不应视为稳定的公开功能。
 
@@ -240,8 +254,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-beta.p
 1. 使用 Visual Studio MSBuild 构建 Release x64 解决方案、C++ 原生 DLL 和 Shell 扩展。
 2. 检查 `App.xbf`、`MainWindow.xbf`、`TraeWorkTheme.xbf` 和 `SettingsView.xbf`。
 3. 发布 `win-x64` 自包含运行时。
-4. 验证 `ClipPort.exe`、`ClipPort.dll`、`ClipPort.NativeCopy.dll`、`ClipPort.ShellExtension.dll`、`resources.pri` 和语言资源。
-5. 以安全的暂存与替换流程写入 `artifacts` 目录。
+4. 发布独立的 `ClipPort.Updater.exe` 自包含更新器并放入发布目录。
+5. 验证 `ClipPort.exe`、`ClipPort.dll`、`ClipPort.NativeCopy.dll`、`ClipPort.ShellExtension.dll`、`ClipPort.Updater.exe`、`resources.pri` 和语言资源。
+6. 以安全的暂存与替换流程写入 `artifacts` 目录。
+7. 传入 `-CreateZip` 时，额外生成 `ClipPort-{版本}-win-x64.zip` 与其 `.sha256` 校验文件，供 GitHub Release 上传。
 
 默认输出位置：
 
@@ -250,6 +266,8 @@ artifacts\ClipPort-1.0.0-beta-win-x64
 ```
 
 未提供签名参数时，普通发布仍会成功，但会跳过 `ClipPort.ShellIntegration.msix`。
+
+发布 GitHub Release（例如打 tag `v1.0.0-beta` 或手动触发 `release.yml`）时，CI 会执行上述脚本并上传 zip 与 SHA-256 文件。
 
 ### 构建签名的右键菜单组件
 

@@ -230,6 +230,10 @@
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>Not currently registered in the File Explorer context menu.</value></data>
   <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>The context-menu component is installed, but the feature is currently turned off.</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>Failed to update the context menu: {0}</value></data>
+  <data name="Settings.LegacyExplorerMenuUnsupported" xml:space="preserve"><value>Traditional context-menu registration is available only on Windows.</value></data>
+  <data name="Settings.LegacyExplorerMenuEnabled" xml:space="preserve"><value>The traditional context menu is registered for the current user. On Windows 11, open Show more options.</value></data>
+  <data name="Settings.LegacyExplorerMenuDisabled" xml:space="preserve"><value>The traditional context menu is not currently registered.</value></data>
+  <data name="Settings.LegacyExplorerMenuFailed" xml:space="preserve"><value>Failed to update the traditional context menu: {0}</value></data>
   <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>The certificate file (ClipPort.ShellIntegration.cer) is missing from the release directory and no ClipPort certificate was found in the system stores. Use a complete release package to install the certificate.</value></data>
   <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>The certificate file could not be read: {0}</value></data>
   <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>The certificate is not installed yet. Follow every step below.</value></data>
@@ -290,12 +294,16 @@
   <data name="QuickStartNavText.Text" xml:space="preserve"><value>Quick launch</value></data>
   <data name="QuickStartTitle.Text" xml:space="preserve"><value>Quick launch</value></data>
   <data name="QuickStartDesc.Text" xml:space="preserve"><value>Create and prefill ClipPort tasks directly from File Explorer.</value></data>
-  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>Register in the File Explorer context menu</value></data>
+  <data name="LegacyExplorerContextMenuToggle.Header" xml:space="preserve"><value>Traditional context menu (no certificate)</value></data>
+  <data name="LegacyExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>On</value></data>
+  <data name="LegacyExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="LegacyExplorerContextMenuHint.Text" xml:space="preserve"><value>Available under Show more options on Windows 11 and in the traditional Windows 10 context menu. It works independently.</value></data>
+  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>Windows 11 modern context menu</value></data>
   <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>Off</value></data>
-  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>Right-click a folder or folder background and use it as the source or destination.</value></data>
-  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>Installation and maintenance</value></data>
-  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>When using this test build for the first time, start at step 1 and complete each step in order.</value></data>
+  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>Appears directly in the Windows 11 primary context menu and requires the signing certificate and component.</value></data>
+  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>Windows 11 modern menu installation and maintenance</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>These steps apply only to the modern menu. Skip them all if you use only the traditional menu above.</value></data>
   <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>1. Install the signing certificate</value></data>
   <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>Follow these instructions exactly. Do not keep the wizard's default choices.</value></data>
   <data name="CertificateGuideStep1Prefix.Text" xml:space="preserve"><value>1. Select </value></data>
@@ -334,7 +342,7 @@
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>Install component</value></data>
   <data name="UninstallShellPackageButton.Content" xml:space="preserve"><value>Uninstall component</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>3. Turn on the context menu</value></data>
-  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>After installation succeeds, turn on Register in the File Explorer context menu above. Open a new File Explorer window, then right-click a folder or folder background to test it.</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>After installation succeeds, turn on Windows 11 modern context menu above. Open a new File Explorer window, then right-click a folder or folder background to test it.</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>Refresh status</value></data>
   <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>Installation guidance</value></data>
   <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>This test build uses a development certificate, so it must be installed manually. A production build signed by a certificate already trusted by Windows can normally skip step 1. Install a certificate only after verifying its source and thumbprint.</value></data>
@@ -357,6 +365,23 @@
   <data name="VersionLabel.Text" xml:space="preserve"><value>Version</value></data>
   <data name="RepoLabel.Text" xml:space="preserve"><value>Project repository</value></data>
   <data name="OpenGitHubText.Text" xml:space="preserve"><value>Open on GitHub</value></data>
+  <data name="UpdateSectionTitle.Text" xml:space="preserve"><value>Updates</value></data>
+  <data name="UpdateSectionDesc.Text" xml:space="preserve"><value>Check for and install the latest version from GitHub Releases.</value></data>
+  <data name="CheckForUpdatesButton.Content" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="ApplyUpdateButton.Content" xml:space="preserve"><value>Download and update</value></data>
+  <data name="Update.Checking" xml:space="preserve"><value>Checking for updates…</value></data>
+  <data name="Update.NoReleaseFound" xml:space="preserve"><value>No release is available.</value></data>
+  <data name="Update.UpToDate" xml:space="preserve"><value>You are up to date ({0}).</value></data>
+  <data name="Update.Available" xml:space="preserve"><value>New version available: {0}{1}</value></data>
+  <data name="Update.Prerelease" xml:space="preserve"><value>(pre-release)</value></data>
+  <data name="Update.ReleaseNotes" xml:space="preserve"><value>Release notes:&#10;&#10;{0}</value></data>
+  <data name="Update.CheckFailed" xml:space="preserve"><value>Failed to check for updates: {0}</value></data>
+  <data name="Update.ConfirmTitle" xml:space="preserve"><value>Confirm update</value></data>
+  <data name="Update.ConfirmMessage" xml:space="preserve"><value>The new version will be downloaded and ClipPort will restart automatically to finish the update. Please finish or cancel running tasks first.</value></data>
+  <data name="Update.ConfirmAction" xml:space="preserve"><value>Download and update</value></data>
+  <data name="Update.Downloading" xml:space="preserve"><value>Downloading update… {0}%</value></data>
+  <data name="Update.PreparingRestart" xml:space="preserve"><value>Download complete; ClipPort will restart to finish the update…</value></data>
+  <data name="Update.DownloadFailed" xml:space="preserve"><value>Update failed: {0}</value></data>
   <data name="WinAccentText.Text" xml:space="preserve"><value>Windows accent</value></data>
   <data name="AccentBtnSeafoam.ToolTipService.ToolTip" xml:space="preserve"><value>Seafoam</value></data>
   <data name="AccentBtnBrightRose.ToolTipService.ToolTip" xml:space="preserve"><value>Bright rose</value></data>

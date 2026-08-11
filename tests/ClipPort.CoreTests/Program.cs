@@ -9,6 +9,7 @@ using System.Xml;
 using System.Xml.Linq;
 using ClipPort.Models;
 using ClipPort.Services;
+using Microsoft.Win32;
 
 internal static class Program
 {
@@ -38,6 +39,8 @@ internal static class Program
             ("shared display formatting", TestDisplayFormattingAsync),
             ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
             ("quick-start requests preserve the opposite directory", TestQuickStartRequestsAsync),
+            ("traditional quick-start registration is certificate-free", TestLegacyExplorerContextMenuRegistrationAsync),
+            ("traditional quick-start registry lifecycle is reversible", TestLegacyExplorerContextMenuRegistryLifecycleAsync),
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
             ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
             ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
@@ -54,7 +57,9 @@ internal static class Program
             ("history retention protects active jobs", TestHistoryRetentionProtectsActiveJobsAsync),
             ("legacy failure reasons normalize", TestLegacyFailureReasonNormalizationAsync),
             ("retry results preserve warnings", TestRetryResultWarningsAsync),
-            ("tasks run serially with priority at the front of the queue", TestPrioritySchedulerAsync)
+            ("tasks run serially with priority at the front of the queue", TestPrioritySchedulerAsync),
+            ("update version comparison follows semantic versioning", TestUpdateVersionComparisonAsync),
+            ("update release assets match the portable zip pattern", TestUpdateReleaseAssetSelectionAsync)
         };
 
         foreach (var test in tests)
@@ -1753,6 +1758,7 @@ internal static class Program
                   "theme": 999,
                   "accent": -7,
                   "language": 42,
+                  "legacyExplorerContextMenuEnabled": true,
                   "logAndReportDirectory": "relative-output"
                 }
                 """);
@@ -1763,6 +1769,8 @@ internal static class Program
                 "Undefined numeric enum values should fall back instead of crashing startup.");
             Assert(Path.IsPathFullyQualified(loaded.LogAndReportDirectory),
                 "An invalid or relative output directory should return to the absolute default.");
+            Assert(loaded.LegacyExplorerContextMenuEnabled,
+                "The independent traditional-menu setting should survive settings loading.");
         }
         finally
         {
@@ -1820,6 +1828,108 @@ internal static class Program
         finally
         {
             Directory.Delete(root, true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestLegacyExplorerContextMenuRegistrationAsync()
+    {
+        string executablePath = Path.Combine(
+            Path.GetTempPath(),
+            "Clip Port",
+            "ClipPort.exe");
+        string normalizedExecutablePath = Path.GetFullPath(executablePath);
+        IReadOnlyList<LegacyExplorerContextMenuRegistration> registrations =
+            LegacyExplorerContextMenuRegistrationFactory.Create(
+                executablePath,
+                AppLanguage.SimplifiedChinese);
+
+        Assert(registrations.Count == 2,
+            "Traditional quick start should register both folder and folder-background menus.");
+        LegacyExplorerContextMenuRegistration directory = registrations.Single(
+            registration => registration.MenuKeyPath ==
+                LegacyExplorerContextMenuRegistrationFactory.DirectoryMenuKeyPath);
+        LegacyExplorerContextMenuRegistration background = registrations.Single(
+            registration => registration.MenuKeyPath ==
+                LegacyExplorerContextMenuRegistrationFactory.BackgroundMenuKeyPath);
+        Assert(directory.SourceCommand ==
+               $"\"{normalizedExecutablePath}\" {QuickStartRequestParser.SourceOption} \"%1\"" &&
+               directory.DestinationCommand ==
+               $"\"{normalizedExecutablePath}\" {QuickStartRequestParser.DestinationOption} \"%1\"",
+            "A selected folder should be quoted and passed through the %1 placeholder.");
+        Assert(background.SourceCommand ==
+               $"\"{normalizedExecutablePath}\" {QuickStartRequestParser.SourceOption} \"%V\"" &&
+               background.DestinationCommand ==
+               $"\"{normalizedExecutablePath}\" {QuickStartRequestParser.DestinationOption} \"%V\"",
+            "A folder background should be quoted and passed through the %V placeholder.");
+        Assert(registrations.All(registration =>
+                !registration.SourceCommand.Contains(".msix", StringComparison.OrdinalIgnoreCase) &&
+                !registration.SourceCommand.Contains(".cer", StringComparison.OrdinalIgnoreCase)),
+            "Traditional registration must launch ClipPort directly without a package or certificate dependency.");
+
+        LegacyExplorerContextMenuRegistration english =
+            LegacyExplorerContextMenuRegistrationFactory.Create(
+                executablePath,
+                AppLanguage.English)[0];
+        LegacyExplorerContextMenuRegistration classicalChinese =
+            LegacyExplorerContextMenuRegistrationFactory.Create(
+                executablePath,
+                AppLanguage.ClassicalChinese)[0];
+        Assert(english.SourceText == "Use as source directory" &&
+               classicalChinese.SourceText == "以为源目录",
+            "Traditional menu labels should follow every supported application language.");
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestLegacyExplorerContextMenuRegistryLifecycleAsync()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return Task.CompletedTask;
+        }
+
+        string testRoot = $@"Software\Classes\ClipPort.CoreTests.{Guid.NewGuid():N}";
+        string directoryMenuKeyPath = $@"{testRoot}\Directory";
+        string backgroundMenuKeyPath = $@"{testRoot}\Background";
+        var service = new LegacyExplorerContextMenuService(
+            Path.Combine(Path.GetTempPath(), "Clip Port", "ClipPort.exe"),
+            directoryMenuKeyPath,
+            backgroundMenuKeyPath);
+        try
+        {
+            LegacyExplorerContextMenuStatus enabledStatus = service.SetEnabled(
+                true,
+                AppLanguage.SimplifiedChinese);
+            Assert(enabledStatus is { IsEnabled: true, ErrorMessage: null },
+                "The traditional-menu service should write both per-user registry trees.");
+
+            LegacyExplorerContextMenuStatus staleLanguageStatus = service.GetStatus(
+                AppLanguage.English);
+            Assert(!staleLanguageStatus.IsEnabled,
+                "A language change should require the registered labels to be synchronized.");
+            LegacyExplorerContextMenuStatus localizedStatus = service.SetEnabled(
+                true,
+                AppLanguage.English);
+            Assert(localizedStatus is { IsEnabled: true, ErrorMessage: null },
+                "Re-enabling should update the traditional menu to the selected language.");
+
+            LegacyExplorerContextMenuStatus disabledStatus = service.SetEnabled(
+                false,
+                AppLanguage.English);
+            using RegistryKey? remainingDirectoryKey =
+                Registry.CurrentUser.OpenSubKey(directoryMenuKeyPath);
+            using RegistryKey? remainingBackgroundKey =
+                Registry.CurrentUser.OpenSubKey(backgroundMenuKeyPath);
+            Assert(disabledStatus is { IsEnabled: false, ErrorMessage: null } &&
+                   remainingDirectoryKey is null &&
+                   remainingBackgroundKey is null,
+                "Disabling should remove both ClipPort-owned registry trees.");
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(testRoot, throwOnMissingSubKey: false);
         }
 
         return Task.CompletedTask;
@@ -2038,6 +2148,58 @@ internal static class Program
         };
         Assert(result.Warnings.SequenceEqual(["timestamp warning"]),
             "Retry results should carry non-fatal warnings into the final task result.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestUpdateVersionComparisonAsync()
+    {
+        Assert(
+            UpdateService.IsNewerVersion("1.0.0-beta", "1.0.1-beta"),
+            "A newer patch release should be detected.");
+        Assert(
+            !UpdateService.IsNewerVersion("1.0.1-beta", "1.0.0-beta"),
+            "An older patch release should not be detected.");
+        Assert(
+            !UpdateService.IsNewerVersion("1.0.0-beta", "1.0.0-beta"),
+            "The same release should be considered up to date.");
+        Assert(
+            UpdateService.IsNewerVersion("1.0.0-beta", "1.0.0"),
+            "A stable release should be newer than its beta.");
+        Assert(
+            !UpdateService.IsNewerVersion("1.0.0", "1.0.0-beta"),
+            "A beta should not downgrade a stable release.");
+        Assert(
+            UpdateService.IsNewerVersion("1.0.0-beta", "1.0.0-beta.1"),
+            "A longer pre-release identifier should be newer.");
+        Assert(
+            UpdateService.IsNewerVersion("1.0.0-beta.2", "1.0.0-beta.10"),
+            "Numeric pre-release identifiers should compare numerically.");
+        Assert(
+            UpdateService.IsNewerVersion("1.0.0", "v1.0.1"),
+            "A leading v prefix should be ignored.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestUpdateReleaseAssetSelectionAsync()
+    {
+        Assert(
+            UpdateService.IsZipAsset(new GitHubReleaseAsset
+            {
+                Name = "ClipPort-1.0.1-beta-win-x64.zip"
+            }),
+            "The portable win-x64 zip asset should match.");
+        Assert(
+            !UpdateService.IsZipAsset(new GitHubReleaseAsset
+            {
+                Name = "ClipPort-1.0.1-beta-win-x64.exe"
+            }),
+            "Non-zip assets should not match.");
+        Assert(
+            !UpdateService.IsZipAsset(new GitHubReleaseAsset
+            {
+                Name = "setup-x64.zip"
+            }),
+            "Unrelated zip assets should not match.");
         return Task.CompletedTask;
     }
 

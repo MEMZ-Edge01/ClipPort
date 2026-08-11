@@ -226,10 +226,14 @@
   <data name="Settings.AccentColor" xml:space="preserve"><value>主题色</value></data>
   <data name="Settings.GeneralDesc" xml:space="preserve"><value>设置界面语言以及日志与报告的默认位置。</value></data>
   <data name="Settings.ExplorerMenuUnsupported" xml:space="preserve"><value>此功能需要 Windows 11，ClipPort 的其他功能不受影响。</value></data>
-  <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>已注册，可在文件资源管理器的 Windows 11 新式右键菜单中使用。</value></data>
+  <data name="Settings.ExplorerMenuEnabled" xml:space="preserve"><value>已注册，可在文件资源管理器的 Windows 11 新式右键菜单中使用。可能需要重启文件资源管理器以生效。</value></data>
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>当前未注册到文件资源管理器右键菜单。</value></data>
   <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>右键菜单组件已安装，当前开关处于关闭状态。</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>右键菜单状态更新失败：{0}</value></data>
+  <data name="Settings.LegacyExplorerMenuUnsupported" xml:space="preserve"><value>传统右键菜单注册仅支持 Windows。</value></data>
+  <data name="Settings.LegacyExplorerMenuEnabled" xml:space="preserve"><value>传统右键菜单已注册到当前用户；Windows 11 中请从“显示更多选项”打开。</value></data>
+  <data name="Settings.LegacyExplorerMenuDisabled" xml:space="preserve"><value>传统右键菜单当前未注册。</value></data>
+  <data name="Settings.LegacyExplorerMenuFailed" xml:space="preserve"><value>传统右键菜单状态更新失败：{0}</value></data>
   <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>发布目录缺少证书文件（ClipPort.ShellIntegration.cer），且系统中未找到已安装的 ClipPort 证书；如需安装证书，请使用包含该文件的完整发布包。</value></data>
   <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>证书文件无法读取：{0}</value></data>
   <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>证书还没有安装。请按下面的完整步骤操作。</value></data>
@@ -290,12 +294,16 @@
   <data name="QuickStartNavText.Text" xml:space="preserve"><value>快速开启</value></data>
   <data name="QuickStartTitle.Text" xml:space="preserve"><value>快速开启</value></data>
   <data name="QuickStartDesc.Text" xml:space="preserve"><value>从文件资源管理器直接创建并预填 ClipPort 任务。</value></data>
-  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>注册到文件资源管理器右键菜单</value></data>
+  <data name="LegacyExplorerContextMenuToggle.Header" xml:space="preserve"><value>传统右键菜单（无需证书）</value></data>
+  <data name="LegacyExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已开启</value></data>
+  <data name="LegacyExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已关闭</value></data>
+  <data name="LegacyExplorerContextMenuHint.Text" xml:space="preserve"><value>显示在 Windows 11 的“显示更多选项”以及 Windows 10 传统右键菜单中，可独立使用。</value></data>
+  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>Windows 11 新式右键菜单</value></data>
   <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已开启</value></data>
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已关闭</value></data>
-  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>右击文件夹或文件夹空白处，可选择作为源目录或目标目录。</value></data>
-  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>安装与维护</value></data>
-  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>第一次使用测试版时，请从第 1 步开始按顺序操作。每一步做完后再进行下一步。</value></data>
+  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>直接显示在 Windows 11 的首层右键菜单中，需要安装签名证书和组件。</value></data>
+  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>Windows 11 新式菜单安装与维护</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>以下步骤只用于新式菜单；若只使用上方的传统菜单，可以全部跳过。</value></data>
   <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>1. 安装签名证书</value></data>
   <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>请严格按照下面的顺序操作，不要使用向导的默认选项。</value></data>
   <data name="CertificateGuideStep1Prefix.Text" xml:space="preserve"><value>1. 点击右侧的 </value></data>
@@ -334,7 +342,7 @@
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>安装组件</value></data>
   <data name="UninstallShellPackageButton.Content" xml:space="preserve"><value>卸载组件</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>3. 开启右键菜单</value></data>
-  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件安装成功后，打开上方的“注册到文件资源管理器右键菜单”开关。再打开一个新的文件资源管理器窗口，右击文件夹或空白处进行测试。</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件安装成功后，打开上方的“Windows 11 新式右键菜单”开关。再打开一个新的文件资源管理器窗口，右击文件夹或空白处进行测试。</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>刷新状态</value></data>
   <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>安装提示</value></data>
   <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>测试版使用的是开发证书，所以需要手动安装。正式版如果使用 Windows 已信任的签名证书，通常可以跳过第 1 步。只安装来源和指纹都确认无误的证书。</value></data>
@@ -357,6 +365,23 @@
   <data name="VersionLabel.Text" xml:space="preserve"><value>版本</value></data>
   <data name="RepoLabel.Text" xml:space="preserve"><value>项目仓库</value></data>
   <data name="OpenGitHubText.Text" xml:space="preserve"><value>在 GitHub 中打开</value></data>
+  <data name="UpdateSectionTitle.Text" xml:space="preserve"><value>更新</value></data>
+  <data name="UpdateSectionDesc.Text" xml:space="preserve"><value>从 GitHub Releases 获取并安装最新版本。</value></data>
+  <data name="CheckForUpdatesButton.Content" xml:space="preserve"><value>检查更新</value></data>
+  <data name="ApplyUpdateButton.Content" xml:space="preserve"><value>下载并更新</value></data>
+  <data name="Update.Checking" xml:space="preserve"><value>正在检查更新…</value></data>
+  <data name="Update.NoReleaseFound" xml:space="preserve"><value>未找到可用的发布版本。</value></data>
+  <data name="Update.UpToDate" xml:space="preserve"><value>已是最新版本（{0}）。</value></data>
+  <data name="Update.Available" xml:space="preserve"><value>发现新版本：{0}{1}</value></data>
+  <data name="Update.Prerelease" xml:space="preserve"><value>（预发布）</value></data>
+  <data name="Update.ReleaseNotes" xml:space="preserve"><value>更新内容：&#10;&#10;{0}</value></data>
+  <data name="Update.CheckFailed" xml:space="preserve"><value>检查更新失败：{0}</value></data>
+  <data name="Update.ConfirmTitle" xml:space="preserve"><value>确认更新</value></data>
+  <data name="Update.ConfirmMessage" xml:space="preserve"><value>将下载新版本并自动重启应用完成更新。请先完成或取消正在运行的任务。</value></data>
+  <data name="Update.ConfirmAction" xml:space="preserve"><value>下载并更新</value></data>
+  <data name="Update.Downloading" xml:space="preserve"><value>正在下载更新… {0}%</value></data>
+  <data name="Update.PreparingRestart" xml:space="preserve"><value>下载完成，即将重启应用完成更新…</value></data>
+  <data name="Update.DownloadFailed" xml:space="preserve"><value>更新失败：{0}</value></data>
   <data name="WinAccentText.Text" xml:space="preserve"><value>Windows 主题色</value></data>
   <data name="AccentBtnSeafoam.ToolTipService.ToolTip" xml:space="preserve"><value>海沫绿</value></data>
   <data name="AccentBtnBrightRose.ToolTipService.ToolTip" xml:space="preserve"><value>亮玫红</value></data>

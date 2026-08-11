@@ -214,14 +214,33 @@
 
                     <Border Style="{StaticResource SettingsCardStyle}">
                         <StackPanel Spacing="14">
+                            <ToggleSwitch x:Name="LegacyExplorerContextMenuToggle"
+                                          x:Uid="LegacyExplorerContextMenuToggle"
+                                          Header="传统右键菜单（无需证书）"
+                                          OnContent="已开启"
+                                          OffContent="已关闭"
+                                          Toggled="LegacyExplorerContextMenuToggle_Toggled" />
+                            <TextBlock x:Name="LegacyExplorerContextMenuHint"
+                                       x:Uid="LegacyExplorerContextMenuHint"
+                                       Text="显示在 Windows 11 的“显示更多选项”以及 Windows 10 传统右键菜单中，可独立使用。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock x:Name="LegacyExplorerContextMenuStatusText"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="14">
                             <ToggleSwitch x:Name="ExplorerContextMenuToggle"
                                           x:Uid="ExplorerContextMenuToggle"
-                                          Header="注册到文件资源管理器右键菜单"
+                                          Header="Windows 11 新式右键菜单"
                                           OnContent="已开启"
                                           OffContent="已关闭"
                                           Toggled="ExplorerContextMenuToggle_Toggled" />
                             <TextBlock x:Name="ExplorerContextMenuHint" x:Uid="ExplorerContextMenuHint"
-                                       Text="右击文件夹或文件夹空白处，可选择作为源目录或目标目录。"
+                                       Text="直接显示在 Windows 11 的首层右键菜单中，需要安装签名证书和组件。"
                                        TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
                             <TextBlock x:Name="ExplorerContextMenuStatusText"
                                        TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" />
@@ -233,10 +252,10 @@
                             <StackPanel Spacing="6">
                                 <TextBlock x:Name="ShellIntegrationInstallTitle"
                                            x:Uid="ShellIntegrationInstallTitle"
-                                           Text="安装与维护" FontSize="18" FontWeight="SemiBold" />
+                                           Text="Windows 11 新式菜单安装与维护" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock x:Name="ShellIntegrationInstallDesc"
                                            x:Uid="ShellIntegrationInstallDesc"
-                                           Text="按顺序完成证书信任、组件安装和功能开启。"
+                                           Text="以下步骤只用于新式菜单；若只使用上方的传统菜单，可以全部跳过。"
                                            TextWrapping="Wrap"
                                            Foreground="{StaticResource SecondaryTextBrush}" />
                             </StackPanel>
@@ -367,7 +386,7 @@
                                                Text="3. 开启右键菜单" FontWeight="SemiBold" />
                                     <TextBlock x:Name="EnableMenuStepDesc"
                                                x:Uid="EnableMenuStepDesc"
-                                               Text="组件安装成功后，打开上方的“注册到文件资源管理器右键菜单”开关。再打开一个新的文件资源管理器窗口，右击文件夹或空白处进行测试。"
+                                               Text="组件安装成功后，打开上方的“Windows 11 新式右键菜单”开关。再打开一个新的文件资源管理器窗口，右击文件夹或空白处进行测试。"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource SecondaryTextBrush}" />
                                 </StackPanel>
@@ -429,6 +448,41 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="18">
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="UpdateSectionTitle" x:Uid="UpdateSectionTitle" Text="更新" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="UpdateSectionDesc" x:Uid="UpdateSectionDesc" Text="从 GitHub Releases 获取并安装最新版本。" TextWrapping="Wrap"
+                                           Foreground="{StaticResource SecondaryTextBrush}" />
+                            </StackPanel>
+
+                            <Grid ColumnSpacing="18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="10">
+                                    <TextBlock x:Name="UpdateStatusText" TextWrapping="Wrap"
+                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                    <ProgressBar x:Name="UpdateProgressBar" Minimum="0" Maximum="100" Height="4"
+                                                 Visibility="Collapsed" />
+                                    <TextBlock x:Name="UpdateReleaseNotesText" TextWrapping="Wrap"
+                                               Visibility="Collapsed"
+                                               Foreground="{StaticResource MutedTextBrush}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                                    <Button x:Name="CheckForUpdatesButton" x:Uid="CheckForUpdatesButton"
+                                            Content="检查更新" Click="CheckForUpdatesButton_Click"
+                                            HorizontalAlignment="Stretch" Padding="16,0" Height="40" />
+                                    <Button x:Name="ApplyUpdateButton" x:Uid="ApplyUpdateButton"
+                                            Content="下载并更新" Click="ApplyUpdateButton_Click"
+                                            HorizontalAlignment="Stretch" Padding="16,0" Height="40"
+                                            Visibility="Collapsed" />
+                                </StackPanel>
                             </Grid>
                         </StackPanel>
                     </Border>

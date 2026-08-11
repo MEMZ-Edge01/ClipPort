@@ -230,6 +230,10 @@
   <data name="Settings.ExplorerMenuDisabled" xml:space="preserve"><value>今未注于文卷司右键单。</value></data>
   <data name="Settings.ExplorerMenuInstalledDisabled" xml:space="preserve"><value>右键单组件已置，今尚闭之。</value></data>
   <data name="Settings.ExplorerMenuFailed" xml:space="preserve"><value>更右键单而败：{0}</value></data>
+  <data name="Settings.LegacyExplorerMenuUnsupported" xml:space="preserve"><value>旧式右键单惟可注于 Windows。</value></data>
+  <data name="Settings.LegacyExplorerMenuEnabled" xml:space="preserve"><value>旧式右键单已注于今用户；Windows 11 宜自“显示更多选项”启之。</value></data>
+  <data name="Settings.LegacyExplorerMenuDisabled" xml:space="preserve"><value>旧式右键单今未注。</value></data>
+  <data name="Settings.LegacyExplorerMenuFailed" xml:space="preserve"><value>更旧式右键单而败：{0}</value></data>
   <data name="Settings.ExplorerCertificateMissing" xml:space="preserve"><value>发布目录无凭证文件（ClipPort.ShellIntegration.cer），系统亦未见已置之 ClipPort 凭证；欲置凭证，宜用全备发布包。</value></data>
   <data name="Settings.ExplorerCertificateInvalid" xml:space="preserve"><value>不能读凭证文卷：{0}</value></data>
   <data name="Settings.ExplorerCertificateNotTrusted" xml:space="preserve"><value>凭证尚未安置，请依下列诸步而行。</value></data>
@@ -290,12 +294,16 @@
   <data name="QuickStartNavText.Text" xml:space="preserve"><value>速启</value></data>
   <data name="QuickStartTitle.Text" xml:space="preserve"><value>速启</value></data>
   <data name="QuickStartDesc.Text" xml:space="preserve"><value>自文卷司径立并预填 ClipPort 之役。</value></data>
-  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>注于文卷司右键单</value></data>
+  <data name="LegacyExplorerContextMenuToggle.Header" xml:space="preserve"><value>旧式右键单（毋须凭证）</value></data>
+  <data name="LegacyExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已启</value></data>
+  <data name="LegacyExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已闭</value></data>
+  <data name="LegacyExplorerContextMenuHint.Text" xml:space="preserve"><value>见于 Windows 11“显示更多选项”及 Windows 10 旧式右键单，可独用之。</value></data>
+  <data name="ExplorerContextMenuToggle.Header" xml:space="preserve"><value>Windows 11 新式右键单</value></data>
   <data name="ExplorerContextMenuToggle.OnContent" xml:space="preserve"><value>已启</value></data>
   <data name="ExplorerContextMenuToggle.OffContent" xml:space="preserve"><value>已闭</value></data>
-  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>右击目录或其空处，可定为源目录或所往目录。</value></data>
-  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>安置与护持</value></data>
-  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>初用此测试版，请自第一步依次而行；一步既毕，乃行下一步。</value></data>
+  <data name="ExplorerContextMenuHint.Text" xml:space="preserve"><value>径见于 Windows 11 首层右键单，须置署名凭证与组件。</value></data>
+  <data name="ShellIntegrationInstallTitle.Text" xml:space="preserve"><value>Windows 11 新式菜单之安置与护持</value></data>
+  <data name="ShellIntegrationInstallDesc.Text" xml:space="preserve"><value>下列诸步惟新式菜单所需；若独用上方旧式菜单，皆可略之。</value></data>
   <data name="CertificateInstallStepTitle.Text" xml:space="preserve"><value>一、置署名凭证</value></data>
   <data name="CertificateInstallStepDesc.Text" xml:space="preserve"><value>务依下列次序而行，毋从导引之默认选项。</value></data>
   <data name="CertificateGuideStep1Prefix.Text" xml:space="preserve"><value>1. 点击右侧之 </value></data>
@@ -334,7 +342,7 @@
   <data name="InstallShellPackageButton.Content" xml:space="preserve"><value>置组件</value></data>
   <data name="UninstallShellPackageButton.Content" xml:space="preserve"><value>卸组件</value></data>
   <data name="EnableMenuStepTitle.Text" xml:space="preserve"><value>三、启右键单</value></data>
-  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件既置，启上方“注于文卷司右键单”开关。复启一新文卷司窗口，右击目录或空处以试之。</value></data>
+  <data name="EnableMenuStepDesc.Text" xml:space="preserve"><value>组件既置，启上方“Windows 11 新式右键单”开关。复启一新文卷司窗口，右击目录或空处以试之。</value></data>
   <data name="RefreshShellIntegrationButton.Content" xml:space="preserve"><value>刷新状态</value></data>
   <data name="ShellIntegrationGuideInfoBar.Title" xml:space="preserve"><value>安置之示</value></data>
   <data name="ShellIntegrationGuideInfoBar.Message" xml:space="preserve"><value>此测试版用开发凭证，故须手置。正式版若用 Windows 已信之署名凭证，常可略第一步。惟证之所自与指纹皆确，方可安置。</value></data>
@@ -357,6 +365,23 @@
   <data name="VersionLabel.Text" xml:space="preserve"><value>版本</value></data>
   <data name="RepoLabel.Text" xml:space="preserve"><value>项目库</value></data>
   <data name="OpenGitHubText.Text" xml:space="preserve"><value>于 GitHub 启之</value></data>
+  <data name="UpdateSectionTitle.Text" xml:space="preserve"><value>更新</value></data>
+  <data name="UpdateSectionDesc.Text" xml:space="preserve"><value>自 GitHub Releases 检视并安装最新版本。</value></data>
+  <data name="CheckForUpdatesButton.Content" xml:space="preserve"><value>检视更新</value></data>
+  <data name="ApplyUpdateButton.Content" xml:space="preserve"><value>下载并更新</value></data>
+  <data name="Update.Checking" xml:space="preserve"><value>正在检视更新…</value></data>
+  <data name="Update.NoReleaseFound" xml:space="preserve"><value>未有可更新之发布。</value></data>
+  <data name="Update.UpToDate" xml:space="preserve"><value>已为最新（{0}）。</value></data>
+  <data name="Update.Available" xml:space="preserve"><value>有新版本：{0}{1}</value></data>
+  <data name="Update.Prerelease" xml:space="preserve"><value>（预发布）</value></data>
+  <data name="Update.ReleaseNotes" xml:space="preserve"><value>更新内容：&#10;&#10;{0}</value></data>
+  <data name="Update.CheckFailed" xml:space="preserve"><value>检视更新失败：{0}</value></data>
+  <data name="Update.ConfirmTitle" xml:space="preserve"><value>确认更新</value></data>
+  <data name="Update.ConfirmMessage" xml:space="preserve"><value>将下载新版本并自动重启以完成更新。请先了结或取消运行中任务。</value></data>
+  <data name="Update.ConfirmAction" xml:space="preserve"><value>下载并更新</value></data>
+  <data name="Update.Downloading" xml:space="preserve"><value>正在下载更新… {0}%</value></data>
+  <data name="Update.PreparingRestart" xml:space="preserve"><value>下载已毕，即将重启应用以完成更新…</value></data>
+  <data name="Update.DownloadFailed" xml:space="preserve"><value>更新失败：{0}</value></data>
   <data name="WinAccentText.Text" xml:space="preserve"><value>Windows 主题色</value></data>
   <data name="AccentBtnSeafoam.ToolTipService.ToolTip" xml:space="preserve"><value>海沫绿</value></data>
   <data name="AccentBtnBrightRose.ToolTipService.ToolTip" xml:space="preserve"><value>明玫红</value></data>

@@ -16,6 +16,7 @@ public sealed partial class MainWindow
         SettingsPage.Visibility = Visibility.Visible;
         SettingsPage.Initialize(_appSettings);
         RefreshExplorerContextMenuStatus();
+        RefreshLegacyExplorerContextMenuStatus();
         AppTitleText.Text = ResourceService.GetString("Settings.PageTitle");
     }
 
@@ -113,6 +114,10 @@ public sealed partial class MainWindow
         _lastSavedSettings = requestedSettings;
         if (languageChanged)
         {
+            if (_appSettings.LegacyExplorerContextMenuEnabled)
+            {
+                SynchronizeLegacyExplorerContextMenu();
+            }
             if (explorerOperationId is long operationId)
             {
                 ExplorerContextMenuStatus contextMenuStatus =
@@ -133,6 +138,7 @@ public sealed partial class MainWindow
         Accent = settings.Accent,
         Language = settings.Language,
         ExplorerContextMenuEnabled = settings.ExplorerContextMenuEnabled,
+        LegacyExplorerContextMenuEnabled = settings.LegacyExplorerContextMenuEnabled,
         LogAndReportDirectory = settings.LogAndReportDirectory
     };
 
@@ -142,8 +148,81 @@ public sealed partial class MainWindow
         _appSettings.Accent = settings.Accent;
         _appSettings.Language = settings.Language;
         _appSettings.ExplorerContextMenuEnabled = settings.ExplorerContextMenuEnabled;
+        _appSettings.LegacyExplorerContextMenuEnabled =
+            settings.LegacyExplorerContextMenuEnabled;
         _appSettings.LogAndReportDirectory = settings.LogAndReportDirectory;
     }
+
+    private async void SettingsPage_LegacyExplorerContextMenuToggleRequested(
+        object? sender,
+        Views.LegacyExplorerContextMenuToggleRequestedEventArgs e)
+    {
+        bool previousEnabled = _appSettings.LegacyExplorerContextMenuEnabled;
+        LegacyExplorerContextMenuStatus status =
+            _legacyExplorerContextMenuService.SetEnabled(
+                e.Enabled,
+                _appSettings.Language);
+        if (status.ErrorMessage is not null || status.IsEnabled != e.Enabled)
+        {
+            LegacyExplorerContextMenuStatus rollbackStatus =
+                _legacyExplorerContextMenuService.SetEnabled(
+                    previousEnabled,
+                    _appSettings.Language);
+            ApplyLegacyExplorerContextMenuStatus(
+                rollbackStatus with
+                {
+                    ErrorMessage = status.ErrorMessage ?? rollbackStatus.ErrorMessage
+                });
+            return;
+        }
+
+        _appSettings.LegacyExplorerContextMenuEnabled = e.Enabled;
+        try
+        {
+            await App.SettingsService.SaveAsync(_appSettings);
+            _lastSavedSettings = CloneSettings(_appSettings);
+            ApplyLegacyExplorerContextMenuStatus(status);
+        }
+        catch (Exception ex) when (
+            ex is IOException or UnauthorizedAccessException)
+        {
+            _appSettings.LegacyExplorerContextMenuEnabled = previousEnabled;
+            LegacyExplorerContextMenuStatus rollbackStatus =
+                _legacyExplorerContextMenuService.SetEnabled(
+                    previousEnabled,
+                    _appSettings.Language);
+            ApplyLegacyExplorerContextMenuStatus(
+                rollbackStatus with { ErrorMessage = ex.Message });
+        }
+    }
+
+    private void SynchronizeLegacyExplorerContextMenu() =>
+        ApplyLegacyExplorerContextMenuStatus(
+            _legacyExplorerContextMenuService.SetEnabled(
+                _appSettings.LegacyExplorerContextMenuEnabled,
+                _appSettings.Language));
+
+    private void RefreshLegacyExplorerContextMenuStatus() =>
+        ApplyLegacyExplorerContextMenuStatus(
+            _legacyExplorerContextMenuService.GetStatus(_appSettings.Language));
+
+    private void ApplyLegacyExplorerContextMenuStatus(
+        LegacyExplorerContextMenuStatus status) =>
+        SettingsPage.SetLegacyExplorerContextMenuState(
+            status,
+            GetLegacyExplorerMenuStatusText(status));
+
+    private static string GetLegacyExplorerMenuStatusText(
+        LegacyExplorerContextMenuStatus status) =>
+        !status.IsSupported
+            ? ResourceService.GetString("Settings.LegacyExplorerMenuUnsupported")
+            : status.ErrorMessage is not null
+                ? ResourceService.Format(
+                    "Settings.LegacyExplorerMenuFailed",
+                    status.ErrorMessage)
+                : status.IsEnabled
+                    ? ResourceService.GetString("Settings.LegacyExplorerMenuEnabled")
+                    : ResourceService.GetString("Settings.LegacyExplorerMenuDisabled");
 
     private async void SettingsPage_ExplorerContextMenuToggleRequested(
         object? sender,

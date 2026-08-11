@@ -4,7 +4,8 @@ param(
     [string]$Runtime = 'win-x64',
     [string]$ShellPackagePublisher = $env:CLIPPORT_SHELL_PACKAGE_PUBLISHER,
     [string]$ShellPackageCertificateThumbprint = $env:CLIPPORT_SHELL_PACKAGE_CERTIFICATE_THUMBPRINT,
-    [switch]$UnsignedShellPackageForDevelopment
+    [switch]$UnsignedShellPackageForDevelopment,
+    [switch]$CreateZip
 )
 
 $ErrorActionPreference = 'Stop'
@@ -107,11 +108,30 @@ try {
         throw "dotnet publish failed with exit code $LASTEXITCODE."
     }
 
+    # 独立更新器：自包含单文件，随发布目录一起分发。
+    # 主程序更新时先从应用目录复制一份到 %LOCALAPPDATA% 再运行，
+    # 因此替换应用目录时更新器自身不会被占用。
+    $updaterProjectPath = Join-Path $repoRoot 'src\ClipPort.Updater\ClipPort.Updater.csproj'
+    $updaterStagingPath = Join-Path $stagingRoot 'updater'
+    dotnet publish $updaterProjectPath `
+        -c $Configuration `
+        -p:Platform=x64 `
+        -o $updaterStagingPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Updater publish failed with exit code $LASTEXITCODE."
+    }
+    $updaterExecutable = Join-Path $updaterStagingPath 'ClipPort.Updater.exe'
+    if (-not (Test-Path -LiteralPath $updaterExecutable -PathType Leaf)) {
+        throw 'Publish validation failed; ClipPort.Updater.exe was not produced.'
+    }
+    Copy-Item -LiteralPath $updaterExecutable -Destination $stagingPublishPath
+
     $requiredFiles = @(
         'ClipPort.exe',
         'ClipPort.dll',
         'ClipPort.NativeCopy.dll',
         'ClipPort.ShellExtension.dll',
+        'ClipPort.Updater.exe',
         'resources.pri',
         'Strings\zh-CN\Resources.resw',
         'Strings\en-US\Resources.resw'
@@ -186,9 +206,33 @@ try {
         throw
     }
     Remove-SafeArtifactChild -Path $backupPath
+
+    if ($CreateZip) {
+        $zipPath = Join-Path $artifactRoot "$publishName.zip"
+        $sha256Path = "$zipPath.sha256"
+        if (Test-Path -LiteralPath $zipPath) {
+            Remove-Item -LiteralPath $zipPath -Force
+        }
+        if (Test-Path -LiteralPath $sha256Path) {
+            Remove-Item -LiteralPath $sha256Path -Force
+        }
+        Compress-Archive -Path (Join-Path $publishPath '*') `
+            -DestinationPath $zipPath `
+            -CompressionLevel Optimal
+        $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash
+        Set-Content -LiteralPath $sha256Path `
+            -Value "$zipHash  $publishName.zip" `
+            -Encoding ascii
+    }
 }
 finally {
     Remove-SafeArtifactChild -Path $stagingRoot
 }
 
-Get-Item -LiteralPath (Join-Path $publishPath 'ClipPort.exe')
+if ($CreateZip) {
+    Get-Item -LiteralPath (Join-Path $artifactRoot "$publishName.zip"),
+        (Join-Path $artifactRoot "$publishName.zip.sha256")
+}
+else {
+    Get-Item -LiteralPath (Join-Path $publishPath 'ClipPort.exe')
+}

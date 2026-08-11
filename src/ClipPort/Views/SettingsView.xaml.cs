@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
 using ClipPort.Models;
 using ClipPort.Services;
 using Microsoft.UI.Xaml;
@@ -13,12 +15,18 @@ public sealed partial class SettingsView : UserControl
     private bool _initializing;
     private readonly ExplorerIntegrationOperationGate _explorerIntegrationOperationGate =
         new();
+    private readonly UpdateService _updateService = new();
+    private GitHubRelease? _pendingUpdate;
+    private GitHubReleaseAsset? _pendingZipAsset;
+    private bool _isUpdateOperationInProgress;
 
     public event EventHandler? BackRequested;
     public event EventHandler? SettingsChanged;
     public event EventHandler? BrowseDirectoryRequested;
     public event EventHandler<ExplorerContextMenuToggleRequestedEventArgs>?
         ExplorerContextMenuToggleRequested;
+    public event EventHandler<LegacyExplorerContextMenuToggleRequestedEventArgs>?
+        LegacyExplorerContextMenuToggleRequested;
     public event EventHandler<ExplorerIntegrationOperationRequestedEventArgs>?
         InstallExplorerCertificateRequested;
     public event EventHandler<ExplorerIntegrationOperationRequestedEventArgs>?
@@ -72,6 +80,8 @@ public sealed partial class SettingsView : UserControl
             .FirstOrDefault(item => item.Tag is AppLanguage language && language == settings.Language);
         OutputDirectoryTextBox.Text = settings.LogAndReportDirectory;
         ExplorerContextMenuToggle.IsOn = settings.ExplorerContextMenuEnabled;
+        LegacyExplorerContextMenuToggle.IsOn =
+            settings.LegacyExplorerContextMenuEnabled;
         UpdateAccentSelectionText();
         _initializing = false;
     }
@@ -184,6 +194,28 @@ public sealed partial class SettingsView : UserControl
 
     private void BrowseDirectoryButton_Click(object sender, RoutedEventArgs e) =>
         BrowseDirectoryRequested?.Invoke(this, EventArgs.Empty);
+
+    private void LegacyExplorerContextMenuToggle_Toggled(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        LegacyExplorerContextMenuToggle.IsEnabled = false;
+        if (LegacyExplorerContextMenuToggleRequested is null)
+        {
+            LegacyExplorerContextMenuToggle.IsEnabled = true;
+            return;
+        }
+
+        LegacyExplorerContextMenuToggleRequested.Invoke(
+            this,
+            new LegacyExplorerContextMenuToggleRequestedEventArgs(
+                LegacyExplorerContextMenuToggle.IsOn));
+    }
 
     private void ExplorerContextMenuToggle_Toggled(object sender, RoutedEventArgs e)
     {
@@ -309,6 +341,17 @@ public sealed partial class SettingsView : UserControl
         _initializing = false;
     }
 
+    public void SetLegacyExplorerContextMenuState(
+        LegacyExplorerContextMenuStatus status,
+        string statusText)
+    {
+        _initializing = true;
+        LegacyExplorerContextMenuToggle.IsOn = status.IsEnabled;
+        LegacyExplorerContextMenuToggle.IsEnabled = status.IsSupported;
+        LegacyExplorerContextMenuStatusText.Text = statusText;
+        _initializing = false;
+    }
+
     private void UpdateExplorerIntegrationControlAvailability(
         ExplorerContextMenuStatus status)
     {
@@ -371,6 +414,151 @@ public sealed partial class SettingsView : UserControl
             await dialog.ShowAsync();
         }
     }
+
+    private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdateOperationInProgress)
+        {
+            return;
+        }
+
+        SetUpdateOperationBusy(true);
+        ApplyUpdateButton.Visibility = Visibility.Collapsed;
+        UpdateReleaseNotesText.Visibility = Visibility.Collapsed;
+        UpdateProgressBar.Visibility = Visibility.Collapsed;
+        UpdateStatusText.Text = ResourceService.GetString("Update.Checking");
+        try
+        {
+            GitHubRelease? release = await _updateService.GetLatestReleaseAsync();
+            if (release is null)
+            {
+                UpdateStatusText.Text = ResourceService.GetString("Update.NoReleaseFound");
+                return;
+            }
+
+            _pendingZipAsset = release.Assets.FirstOrDefault(UpdateService.IsZipAsset);
+            string currentVersion = UpdateService.GetCurrentVersion();
+            string latestVersion = release.TagName ?? release.Name ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(latestVersion) ||
+                !UpdateService.IsNewerVersion(currentVersion, latestVersion))
+            {
+                _pendingUpdate = null;
+                _pendingZipAsset = null;
+                UpdateStatusText.Text = ResourceService.Format(
+                    "Update.UpToDate",
+                    currentVersion);
+                return;
+            }
+
+            _pendingUpdate = release;
+            string prereleaseMarker = release.IsPrerelease
+                ? " " + ResourceService.GetString("Update.Prerelease")
+                : string.Empty;
+            UpdateStatusText.Text = ResourceService.Format(
+                "Update.Available",
+                latestVersion,
+                prereleaseMarker);
+
+            string releaseNotes = release.Body?.Trim() ?? string.Empty;
+            if (releaseNotes.Length > 2000)
+            {
+                releaseNotes = releaseNotes[..2000] + "…";
+            }
+            if (releaseNotes.Length > 0)
+            {
+                UpdateReleaseNotesText.Text = ResourceService.Format(
+                    "Update.ReleaseNotes",
+                    releaseNotes);
+                UpdateReleaseNotesText.Visibility = Visibility.Visible;
+            }
+            ApplyUpdateButton.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex) when (
+            ex is HttpRequestException or TaskCanceledException or JsonException or
+                InvalidOperationException)
+        {
+            UpdateStatusText.Text = ResourceService.Format(
+                "Update.CheckFailed",
+                ex.Message);
+        }
+        finally
+        {
+            SetUpdateOperationBusy(false);
+        }
+    }
+
+    private async void ApplyUpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdateOperationInProgress ||
+            _pendingUpdate is null ||
+            _pendingZipAsset is null)
+        {
+            return;
+        }
+
+        var confirmDialog = new ContentDialog
+        {
+            Title = ResourceService.GetString("Update.ConfirmTitle"),
+            Content = ResourceService.GetString("Update.ConfirmMessage"),
+            PrimaryButtonText = ResourceService.GetString("Update.ConfirmAction"),
+            CloseButtonText = ResourceService.GetString("Common.Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot
+        };
+        if (await confirmDialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        SetUpdateOperationBusy(true);
+        ApplyUpdateButton.IsEnabled = false;
+        UpdateProgressBar.Visibility = Visibility.Visible;
+        UpdateProgressBar.Value = 0;
+        UpdateStatusText.Text = ResourceService.Format("Update.Downloading", 0);
+        try
+        {
+            // 进度回调可能来自后台线程，通过 DispatcherQueue 回到 UI 线程更新。
+            var progress = new Progress<double>(value =>
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    UpdateProgressBar.Value = value;
+                    UpdateStatusText.Text = ResourceService.Format(
+                        "Update.Downloading",
+                        Math.Round(value));
+                }));
+
+            string zipPath = await _updateService.DownloadUpdateAsync(
+                _pendingUpdate,
+                _pendingZipAsset,
+                progress);
+            UpdateStatusText.Text = ResourceService.GetString("Update.PreparingRestart");
+
+            // 更新器等待本进程退出后替换文件并重新启动应用。
+            _updateService.LaunchUpdater(zipPath, AppContext.BaseDirectory);
+            Application.Current.Exit();
+        }
+        catch (Exception ex) when (
+            ex is HttpRequestException or TaskCanceledException or IOException or
+                UnauthorizedAccessException or InvalidOperationException)
+        {
+            UpdateProgressBar.Visibility = Visibility.Collapsed;
+            UpdateStatusText.Text = ResourceService.Format(
+                "Update.DownloadFailed",
+                ex.Message);
+            ApplyUpdateButton.IsEnabled = true;
+            SetUpdateOperationBusy(false);
+        }
+    }
+
+    private void SetUpdateOperationBusy(bool busy)
+    {
+        _isUpdateOperationInProgress = busy;
+        CheckForUpdatesButton.IsEnabled = !busy;
+        if (busy)
+        {
+            ApplyUpdateButton.IsEnabled = false;
+        }
+    }
 }
 
 public class ExplorerIntegrationOperationRequestedEventArgs(
@@ -382,6 +570,12 @@ public class ExplorerIntegrationOperationRequestedEventArgs(
 public sealed class ExplorerContextMenuToggleRequestedEventArgs(
     bool enabled,
     long operationId) : ExplorerIntegrationOperationRequestedEventArgs(operationId)
+{
+    public bool Enabled { get; } = enabled;
+}
+
+public sealed class LegacyExplorerContextMenuToggleRequestedEventArgs(
+    bool enabled) : EventArgs
 {
     public bool Enabled { get; } = enabled;
 }

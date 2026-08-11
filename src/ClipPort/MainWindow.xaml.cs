@@ -27,6 +27,7 @@ public sealed partial class MainWindow : Window
     private readonly JobHistoryService _historyService;
     private readonly AppLogService _logService;
     private readonly ExplorerContextMenuService _explorerContextMenuService = new();
+    private readonly LegacyExplorerContextMenuService _legacyExplorerContextMenuService = new();
     private readonly UISettings _uiSettings = new();
     private readonly ObservableCollection<JobHistoryItem> _history = [];
     private readonly ObservableCollection<DuplicateConflictChoice> _duplicateChoices = [];
@@ -71,6 +72,8 @@ public sealed partial class MainWindow : Window
         SettingsPage.BrowseDirectoryRequested += SettingsPage_BrowseDirectoryRequested;
         SettingsPage.ExplorerContextMenuToggleRequested +=
             SettingsPage_ExplorerContextMenuToggleRequested;
+        SettingsPage.LegacyExplorerContextMenuToggleRequested +=
+            SettingsPage_LegacyExplorerContextMenuToggleRequested;
         SettingsPage.InstallExplorerCertificateRequested +=
             SettingsPage_InstallExplorerCertificateRequested;
         SettingsPage.UninstallExplorerCertificateRequested +=
@@ -126,6 +129,7 @@ public sealed partial class MainWindow : Window
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
     {
         ApplyTheme();
+        SynchronizeLegacyExplorerContextMenu();
         await SynchronizeExplorerContextMenuAsync();
         if (_historyLoaded)
         {
