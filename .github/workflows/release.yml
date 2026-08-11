@@ -64,9 +64,18 @@ jobs:
           if (-not (Test-Path -LiteralPath $sha256File)) {
               throw "SHA-256 file is missing: $sha256File"
           }
-          $prereleaseFlag = if ($tag -match 'beta|alpha|rc|preview') { '--prerelease' } else { '' }
-          $notes = "ClipPort $tag`n`n自动构建的便携版发布包，包含主程序与内置更新器。`n设置 -> 关于 -> 检查更新 可自动获取后续版本。"
-          gh release create $tag $zip.FullName $sha256File `
-              --title "ClipPort $tag" `
-              --notes $notes `
-              $prereleaseFlag
+          # Release notes are Base64-encoded UTF-8: GitHub Actions writes
+          # workflow scripts as UTF-8, which Windows PowerShell 5.1 parses
+          # as ANSI, so literal Chinese text breaks the script.
+          $notesBytes = [Convert]::FromBase64String(
+              'Q2xpcFBvcnQgezB9Cgroh6rliqjmnoTlu7rnmoTkvr/mkLrniYjlj5HluIPljIXvvIzljIXlkKvkuLvnqIvluo/kuI7lhoXnva7mm7TmlrDlmajjgIIK6K6+572uIC0+IOWFs+S6jiAtPiDmo4Dmn6Xmm7TmlrAg5Y+v6Ieq5Yqo6I635Y+W5ZCO57ut54mI5pys44CC')
+          $notes = [Text.Encoding]::UTF8.GetString($notesBytes) -f $tag
+          $ghArgs = @(
+              'release', 'create', $tag, $zip.FullName, $sha256File,
+              '--title', "ClipPort $tag",
+              '--notes', $notes
+          )
+          if ($tag -match 'beta|alpha|rc|preview') {
+              $ghArgs += '--prerelease'
+          }
+          & gh @ghArgs
