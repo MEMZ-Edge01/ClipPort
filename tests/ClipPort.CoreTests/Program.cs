@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -20,8 +21,10 @@ internal static class Program
             ("localization resource coverage", TestLocalizationResourceCoverageAsync),
             ("localized string lookup", TestLocalizedStringLookupAsync),
             ("Windows accent preview stays independent", TestWindowsAccentPreviewAsync),
+            ("application accent reaches WinUI control states", TestApplicationAccentControlResourcesAsync),
             ("copy and SHA-256 verification", TestCopyAndVerifyAsync),
             ("verification algorithms detect corruption", TestVerificationAlgorithmsAsync),
+            ("opportunistic verification never blocks committed copies", TestOpportunisticVerificationAsync),
             ("verification-only mode never copies", TestVerificationOnlyAsync),
             ("verification mismatch can be overwritten", TestOverwriteVerificationMismatchAsync),
             ("FastCopy pipeline copy and verification", TestFastCopyAlgorithmAsync),
@@ -38,6 +41,9 @@ internal static class Program
             ("path safety and root-folder naming", TestPathSafetyAsync),
             ("shared display formatting", TestDisplayFormattingAsync),
             ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
+            ("source scanning yields the caller thread", TestSourceScanningYieldsCallerAsync),
+            ("waveform timeline fills and compresses", TestWaveformTimelineAsync),
+            ("wide layouts keep stretching", TestWideLayoutsKeepStretchingAsync),
             ("quick-start requests preserve the opposite directory", TestQuickStartRequestsAsync),
             ("traditional quick-start registration is certificate-free", TestLegacyExplorerContextMenuRegistrationAsync),
             ("traditional quick-start registry lifecycle is reversible", TestLegacyExplorerContextMenuRegistryLifecycleAsync),
@@ -792,6 +798,59 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task TestApplicationAccentControlResourcesAsync()
+    {
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XDocument theme = XDocument.Load(
+            Path.Combine(AppContext.BaseDirectory, "Themes", "TraeWorkTheme.xaml"));
+
+        var expectedAliases = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["AccentButtonBackground"] = "AccentBrush",
+            ["AccentButtonBackgroundPointerOver"] = "AccentHoverBrush",
+            ["AccentButtonBackgroundPressed"] = "AccentActiveBrush",
+            ["RadioButtonOuterEllipseCheckedFill"] = "AccentBrush",
+            ["RadioButtonOuterEllipseCheckedFillPointerOver"] = "AccentHoverBrush",
+            ["ToggleSwitchFillOn"] = "AccentBrush",
+            ["ToggleSwitchFillOnPointerOver"] = "AccentHoverBrush",
+            ["CheckBoxCheckBackgroundFillChecked"] = "AccentBrush",
+            ["ComboBoxItemPillFillBrush"] = "AccentBrush",
+            ["ProgressBarForeground"] = "AccentBrush",
+            ["InfoBarInformationalSeverityBackgroundBrush"] = "AccentSoftBrush",
+            ["InfoBarInformationalSeverityIconBackground"] = "AccentBrush"
+        };
+
+        foreach ((string resourceKey, string expectedBrushKey) in expectedAliases)
+        {
+            XElement alias = theme
+                .Descendants(presentation + "StaticResource")
+                .Single(element => (string?)element.Attribute(x + "Key") == resourceKey);
+            Assert((string?)alias.Attribute("ResourceKey") == expectedBrushKey,
+                $"{resourceKey} must follow the mutable application {expectedBrushKey}.");
+        }
+
+        XDocument mainWindow = XDocument.Load(
+            Path.Combine(AppContext.BaseDirectory, "Localization", "MainWindow.xaml"));
+        foreach (string buttonName in new[]
+                 {
+                     "NewJobButton",
+                     "StartButton",
+                     "RestartJobButton",
+                     "ApplyDuplicateChoicesButton",
+                     "RetryFailedFilesButton"
+                 })
+        {
+            XElement button = mainWindow
+                .Descendants(presentation + "Button")
+                .Single(element => (string?)element.Attribute(x + "Name") == buttonName);
+            Assert((string?)button.Attribute("Style") == "{StaticResource AccentButtonStyle}",
+                $"{buttonName} must use the accent button visual states, not the default Windows hover states.");
+        }
+
+        return Task.CompletedTask;
+    }
+
     private static Dictionary<string, string> LoadStringResources(string path) =>
         XDocument.Load(path)
             .Descendants("data")
@@ -951,6 +1010,59 @@ internal static class Program
         }
 
         return Task.CompletedTask;
+    }
+
+    private static async Task TestOpportunisticVerificationAsync()
+    {
+        Assert(new CopyOptions().VerificationExecutionMode == VerificationExecutionMode.AfterCopy,
+            "Existing callers must retain verification-after-copy by default.");
+
+        await WithTempFoldersAsync(async (source, destination) =>
+        {
+            const int fileCount = 12;
+            for (int index = 0; index < fileCount; index++)
+            {
+                await File.WriteAllBytesAsync(
+                    Path.Combine(source, $"item-{index:D2}.bin"),
+                    RandomNumberGenerator.GetBytes(512 * 1024 + index));
+            }
+
+            var events = new ConcurrentQueue<CopyProgressInfo>();
+            int verificationBeforeCommit = 0;
+            var progress = new InlineProgress<CopyProgressInfo>(info =>
+            {
+                events.Enqueue(info);
+                if (info.Phase == CopyPhase.Verifying &&
+                    !string.IsNullOrWhiteSpace(info.CurrentFile) &&
+                    !File.Exists(Path.Combine(destination, info.CurrentFile)))
+                {
+                    Interlocked.Exchange(ref verificationBeforeCommit, 1);
+                }
+            });
+            var options = new CopyOptions(
+                ExistingFilePolicy.Overwrite,
+                VerifyFiles: true,
+                UseFastCopyAlgorithm: false,
+                VerificationExecutionMode: VerificationExecutionMode.OpportunisticDuringCopy);
+
+            CopyResult result = await new FileCopyService().CopyAndVerifyAsync(
+                source,
+                destination,
+                options,
+                progress,
+                _ => Task.CompletedTask,
+                CancellationToken.None);
+
+            Assert(result.Success && result.VerifiedFileCount == fileCount &&
+                   result.VerifiedFiles.Count == fileCount,
+                "Background verification and its non-blocking backlog must verify every file.");
+            Assert(events.Any(info => info.Phase == CopyPhase.Verifying),
+                "Opportunistic mode must publish independent verification progress.");
+            Assert(verificationBeforeCommit == 0,
+                "A file must be atomically committed before background verification starts.");
+            Assert(!Directory.EnumerateFiles(destination, "*.clipport-partial", SearchOption.AllDirectories).Any(),
+                "Opportunistic verification must never observe or leave partial files.");
+        });
     }
 
     private static async Task TestVerificationOnlyAsync()
@@ -1410,10 +1522,22 @@ internal static class Program
                     ["clip.mov"] = ExistingFilePolicy.CreateCopy
                 }
             };
+            var opportunisticItem = new JobHistoryItem
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                DisplayName = "Background verification",
+                SourcePath = @"F:\Media",
+                DestinationPath = @"D:\Archive",
+                StartedAt = DateTimeOffset.Now,
+                Status = JobStatus.Completed,
+                CopyEnabled = true,
+                VerificationEnabled = true,
+                VerificationExecutionMode = VerificationExecutionMode.OpportunisticDuringCopy
+            };
 
-            await service.SaveAsync([item]);
+            await service.SaveAsync([item, opportunisticItem]);
             List<JobHistoryItem> loaded = await service.LoadAsync();
-            Assert(loaded.Count == 1, "Exactly one history item should be restored.");
+            Assert(loaded.Count == 2, "Every history item should be restored.");
             Assert(loaded[0].Id == item.Id && loaded[0].TotalBytes == item.TotalBytes,
                 "Persisted history details should round-trip.");
             Assert(loaded[0].Status == JobStatus.Completed,
@@ -1422,6 +1546,9 @@ internal static class Program
                 "The verification setting should round-trip.");
             Assert(loaded[0].VerificationAlgorithm == VerificationAlgorithmKind.XxHash64,
                 "The verification algorithm should round-trip.");
+            Assert(loaded[0].VerificationExecutionMode == VerificationExecutionMode.AfterCopy &&
+                   loaded[1].VerificationExecutionMode == VerificationExecutionMode.OpportunisticDuringCopy,
+                "Legacy defaults and opportunistic verification mode should round-trip safely.");
             Assert(VerificationAlgorithms.Normalize((VerificationAlgorithmKind)999) ==
                    VerificationAlgorithmKind.Sha256,
                 "An unknown persisted verification algorithm should fall back to SHA-256.");
@@ -1833,6 +1960,106 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task TestWideLayoutsKeepStretchingAsync()
+    {
+        string mainWindowXaml = File.ReadAllText(Path.Combine(
+            AppContext.BaseDirectory,
+            "Localization",
+            "MainWindow.xaml"));
+        string settingsViewXaml = File.ReadAllText(Path.Combine(
+            AppContext.BaseDirectory,
+            "Localization",
+            "SettingsView.xaml"));
+
+        Assert(!mainWindowXaml.Contains("MaxWidth=\"1180\"", StringComparison.Ordinal),
+            "The task page must not stop stretching at 1180 DIP.");
+        Assert(!settingsViewXaml.Contains("MaxWidth=\"920\"", StringComparison.Ordinal),
+            "The settings page must not stop stretching at 920 DIP.");
+        Assert(ResponsiveLayout.GetTaskContentWidth(1920) > 1180 &&
+               ResponsiveLayout.GetTaskContentWidth(3200) >
+               ResponsiveLayout.GetTaskContentWidth(1920),
+            "The task page must continue growing on 1920 DIP and wider viewports.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task TestSourceScanningYieldsCallerAsync()
+    {
+        string sourceRoot = Path.GetFullPath(Path.Combine(
+            Path.GetTempPath(),
+            "ClipPort-ScannerTests",
+            Guid.NewGuid().ToString("N")));
+        const long hugeFileLength = 1_600_000_000_000;
+        var provider = new DelayedSourceEntryProvider(
+            TimeSpan.FromMilliseconds(350),
+            [new SourceEntry(
+                Path.Combine(sourceRoot, "huge.bin"),
+                FileAttributes.Normal,
+                hugeFileLength)]);
+        var progressEvents = new List<CopyProgressInfo>();
+        var scanner = new SourceScanner(provider);
+        var stopwatch = Stopwatch.StartNew();
+
+        Task<SourceScanResult> scanTask = scanner.ScanAsync(
+            sourceRoot,
+            new InlineProgress<CopyProgressInfo>(progressEvents.Add),
+            _ => Task.CompletedTask,
+            CancellationToken.None);
+
+        Assert(stopwatch.Elapsed < TimeSpan.FromMilliseconds(200) && !scanTask.IsCompleted,
+            "Starting a slow source scan must return without blocking the caller thread.");
+        SourceScanResult result = await scanTask;
+        Assert(result.TotalBytes == hugeFileLength && result.Files.Count == 1,
+            "Scanning must preserve 1.6 TB file sizes without allocating file contents.");
+        Assert(progressEvents.Last().Phase == CopyPhase.Scanning &&
+               !progressEvents.Last().IsTotalKnown &&
+               progressEvents.Last().ProcessedBytes == hugeFileLength,
+            "Scanning should expose discovered counts while the final total is unknown.");
+    }
+
+    private static Task TestWaveformTimelineAsync()
+    {
+        Assert(WaveformTimeline.GetNormalizedX(1, 0) == 1,
+            "A single current sample should be anchored at the right edge.");
+        Assert(WaveformTimeline.GetNormalizedX(2, 0) == 0 &&
+               WaveformTimeline.GetNormalizedX(2, 1) == 1,
+            "Two samples should span the entire chart.");
+        Assert(WaveformTimeline.GetNormalizedX(3, 0) == 0 &&
+               WaveformTimeline.GetNormalizedX(3, 1) == 0.5 &&
+               WaveformTimeline.GetNormalizedX(3, 2) == 1,
+            "New samples should remain at the right edge while earlier samples compress left.");
+        Assert(WaveformTimeline.GetNormalizedX(90, 0) == 0 &&
+               WaveformTimeline.GetNormalizedX(90, 89) == 1,
+            "Ninety retained samples should continue to fill the chart.");
+
+        var sampler = new CopyThroughputSampler(
+            CopyThroughputSampler.DefaultCapacity,
+            minimumIntervalSeconds: 0.01);
+        var byteRates = new List<double>();
+        var itemRates = new List<double>();
+        var progressPositions = new List<double>();
+        for (int index = 1; index <= 91; index++)
+        {
+            sampler.TrySample(
+                new CopyProgressInfo(
+                    CopyPhase.Copying,
+                    91,
+                    index,
+                    91,
+                    index,
+                    $"sample-{index}",
+                    1,
+                    TimeSpan.FromSeconds(index * 0.1)),
+                byteRates,
+                itemRates,
+                progressPositions);
+        }
+        Assert(byteRates.Count == 90 && itemRates.Count == 90 &&
+               progressPositions.Count == 90 &&
+               progressPositions[0] > 1d / 91 && progressPositions[^1] == 1,
+            "The ninety-first sample should evict the oldest point and remain at the right edge.");
+        return Task.CompletedTask;
+    }
+
     private static Task TestLegacyExplorerContextMenuRegistrationAsync()
     {
         string executablePath = Path.Combine(
@@ -1948,6 +2175,7 @@ internal static class Program
             CopyEnabled = true,
             VerificationEnabled = true,
             VerificationAlgorithm = VerificationAlgorithmKind.Md5,
+            VerificationExecutionMode = VerificationExecutionMode.OpportunisticDuringCopy,
             FileCount = 1,
             CopiedFiles = 1,
             CopiedBytes = 4,
@@ -1977,6 +2205,7 @@ internal static class Program
         Assert(english.Contains("Task name: Card A", StringComparison.Ordinal) &&
                english.Contains("Copied successfully: 1/1 files", StringComparison.Ordinal) &&
                english.Contains("Verification algorithm: MD5", StringComparison.Ordinal) &&
+               english.Contains("Verification mode: Background verification while copying", StringComparison.Ordinal) &&
                english.Contains("MD5: AA", StringComparison.Ordinal) &&
                !english.Contains("任务名称", StringComparison.Ordinal),
             "English reports should not contain hard-coded Chinese labels.");
@@ -2240,5 +2469,16 @@ internal static class Program
     private sealed class InlineProgress<T>(Action<T> action) : IProgress<T>
     {
         public void Report(T value) => action(value);
+    }
+
+    private sealed class DelayedSourceEntryProvider(
+        TimeSpan delay,
+        IReadOnlyList<SourceEntry> entries) : ISourceEntryProvider
+    {
+        public IEnumerable<SourceEntry> EnumerateDirectory(string directory)
+        {
+            Thread.Sleep(delay);
+            return entries;
+        }
     }
 }

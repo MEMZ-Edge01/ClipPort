@@ -18,7 +18,7 @@ public sealed partial class MainWindow
 
     private static readonly IReadOnlyList<double> EmptyWaveformSamples = Array.Empty<double>();
     private static readonly double[] WaveformScaleMultipliers = [3, 2, 1, 0];
-    private static readonly TimeSpan WaveformAnimationDuration = TimeSpan.FromMilliseconds(260);
+    private static readonly TimeSpan WaveformAnimationDuration = TimeSpan.FromMilliseconds(120);
     private static readonly TimeSpan WaveformFrameInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly Dictionary<Polyline, WaveformAnimationState> _waveformAnimations = [];
@@ -278,38 +278,28 @@ public sealed partial class MainWindow
         double bottomY = verticalPadding + drawableHeight;
         double scaleMaximum = Math.Max(chartMaximum, double.Epsilon);
         var linePoints = new List<Point>(samples.Count + 1);
-        double firstX = GetWaveformX(width, samples.Count, progressPositions, 0);
-        if (firstX > 0)
+        if (samples.Count == 1)
         {
-            linePoints.Add(new Point(0, bottomY));
-        }
-
-        for (int index = 0; index < samples.Count; index++)
-        {
-            double x = GetWaveformX(width, samples.Count, progressPositions, index);
-            double normalized = Math.Clamp(samples[index] / scaleMaximum, 0, 1);
+            double normalized = Math.Clamp(samples[0] / scaleMaximum, 0, 1);
             double y = verticalPadding + drawableHeight * (1 - normalized);
-            linePoints.Add(new Point(x, y));
+            // A single reading represents the whole visible interval. Drawing
+            // both edges avoids the tiny triangle produced by a lone point.
+            linePoints.Add(new Point(0, y));
+            linePoints.Add(new Point(width, y));
+        }
+        else
+        {
+            for (int index = 0; index < samples.Count; index++)
+            {
+                double x = width * WaveformTimeline.GetNormalizedX(samples.Count, index);
+                double normalized = Math.Clamp(samples[index] / scaleMaximum, 0, 1);
+                double y = verticalPadding + drawableHeight * (1 - normalized);
+                linePoints.Add(new Point(x, y));
+            }
         }
 
         List<Point> fillPoints = BuildFillPoints(linePoints, bottomY);
         SetWaveformGeometry(fill, line, glow, linePoints, fillPoints, animate);
-    }
-
-    private static double GetWaveformX(
-        double width,
-        int sampleCount,
-        IReadOnlyList<double> progressPositions,
-        int index)
-    {
-        if (progressPositions.Count == sampleCount)
-        {
-            return width * Math.Clamp(progressPositions[index], 0, 1);
-        }
-
-        // Histories written before progress positions were introduced retain
-        // their original full-width presentation.
-        return sampleCount <= 1 ? width : width * index / (sampleCount - 1);
     }
 
     private void SetWaveformGeometry(

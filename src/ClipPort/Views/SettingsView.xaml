@@ -107,8 +107,9 @@
         </Border>
 
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
-            <Grid MaxWidth="920" HorizontalAlignment="Left" Margin="34,34,34,48">
+                      HorizontalScrollBarVisibility="Disabled"
+                      HorizontalContentAlignment="Stretch">
+            <Grid HorizontalAlignment="Stretch" Margin="34,34,34,48">
                 <StackPanel x:Name="AppearancePanel" Spacing="24">
                     <StackPanel Spacing="8">
                         <TextBlock x:Name="AppearanceTitle" x:Uid="AppearanceTitle" Text="外观" FontSize="28" FontWeight="SemiBold" />

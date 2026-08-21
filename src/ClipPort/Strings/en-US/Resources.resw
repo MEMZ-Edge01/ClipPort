@@ -527,4 +527,14 @@
   <data name="VerifyItemRateChartTitle.Text" xml:space="preserve"><value>Item throughput</value></data>
   <data name="Unit.ItemsPerSecond" xml:space="preserve"><value>items/s</value></data>
   <data name="Format.ItemsPerSecond" xml:space="preserve"><value>{0} items/s</value></data>
+  <data name="OpportunisticVerificationToggle.Header" xml:space="preserve"><value>Verify while copying</value></data>
+  <data name="OpportunisticVerificationToggle.OnContent" xml:space="preserve"><value>On</value></data>
+  <data name="OpportunisticVerificationToggle.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="OpportunisticVerificationHintText.Text" xml:space="preserve"><value>Copying stays first. Fully committed files are verified in the background when resources are available, and any backlog is finished after copying.</value></data>
+  <data name="Status.CopyingAndVerifying" xml:space="preserve"><value>Copying and verifying in the background</value></data>
+  <data name="Status.BackgroundVerification" xml:space="preserve"><value>Copying has priority; verification runs in the background</value></data>
+  <data name="Format.ScannedSummary" xml:space="preserve"><value>Scanned {0} folders and {1} files; {2} discovered</value></data>
+  <data name="Report.VerificationExecutionMode" xml:space="preserve"><value>Verification mode: {0}</value></data>
+  <data name="Report.VerificationDuringCopy" xml:space="preserve"><value>Background verification while copying</value></data>
+  <data name="Report.VerificationAfterCopy" xml:space="preserve"><value>Verification after copying</value></data>
 </root>

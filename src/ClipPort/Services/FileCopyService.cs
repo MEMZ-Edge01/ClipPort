@@ -12,6 +12,17 @@ public sealed class FileCopyService
 {
     private const int BufferSize = 4 * 1024 * 1024;
     private const int PipelineBufferCount = 4;
+    private readonly SourceScanner _sourceScanner;
+
+    public FileCopyService()
+        : this(new SourceScanner())
+    {
+    }
+
+    internal FileCopyService(SourceScanner sourceScanner)
+    {
+        _sourceScanner = sourceScanner;
+    }
 
     public Task<CopyResult> CopyAndVerifyAsync(
         string sourceRoot,
@@ -60,25 +71,44 @@ public sealed class FileCopyService
     {
         options = options with
         {
-            VerificationAlgorithm = VerificationAlgorithms.Normalize(options.VerificationAlgorithm)
+            VerificationAlgorithm = VerificationAlgorithms.Normalize(options.VerificationAlgorithm),
+            VerificationExecutionMode = Enum.IsDefined(options.VerificationExecutionMode)
+                ? options.VerificationExecutionMode
+                : VerificationExecutionMode.AfterCopy
         };
 
         if (options.SkipCopy)
         {
             // Skip-copy mode implies verification; there is nothing to skip
             // when the user only wants to verify existing destination files.
-            options = options with { VerifyFiles = true };
+            options = options with
+            {
+                VerifyFiles = true,
+                VerificationExecutionMode = VerificationExecutionMode.AfterCopy
+            };
         }
 
-        progress.Report(new CopyProgressInfo(CopyPhase.Scanning, 0, 0, 0, 0, string.Empty, 0, TimeSpan.Zero));
+        progress.Report(new CopyProgressInfo(
+            CopyPhase.Scanning,
+            0,
+            0,
+            0,
+            0,
+            string.Empty,
+            0,
+            TimeSpan.Zero)
+        {
+            IsTotalKnown = false
+        });
 
-        ScanResult scan = await ScanSourceAsync(
+        SourceScanResult scan = await _sourceScanner.ScanAsync(
             sourceRoot,
+            progress,
             waitWhilePaused,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         List<SourceFile> files = scan.Files;
-        long totalBytes = files.Sum(file => file.Length);
+        long totalBytes = scan.TotalBytes;
         var errors = new List<string>(scan.Errors);
         var warnings = new List<string>();
         var failedFiles = new List<FileOperationFailure>();
@@ -144,10 +174,41 @@ public sealed class FileCopyService
         int copiedFiles = 0;
         long transferredCopyBytes = 0;
         long processedVerifyBytes = 0;
+        long sequentialVerifyBytes = 0;
         int processedVerifyFiles = 0;
         long verifiedBytes = 0;
         int verifiedFiles = 0;
         long lastReportTicks = 0;
+        TimeSpan verificationElapsedBase = TimeSpan.Zero;
+        bool opportunisticVerification = options.VerifyFiles &&
+            !options.SkipCopy &&
+            options.VerificationExecutionMode == VerificationExecutionMode.OpportunisticDuringCopy;
+        var deferredVerificationItems = new List<VerificationWorkItem>();
+        using BackgroundVerificationWorker? backgroundVerifier = opportunisticVerification
+            ? new BackgroundVerificationWorker(
+                options.VerificationAlgorithm,
+                totalBytes,
+                files.Count,
+                progress,
+                waitWhilePaused,
+                cancellationToken)
+            : null;
+
+        void QueueVerification(SourceFile file, string destinationPath)
+        {
+            if (!opportunisticVerification)
+            {
+                return;
+            }
+
+            var item = new VerificationWorkItem(file, destinationPath);
+            if (backgroundVerifier?.TryQueue(item) != true)
+            {
+                // Never make copying wait for verification. A full queue, or a
+                // platform that cannot lower I/O priority, falls back to the tail.
+                deferredVerificationItems.Add(item);
+            }
+        }
 
         async Task CopyGroupAsync(IReadOnlyList<SourceFile> group, ExistingFilePolicy policy)
         {
@@ -163,6 +224,7 @@ public sealed class FileCopyService
                     if (policy == ExistingFilePolicy.Skip)
                     {
                         destinationPaths[file.RelativePath] = destinationPath;
+                        QueueVerification(file, destinationPath);
                         processedCopyBytes += file.Length;
                         processedCopyFiles++;
                         ReportCopyProgress(file);
@@ -185,8 +247,6 @@ public sealed class FileCopyService
                         PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationDirectory);
                         Directory.CreateDirectory(destinationDirectory);
                     }
-                    EnsureDestinationCapacity(destinationRoot, file.Length);
-
                     await CopyFileAsync(
                         file.FullPath,
                         partialPath,
@@ -212,6 +272,7 @@ public sealed class FileCopyService
                     if (committedPath is null)
                     {
                         destinationPaths[file.RelativePath] = destinationPath;
+                        QueueVerification(file, destinationPath);
                         processedCopyBytes += file.Length;
                         processedCopyFiles++;
                         ReportCopyProgress(file);
@@ -223,6 +284,7 @@ public sealed class FileCopyService
                     copiedBytes += file.Length;
                     copiedFiles++;
                     TryPreserveLastWriteTime(file, committedPath, warnings);
+                    QueueVerification(file, committedPath);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
@@ -343,10 +405,56 @@ public sealed class FileCopyService
                 }
 
                 processedVerifyBytes += file.Length;
+                sequentialVerifyBytes += file.Length;
                 processedVerifyFiles++;
                 ReportVerifyProgress(file);
             }
             verifyWatch.Stop();
+        }
+
+        async Task VerifyDeferredItemsAsync(IReadOnlyList<VerificationWorkItem> items)
+        {
+            foreach (VerificationWorkItem item in items)
+            {
+                destinationPaths[item.Source.RelativePath] = item.DestinationPath;
+            }
+            await VerifyGroupAsync(items.Select(item => item.Source).ToArray());
+        }
+
+        void ApplyBackgroundOutcome(BackgroundVerificationOutcome outcome)
+        {
+            SourceFile file = outcome.WorkItem.Source;
+            verifications.Add(outcome.Verification);
+            processedVerifyBytes += file.Length;
+            processedVerifyFiles++;
+            if (outcome.Failure is FileOperationFailure failure)
+            {
+                errors.Add(failure.Error);
+                failedFiles.Add(failure);
+            }
+            else
+            {
+                verifiedBytes += file.Length;
+                verifiedFiles++;
+            }
+        }
+
+        async Task CompleteOpportunisticVerificationAsync()
+        {
+            if (!opportunisticVerification || backgroundVerifier is null)
+            {
+                return;
+            }
+
+            BackgroundVerificationSummary summary = await backgroundVerifier.CompleteAsync();
+            verificationElapsedBase = summary.UsedBackgroundIoPriority
+                ? summary.Duration
+                : copyWatch.Elapsed;
+            foreach (BackgroundVerificationOutcome outcome in summary.Outcomes)
+            {
+                ApplyBackgroundOutcome(outcome);
+            }
+            await VerifyDeferredItemsAsync(deferredVerificationItems);
         }
 
         void ReportVerifyProgress(SourceFile file) =>
@@ -357,8 +465,8 @@ public sealed class FileCopyService
                 files.Count,
                 processedVerifyFiles,
                 file.RelativePath,
-                processedVerifyBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001),
-                verifyWatch.Elapsed)
+                sequentialVerifyBytes / Math.Max(verifyWatch.Elapsed.TotalSeconds, 0.001),
+                verificationElapsedBase + verifyWatch.Elapsed)
             {
                 SuccessfulBytes = verifiedBytes,
                 SuccessfulFiles = verifiedFiles
@@ -412,7 +520,10 @@ public sealed class FileCopyService
                 ? ExistingFilePolicy.Overwrite
                 : options.ExistingFilePolicy;
             await CopyGroupAsync(immediateFiles, initialPolicy);
-            await VerifyGroupAsync(immediateFiles);
+            if (!opportunisticVerification)
+            {
+                await VerifyGroupAsync(immediateFiles);
+            }
 
             if (duplicateFiles.Count > 0)
             {
@@ -446,11 +557,23 @@ public sealed class FileCopyService
                         decision = ExistingFilePolicy.Skip;
                     }
                     await CopyGroupAsync([duplicate], decision);
-                    await VerifyGroupAsync([duplicate]);
+                    if (!opportunisticVerification)
+                    {
+                        await VerifyGroupAsync([duplicate]);
+                    }
                 }
             }
+            await CompleteOpportunisticVerificationAsync();
         }
 
+        TimeSpan verificationDuration = opportunisticVerification
+            ? verificationElapsedBase + verifyWatch.Elapsed
+            : verifyWatch.Elapsed;
+        TimeSpan completedElapsed = opportunisticVerification
+            ? TimeSpan.FromSeconds(Math.Max(
+                copyWatch.Elapsed.TotalSeconds,
+                verificationDuration.TotalSeconds))
+            : copyWatch.Elapsed + verifyWatch.Elapsed;
         progress.Report(new CopyProgressInfo(
             CopyPhase.Completed,
             totalBytes,
@@ -459,14 +582,18 @@ public sealed class FileCopyService
             files.Count,
             string.Empty,
             0,
-            copyWatch.Elapsed + verifyWatch.Elapsed)
+            completedElapsed)
         {
             SuccessfulBytes = options.VerifyFiles ? verifiedBytes : copiedBytes,
             SuccessfulFiles = options.VerifyFiles ? verifiedFiles : copiedFiles
         });
 
         return new CopyResult(
-            errors.Count == 0, files.Count, totalBytes, copyWatch.Elapsed, verifyWatch.Elapsed,
+            errors.Count == 0,
+            files.Count,
+            totalBytes,
+            copyWatch.Elapsed,
+            verificationDuration,
             options.VerifyFiles, detectedConflicts, verifications, failedFiles, errors)
         {
             CopiedBytes = copiedBytes,
@@ -479,18 +606,20 @@ public sealed class FileCopyService
         };
     }
 
-    public async Task<FileRetryResult> RetryFailedFilesAsync(
+    public Task<FileRetryResult> RetryFailedFilesAsync(
         IReadOnlyList<FileOperationFailure> failures,
         CopyOptions options,
         IProgress<CopyProgressInfo> progress,
         Func<CancellationToken, Task> waitWhilePaused,
         CancellationToken cancellationToken) =>
-        await RetryFailedFilesCoreAsync(
-            failures,
-            options,
-            overwriteVerificationMismatches: false,
-            progress,
-            waitWhilePaused,
+        Task.Run(
+            () => RetryFailedFilesCoreAsync(
+                failures,
+                options,
+                overwriteVerificationMismatches: false,
+                progress,
+                waitWhilePaused,
+                cancellationToken),
             cancellationToken);
 
     public Task<FileRetryResult> OverwriteVerificationMismatchesAsync(
@@ -507,12 +636,14 @@ public sealed class FileCopyService
                 nameof(failures));
         }
 
-        return RetryFailedFilesCoreAsync(
-            failures,
-            options with { SkipCopy = false, VerifyFiles = true },
-            overwriteVerificationMismatches: true,
-            progress,
-            waitWhilePaused,
+        return Task.Run(
+            () => RetryFailedFilesCoreAsync(
+                failures,
+                options with { SkipCopy = false, VerifyFiles = true },
+                overwriteVerificationMismatches: true,
+                progress,
+                waitWhilePaused,
+                cancellationToken),
             cancellationToken);
     }
 
@@ -546,6 +677,20 @@ public sealed class FileCopyService
         var copyWatch = new Stopwatch();
         var verifyWatch = new Stopwatch();
 
+        foreach (IGrouping<string, FileOperationFailure> destinationVolume in failures
+                     .Where(failure => failure.Stage == FileOperationStage.Copying ||
+                                       overwriteVerificationMismatches)
+                     .GroupBy(
+                         failure => Path.GetPathRoot(Path.GetFullPath(failure.DestinationPath)) ??
+                                    failure.DestinationPath,
+                         StringComparer.OrdinalIgnoreCase))
+        {
+            // Retrying several files on one volume must not re-query free space for each file.
+            EnsureDestinationCapacity(
+                destinationVolume.Key,
+                destinationVolume.Sum(failure => failure.Length));
+        }
+
         foreach (FileOperationFailure failure in failures)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -570,7 +715,6 @@ public sealed class FileCopyService
                 {
                     PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationDirectory);
                     Directory.CreateDirectory(destinationDirectory);
-                    EnsureDestinationCapacity(destinationDirectory, failure.Length);
                 }
 
                 long lastRetryReportTicks = copyWatch.ElapsedTicks;
@@ -972,89 +1116,6 @@ public sealed class FileCopyService
             _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, null)
         };
 
-    private static async Task<ScanResult> ScanSourceAsync(
-        string sourceRoot,
-        Func<CancellationToken, Task> waitWhilePaused,
-        CancellationToken cancellationToken)
-    {
-        string normalizedSource = Path.GetFullPath(sourceRoot);
-        var files = new List<SourceFile>();
-        var directories = new List<string>();
-        var errors = new List<string>();
-        var pending = new Stack<string>();
-        pending.Push(normalizedSource);
-
-        while (pending.Count > 0)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await waitWhilePaused(cancellationToken);
-            string current = pending.Pop();
-            string[] entries;
-            try
-            {
-                entries = Directory.GetFileSystemEntries(current);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                errors.Add(ResourceService.Format(
-                    "Format.CannotScanDirectory",
-                    Path.GetRelativePath(normalizedSource, current),
-                    ex.Message));
-                continue;
-            }
-
-            foreach (string entry in entries)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await waitWhilePaused(cancellationToken);
-                FileAttributes attributes;
-                try
-                {
-                    attributes = File.GetAttributes(entry);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    errors.Add(ResourceService.Format(
-                        "Format.CannotReadPath",
-                        Path.GetRelativePath(normalizedSource, entry),
-                        ex.Message));
-                    continue;
-                }
-
-                // Never follow links while scanning removable media.
-                if ((attributes & FileAttributes.ReparsePoint) != 0)
-                {
-                    continue;
-                }
-
-                string relativePath = Path.GetRelativePath(normalizedSource, entry);
-                if ((attributes & FileAttributes.Directory) != 0)
-                {
-                    directories.Add(relativePath);
-                    pending.Push(entry);
-                    continue;
-                }
-
-                try
-                {
-                    files.Add(new SourceFile(
-                        entry,
-                        relativePath,
-                        new FileInfo(entry).Length));
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    errors.Add(ResourceService.Format(
-                        "Format.CannotReadPath",
-                        relativePath,
-                        ex.Message));
-                }
-            }
-        }
-
-        return new ScanResult(files, directories, errors);
-    }
-
     private static void EnsureDestinationCapacity(string destinationRoot, long requiredBytes)
     {
         if (requiredBytes <= 0)
@@ -1206,9 +1267,4 @@ public sealed class FileCopyService
     }
 
     private sealed record CopyBuffer(byte[] Buffer, int Count);
-    private sealed record ScanResult(
-        List<SourceFile> Files,
-        List<string> Directories,
-        List<string> Errors);
-    private sealed record SourceFile(string FullPath, string RelativePath, long Length);
 }

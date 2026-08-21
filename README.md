@@ -29,7 +29,7 @@ ClipPort 是一款使用 WinUI 3、C#、.NET 8 和 C++ 构建的 Windows x64 桌
 
 | 模式 | 行为 |
 | --- | --- |
-| 复制并校验 | 复制完成后，使用所选算法重新读取并比较源文件与目标文件，默认选择 |
+| 复制并校验 | 使用所选算法重新读取并比较源文件与目标文件；默认在复制全部完成后校验，也可启用“拷贝时校验” |
 | 仅复制 | 复制文件，但不计算校验摘要 |
 | 只校验 | 不创建目标目录、不复制文件，仅校验目标目录中已有的对应文件 |
 
@@ -42,6 +42,7 @@ ClipPort 是一款使用 WinUI 3、C#、.NET 8 和 C++ 构建的 Windows x64 桌
 - 尽力保留源文件的最后修改时间；无法保留时记录警告，但不中断整个任务。
 - 复制前检查目标磁盘空间，并拒绝危险的源目录、目标目录重叠关系。
 - 跳过目录联接和符号链接，并阻止目标路径穿过重解析点，避免意外递归或写入非预期位置。
+- 源目录采用后台流式枚举；扫描、目标目录预处理、重复项探测和容量检查不会占住界面线程，并实时显示已发现的目录数、文件数、数据量和当前路径。
 
 ### 可选校验算法
 
@@ -50,6 +51,10 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 
 所有算法均以 4 MiB 缓冲区流式读取文件，不会把整个文件一次性载入内存。
 校验报告会标明实际算法，并记录源文件与目标文件的摘要。
+
+开启“拷贝时校验”后，ClipPort 会用单个低 I/O 优先级后台工作器校验已经完整写入并提交的文件，复制始终具有更高优先级。
+后台队列不会反向阻塞复制；队列繁忙或系统不支持后台优先级时，相关文件会在复制结束后继续校验。
+该选项默认关闭，仅在同时启用复制和文件校验时生效；只校验任务仍按原有顺序执行。
 
 ### 重复文件处理
 
@@ -76,8 +81,9 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 ### 实时进度与吞吐图
 
 - 显示当前阶段、当前文件、完成百分比、文件数量、数据量、速度和耗时。
+- 扫描阶段显示不定总量进度和已发现的数据，不会把尚未完成的扫描误报为 100%。
 - 分别记录复制与校验阶段的字节速度和项目数速度。
-- 提供实时波形、当前值、最高值、最低值和动态刻度。
+- 提供实时波形、当前值、最高值、最低值和动态刻度；首个采样会铺满图表，后续样本从右侧进入并向左压缩，达到 90 点后滚动。
 - 复制图表与校验图表都可以在并排布局和纵向堆叠布局之间切换。
 - 吞吐采样会随任务历史保存，重新选择历史任务时仍可查看。
 
@@ -153,7 +159,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 1. 点击“创建任务”，或通过文件资源管理器右键菜单预填源目录或目标目录。
 2. 选择源目录或存储卡。
 3. 如果启用复制，选择目标目录；可以额外填写目标子文件夹名。
-4. 选择任务模式、校验算法、重复文件策略、休眠防止和优先执行选项。
+4. 选择任务模式、校验算法、是否拷贝时校验、重复文件策略、休眠防止和优先执行选项。
 5. 点击“开始任务”，在主界面查看实时进度与吞吐波形。
 6. 如果出现重复文件或失败文件，按界面提示逐项或批量处理。
 7. 任务结束后可以导出报告、重新开始或启动只校验任务。
@@ -229,7 +235,7 @@ cd ClipPort
 dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release
 ```
 
-当前核心测试共 30 项，覆盖：
+当前核心测试共 47 项，覆盖：
 
 - 本地化资源完整性与语言查找。
 - Windows 系统强调色预览。
@@ -239,6 +245,7 @@ dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Rel
 - 单文件失败继续执行与失败重试。
 - 空目录、路径安全和符号链接保护。
 - 吞吐波形采样与显示格式。
+- 后台流式扫描响应性、1.6 TB 元数据统计、拷贝时校验与超宽窗口布局。
 - 设置容错、本地历史、损坏记录隔离和历史保留。
 - 多语言报告、警告保留和优先任务调度。
 - 快速开启请求的参数解析与目录预填逻辑，以及打包原生 DLL 的接口可用性。
@@ -316,10 +323,11 @@ Copyright (C) 2026 MEMZ-Edge01
 ## English Summary
 
 ClipPort is a Windows x64 desktop application for reliable media-card and directory transfers.
-It supports safe file copying, verification-only jobs, duplicate-file policies, a serial task queue with priority ordering, pause and cancellation, failure recovery, local history, localized reports, and real-time byte/item throughput charts.
+It supports responsive streaming source scans, safe file copying, verification-only jobs, duplicate-file policies, a serial task queue with priority ordering, pause and cancellation, failure recovery, local history, localized reports, and real-time byte/item throughput charts.
 
 File verification can use SHA-256, SHA-512, SHA-1, MD5, or xxHash64.
 SHA-256 is the default, and the selected algorithm is preserved across retries, re-verification, history, and reports.
+An optional, default-off “verify while copying” mode verifies fully committed files on one low-priority background worker without allowing queue pressure to block copying; any backlog is completed after the copy phase.
 
 On Windows 11, an optional sparse-MSIX shell component adds modern File Explorer commands for using a folder as the source or destination of a new ClipPort task.
 Activation is redirected to the existing ClipPort window when the application is already running.
@@ -327,7 +335,7 @@ Activation is redirected to the existing ClipPort window when the application is
 The native C++ copy engine is built and packaged for engineering validation, but its UI switch is currently hidden and disabled.
 The default user-facing copy path is the sequential asynchronous implementation.
 
-Run the 30 core tests:
+Run the 47 core tests:
 
 ```powershell
 dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release

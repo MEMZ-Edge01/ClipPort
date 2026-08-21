@@ -184,6 +184,10 @@ public sealed class JobHistoryService
         item.SourcePath ??= string.Empty;
         item.DestinationPath ??= string.Empty;
         item.VerificationAlgorithm = VerificationAlgorithms.Normalize(item.VerificationAlgorithm);
+        if (!Enum.IsDefined(item.VerificationExecutionMode))
+        {
+            item.VerificationExecutionMode = VerificationExecutionMode.AfterCopy;
+        }
         item.FailedFiles ??= [];
         item.FailedFiles = item.FailedFiles
             .OfType<FileOperationFailure>()

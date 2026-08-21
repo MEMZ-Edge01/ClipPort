@@ -285,7 +285,7 @@
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="RestartJobButton" Click="ConcurrentRestartJobButton_Click" Visibility="Collapsed" Height="40"
-                                        Padding="16,0" Background="{StaticResource AccentBrush}"
+                                        Style="{StaticResource AccentButtonStyle}" Padding="16,0" Background="{StaticResource AccentBrush}"
                                         Foreground="{StaticResource AccentButtonTextBrush}" CornerRadius="7">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <FontIcon Glyph="&#xE72C;" FontSize="13" />
@@ -583,6 +583,7 @@
                             <Grid Padding="16,6,16,16">
                                 <Button x:Name="ApplyDuplicateChoicesButton" x:Uid="ApplyDuplicateChoicesButton" Content="应用选择并继续"
                                         Click="ApplyDuplicateChoicesButton_Click" IsEnabled="False"
+                                        Style="{StaticResource AccentButtonStyle}"
                                         HorizontalAlignment="Right" Background="{StaticResource AccentBrush}"
                                         Foreground="{StaticResource AccentButtonTextBrush}" Padding="18,9" />
                             </Grid>
@@ -610,6 +611,7 @@
                                     <Button x:Name="RetryFailedFilesButton" x:Uid="RetryFailedFilesButton"
                                             Content="&#x91CD;&#x8BD5;&#x6240;&#x9009;"
                                             Click="ConcurrentRetryFailedFiles_Click"
+                                            Style="{StaticResource AccentButtonStyle}"
                                             Background="{StaticResource AccentBrush}"
                                             Foreground="{StaticResource AccentButtonTextBrush}" Padding="14,7" />
                                     <Button x:Name="SkipFailedFilesButton" x:Uid="SkipFailedFilesButton"
@@ -1110,6 +1112,21 @@
                     <ToggleSwitch x:Name="VerifyFilesToggle" x:Uid="VerifyFilesToggle" Header="文件校验" IsOn="True"
                                   OnContent="开启" OffContent="关闭" HorizontalAlignment="Stretch"
                                   Toggled="VerifyFilesToggle_Toggled" />
+                    <StackPanel x:Name="OpportunisticVerificationPanel" Spacing="5">
+                        <ToggleSwitch x:Name="OpportunisticVerificationToggle"
+                                      x:Uid="OpportunisticVerificationToggle"
+                                      Header="拷贝时校验"
+                                      OnContent="开启"
+                                      OffContent="关闭"
+                                      IsOn="False"
+                                      HorizontalAlignment="Stretch" />
+                        <TextBlock x:Name="OpportunisticVerificationHintText"
+                                   x:Uid="OpportunisticVerificationHintText"
+                                   Text="使用低优先级后台资源校验已完成文件；资源不足时会在复制结束后补完。"
+                                   FontSize="11"
+                                   Foreground="{StaticResource MutedTextBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
                     <StackPanel Spacing="6">
                         <TextBlock x:Name="VerificationAlgorithmLabel" x:Uid="VerificationAlgorithmLabel"
                                    Text="校验算法" Foreground="{StaticResource DefaultTextBrush}" />

@@ -156,6 +156,95 @@
     <SolidColorBrush x:Key="AccentButtonTextBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
     <SolidColorBrush x:Key="WhiteTextBrush" Color="{StaticResource TraeWorkTextOnBrand}" />
 
+    <!-- WinUI resolves visual-state brushes inside XamlControlsResources before the
+         app accent is applied. Re-alias the control states to the mutable app brushes
+         so runtime accent changes also reach hover, pressed, selected and hint states. -->
+    <StaticResource x:Key="AccentFillColorDefaultBrush" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="AccentFillColorSecondaryBrush" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="AccentFillColorTertiaryBrush" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="AccentFillColorDisabledBrush" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="AccentFillColorSelectedTextBackgroundBrush" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="AccentTextFillColorPrimaryBrush" ResourceKey="AccentTextBrush" />
+    <StaticResource x:Key="AccentTextFillColorSecondaryBrush" ResourceKey="AccentTextBrush" />
+    <StaticResource x:Key="AccentTextFillColorTertiaryBrush" ResourceKey="AccentTextBrush" />
+    <StaticResource x:Key="AccentTextFillColorDisabledBrush" ResourceKey="DisabledTextBrush" />
+    <StaticResource x:Key="TextOnAccentFillColorPrimaryBrush" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="TextOnAccentFillColorSecondaryBrush" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="TextOnAccentFillColorDisabledBrush" ResourceKey="DisabledTextBrush" />
+
+    <!-- Accent buttons -->
+    <StaticResource x:Key="AccentButtonBackground" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="AccentButtonBackgroundPointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="AccentButtonBackgroundPressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="AccentButtonBackgroundDisabled" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="AccentButtonForeground" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="AccentButtonForegroundPointerOver" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="AccentButtonForegroundPressed" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="AccentButtonForegroundDisabled" ResourceKey="DisabledTextBrush" />
+
+    <!-- Radio buttons -->
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedStroke" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedStrokePressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedStrokeDisabled" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedFill" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedFillPointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedFillPressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="RadioButtonOuterEllipseCheckedFillDisabled" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="RadioButtonCheckGlyphFill" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="RadioButtonCheckGlyphFillPointerOver" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="RadioButtonCheckGlyphFillPressed" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="RadioButtonCheckGlyphFillDisabled" ResourceKey="DisabledTextBrush" />
+
+    <!-- Toggle switches -->
+    <StaticResource x:Key="ToggleSwitchFillOn" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="ToggleSwitchFillOnPointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="ToggleSwitchFillOnPressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="ToggleSwitchFillOnDisabled" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="ToggleSwitchStrokeOn" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="ToggleSwitchStrokeOnPointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="ToggleSwitchStrokeOnPressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="ToggleSwitchStrokeOnDisabled" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="ToggleSwitchKnobFillOn" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="ToggleSwitchKnobFillOnPointerOver" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="ToggleSwitchKnobFillOnPressed" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="ToggleSwitchKnobFillOnDisabled" ResourceKey="DisabledTextBrush" />
+
+    <!-- Check boxes -->
+    <StaticResource x:Key="CheckBoxCheckBackgroundStrokeChecked" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillChecked" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedDisabled" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundStrokeIndeterminate" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundStrokeIndeterminatePointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundStrokeIndeterminatePressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillIndeterminate" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillIndeterminatePointerOver" ResourceKey="AccentHoverBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillIndeterminatePressed" ResourceKey="AccentActiveBrush" />
+    <StaticResource x:Key="CheckBoxCheckBackgroundFillIndeterminateDisabled" ResourceKey="AccentDisabledBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundChecked" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedDisabled" ResourceKey="DisabledTextBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundIndeterminate" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundIndeterminatePointerOver" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundIndeterminatePressed" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="CheckBoxCheckGlyphForegroundIndeterminateDisabled" ResourceKey="DisabledTextBrush" />
+
+    <!-- Selection, focus, progress and informational hints -->
+    <StaticResource x:Key="ComboBoxItemPillFillBrush" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="TextControlSelectionHighlightColor" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="ProgressBarForeground" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="ProgressRingForegroundThemeBrush" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="InfoBarInformationalSeverityBackgroundBrush" ResourceKey="AccentSoftBrush" />
+    <StaticResource x:Key="InfoBarInformationalSeverityIconBackground" ResourceKey="AccentBrush" />
+    <StaticResource x:Key="InfoBarInformationalSeverityIconForeground" ResourceKey="AccentButtonTextBrush" />
+    <StaticResource x:Key="InfoBarHyperlinkButtonForeground" ResourceKey="AccentTextBrush" />
+
     <!-- ── Icon Brushes ── -->
     <SolidColorBrush x:Key="IconDefaultBrush" Color="{StaticResource TraeWorkIconDefault}" />
     <SolidColorBrush x:Key="IconSecondaryBrush" Color="{StaticResource TraeWorkIconSecondary}" />

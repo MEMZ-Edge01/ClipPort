@@ -27,6 +27,12 @@ public enum FileOperationStage
     Verifying
 }
 
+public enum VerificationExecutionMode
+{
+    AfterCopy,
+    OpportunisticDuringCopy
+}
+
 /// <summary>
 /// Hash algorithms available for file integrity verification.
 /// </summary>
@@ -86,7 +92,8 @@ public sealed record CopyOptions(
     bool VerifyFiles = true,
     bool UseFastCopyAlgorithm = false,
     bool SkipCopy = false,
-    VerificationAlgorithmKind VerificationAlgorithm = VerificationAlgorithmKind.Sha256)
+    VerificationAlgorithmKind VerificationAlgorithm = VerificationAlgorithmKind.Sha256,
+    VerificationExecutionMode VerificationExecutionMode = VerificationExecutionMode.AfterCopy)
 {
     public IReadOnlyDictionary<string, string>? DestinationPaths { get; init; }
 }
@@ -109,6 +116,8 @@ public sealed record CopyProgressInfo(
 {
     public long SuccessfulBytes { get; init; } = ProcessedBytes;
     public int SuccessfulFiles { get; init; } = ProcessedFiles;
+    public bool IsTotalKnown { get; init; } = true;
+    public int ScannedDirectories { get; init; }
 }
 
 public sealed record FileVerificationResult(

@@ -527,4 +527,14 @@
   <data name="VerifyItemRateChartTitle.Text" xml:space="preserve"><value>项目数速度</value></data>
   <data name="Unit.ItemsPerSecond" xml:space="preserve"><value>个/s</value></data>
   <data name="Format.ItemsPerSecond" xml:space="preserve"><value>{0} 个/s</value></data>
+  <data name="OpportunisticVerificationToggle.Header" xml:space="preserve"><value>拷贝时校验</value></data>
+  <data name="OpportunisticVerificationToggle.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="OpportunisticVerificationToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="OpportunisticVerificationHintText.Text" xml:space="preserve"><value>复制优先；仅在系统资源有余量时后台校验已完整写入的文件，积压项目会在拷贝结束后补完。</value></data>
+  <data name="Status.CopyingAndVerifying" xml:space="preserve"><value>正在拷贝并后台校验</value></data>
+  <data name="Status.BackgroundVerification" xml:space="preserve"><value>复制优先，校验在后台进行</value></data>
+  <data name="Format.ScannedSummary" xml:space="preserve"><value>已扫描 {0} 个目录、{1} 个文件，共发现 {2}</value></data>
+  <data name="Report.VerificationExecutionMode" xml:space="preserve"><value>校验执行方式：{0}</value></data>
+  <data name="Report.VerificationDuringCopy" xml:space="preserve"><value>拷贝时后台校验</value></data>
+  <data name="Report.VerificationAfterCopy" xml:space="preserve"><value>拷贝完成后校验</value></data>
 </root>

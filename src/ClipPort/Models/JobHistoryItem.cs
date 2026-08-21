@@ -90,6 +90,8 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     public bool VerificationEnabled { get; set; } = true;
     public VerificationAlgorithmKind VerificationAlgorithm { get; set; } =
         VerificationAlgorithmKind.Sha256;
+    public VerificationExecutionMode VerificationExecutionMode { get; set; } =
+        VerificationExecutionMode.AfterCopy;
     public bool UseFastCopyAlgorithm { get; set; }
     public bool IsPriority { get; set; }
     public bool PreventSleep { get; set; } = true;
@@ -163,7 +165,10 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
 
     [JsonIgnore]
     public string DurationText => DisplayFormatting.FormatDuration(
-        TimeSpan.FromSeconds(CopySeconds + VerifySeconds));
+        TimeSpan.FromSeconds(
+            VerificationExecutionMode == VerificationExecutionMode.OpportunisticDuringCopy
+                ? Math.Max(CopySeconds, VerifySeconds)
+                : CopySeconds + VerifySeconds));
 
     [JsonIgnore]
     public bool CanStartVerification => Status == JobStatus.Completed;

@@ -105,6 +105,7 @@ public sealed partial class MainWindow
             CopyEnabled = !options.SkipCopy,
             VerificationEnabled = options.VerifyFiles,
             VerificationAlgorithm = options.VerificationAlgorithm,
+            VerificationExecutionMode = options.VerificationExecutionMode,
             UseFastCopyAlgorithm = options.UseFastCopyAlgorithm,
             IsPriority = isPriority,
             PreventSleep = preventSleep,
@@ -193,7 +194,8 @@ public sealed partial class MainWindow
                 runtime.Options,
                 progress,
                 duplicateProgress,
-                (conflicts, token) => WaitForJobDuplicateChoicesAsync(runtime, conflicts, token),
+                (conflicts, token) => InvokeOnUiThreadAsync(
+                    () => WaitForJobDuplicateChoicesAsync(runtime, conflicts, token)),
                 token => WaitWhilePausedAsync(runtime, token),
                 runtime.Cancellation.Token);
 
@@ -428,13 +430,25 @@ public sealed partial class MainWindow
     {
         CopyPhase? previousPhase = runtime.LastProgress?.Phase;
         runtime.LastProgress = info;
-        EndThroughputInterval(runtime, previousPhase, info.Phase);
+        if (runtime.Options.VerificationExecutionMode == VerificationExecutionMode.AfterCopy)
+        {
+            EndThroughputInterval(runtime, previousPhase, info.Phase);
+        }
+        else if (info.Phase == CopyPhase.Completed)
+        {
+            EndThroughputInterval(runtime, CopyPhase.Copying, null);
+            EndThroughputInterval(runtime, CopyPhase.Verifying, null);
+        }
         SampleThroughput(runtime, info);
         runtime.Job.TotalBytes = info.TotalBytes;
         runtime.Job.FileCount = info.TotalFiles;
         switch (info.Phase)
         {
+            case CopyPhase.Scanning:
+                runtime.LastScanProgress = info;
+                break;
             case CopyPhase.Copying:
+                runtime.LastCopyProgress = info;
                 runtime.ProcessedCopyBytes = info.ProcessedBytes;
                 runtime.ProcessedCopyFiles = info.ProcessedFiles;
                 runtime.CopiedBytes = info.SuccessfulBytes;
@@ -445,6 +459,7 @@ public sealed partial class MainWindow
                 runtime.Job.CopySeconds = info.Elapsed.TotalSeconds;
                 break;
             case CopyPhase.Verifying:
+                runtime.LastVerifyProgress = info;
                 runtime.ProcessedVerifyBytes = info.ProcessedBytes;
                 runtime.ProcessedVerifyFiles = info.ProcessedFiles;
                 runtime.VerifiedBytes = info.SuccessfulBytes;
@@ -659,6 +674,9 @@ public sealed partial class MainWindow
     {
         JobHistoryItem job = runtime.Job;
         CopyProgressInfo? info = runtime.LastProgress;
+        CopyProgressInfo? scanInfo = runtime.LastScanProgress;
+        CopyProgressInfo? copyInfo = runtime.LastCopyProgress;
+        CopyProgressInfo? verifyInfo = runtime.LastVerifyProgress;
         HeroNameText.Text = job.DisplayName + (job.IsPriority ? ResourceService.GetString("Common.Priority") : string.Empty);
         SourcePathText.Text = job.SourcePath;
         DestinationPathText.Text = job.DestinationPath;
@@ -668,10 +686,26 @@ public sealed partial class MainWindow
         EndTimeText.Text = job.FinishedAt?.ToString(
             "MM/dd HH:mm:ss",
             CultureInfo.InvariantCulture) ?? "--";
-        DurationText.Text = FormatDuration(info?.Elapsed ?? TimeSpan.Zero);
-        CurrentFileText.Text = string.IsNullOrWhiteSpace(info?.CurrentFile)
+        TimeSpan activeElapsed = runtime.Options.VerificationExecutionMode ==
+                                 VerificationExecutionMode.OpportunisticDuringCopy
+            ? TimeSpan.FromSeconds(Math.Max(
+                runtime.CopyElapsed.TotalSeconds,
+                runtime.VerifyElapsed.TotalSeconds))
+            : runtime.CopyElapsed + runtime.VerifyElapsed;
+        if (info?.Phase == CopyPhase.Scanning)
+        {
+            activeElapsed = scanInfo?.Elapsed ?? TimeSpan.Zero;
+        }
+        DurationText.Text = FormatDuration(activeElapsed);
+        bool copyStillActive = copyInfo is not null &&
+            (copyInfo.ProcessedBytes < copyInfo.TotalBytes ||
+             copyInfo.ProcessedFiles < copyInfo.TotalFiles);
+        string? currentFile = copyStillActive
+            ? copyInfo?.CurrentFile
+            : verifyInfo?.CurrentFile ?? scanInfo?.CurrentFile ?? info?.CurrentFile;
+        CurrentFileText.Text = string.IsNullOrWhiteSpace(currentFile)
             ? $"{job.SourcePath} → {job.DestinationPath}"
-            : info.CurrentFile;
+            : currentFile;
 
         int totalFiles = info?.TotalFiles ?? job.FileCount;
         long totalBytes = info?.TotalBytes ?? job.TotalBytes;
@@ -696,15 +730,25 @@ public sealed partial class MainWindow
         CopyProgress.Value = copyPercent;
         VerifyProgress.Value = verifyPercent;
         OverallProgress.Value = overall;
+        bool scanning = info?.Phase == CopyPhase.Scanning && !info.IsTotalKnown;
+        OverallProgress.IsIndeterminate = scanning;
         CopyProgressRow.Visibility = runtime.Options.SkipCopy
             ? Visibility.Collapsed
             : Visibility.Visible;
         VerifyProgressRow.Visibility = runtime.Options.VerifyFiles
             ? Visibility.Visible
             : Visibility.Collapsed;
-        PercentText.Text = $"{overall:F2}%";
-        CopySpeedText.Text = info?.Phase == CopyPhase.Copying ? $"{FormatBytes(info.BytesPerSecond)}/s" : "--";
-        VerifySpeedText.Text = info?.Phase == CopyPhase.Verifying ? $"{FormatBytes(info.BytesPerSecond)}/s" : "--";
+        PercentText.Text = scanning
+            ? ResourceService.GetString("Status.Scanning")
+            : $"{overall:F2}%";
+        CopySpeedText.Text = copyStillActive && copyInfo is not null
+            ? $"{FormatBytes(copyInfo.BytesPerSecond)}/s"
+            : "--";
+        VerifySpeedText.Text = runtime.Options.VerifyFiles &&
+                               verifyInfo is not null &&
+                               runtime.ProcessedVerifyFiles < totalFiles
+            ? $"{FormatBytes(verifyInfo.BytesPerSecond)}/s"
+            : "--";
         UpdateThroughputCharts(
             job.CopyByteSpeedSamples,
             job.CopyItemSpeedSamples,
@@ -804,7 +848,10 @@ public sealed partial class MainWindow
         }
         else
         {
-            StatusText.Text = info?.Phase switch
+            bool copyingAndVerifying = copyStillActive && verifyInfo is not null;
+            StatusText.Text = copyingAndVerifying
+                ? ResourceService.GetString("Status.CopyingAndVerifying")
+                : info?.Phase switch
             {
                 CopyPhase.Scanning => ResourceService.GetString("Status.Scanning"),
                 CopyPhase.Copying => ResourceService.GetString("Status.Copying"),
@@ -812,7 +859,9 @@ public sealed partial class MainWindow
                 CopyPhase.WaitingForDuplicateDecision => ResourceService.GetString("Status.WaitingDuplicateChoices"),
                 _ => ResourceService.GetString("Status.Preparing")
             };
-            PhaseText.Text = info?.Phase switch
+            PhaseText.Text = copyingAndVerifying
+                ? ResourceService.GetString("Status.BackgroundVerification")
+                : info?.Phase switch
             {
                 CopyPhase.Scanning => ResourceService.GetString("Status.ReadingDirectories"),
                 CopyPhase.Copying => ResourceService.GetString("Status.CopyingFiles"),
@@ -820,9 +869,15 @@ public sealed partial class MainWindow
                 CopyPhase.WaitingForDuplicateDecision => ResourceService.GetString("Info.ChooseActionBelow"),
                 _ => ResourceService.GetString("Status.TaskStarting")
             };
-            LogText.Text = job.IsPriority
-                ? ResourceService.GetString("Info.PriorityTaskRunning")
-                : ResourceService.GetString("Info.TaskRunning");
+            LogText.Text = info?.Phase == CopyPhase.Scanning
+                ? ResourceService.Format(
+                    "Format.ScannedSummary",
+                    (scanInfo?.ScannedDirectories ?? 0).ToString("N0", CultureInfo.InvariantCulture),
+                    (scanInfo?.TotalFiles ?? 0).ToString("N0", CultureInfo.InvariantCulture),
+                    FormatBytes(scanInfo?.TotalBytes ?? 0))
+                : job.IsPriority
+                    ? ResourceService.GetString("Info.PriorityTaskRunning")
+                    : ResourceService.GetString("Info.TaskRunning");
         }
         ShowRuntimeDuplicateChoices(runtime);
         ShowRuntimeFailedFiles(runtime);
@@ -1155,7 +1210,8 @@ public sealed partial class MainWindow
             VerifyFiles: true,
             UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
             SkipCopy: true,
-            VerificationAlgorithm: originalJob.VerificationAlgorithm)
+            VerificationAlgorithm: originalJob.VerificationAlgorithm,
+            VerificationExecutionMode: VerificationExecutionMode.AfterCopy)
         {
             DestinationPaths = originalJob.DestinationFiles
         };
@@ -1264,7 +1320,8 @@ public sealed partial class MainWindow
             VerifyFiles: originalJob.VerificationEnabled,
             UseFastCopyAlgorithm: originalJob.UseFastCopyAlgorithm,
             SkipCopy: !originalJob.CopyEnabled,
-            VerificationAlgorithm: originalJob.VerificationAlgorithm)
+            VerificationAlgorithm: originalJob.VerificationAlgorithm,
+            VerificationExecutionMode: originalJob.VerificationExecutionMode)
         {
             DestinationPaths = !originalJob.CopyEnabled
                 ? originalJob.DestinationFiles
@@ -1424,6 +1481,37 @@ public sealed partial class MainWindow
         }
     }
 
+    private Task<T> InvokeOnUiThreadAsync<T>(Func<Task<T>> action)
+    {
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            return action();
+        }
+
+        var completion = new TaskCompletionSource<T>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!DispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    completion.TrySetResult(await action());
+                }
+                catch (OperationCanceledException ex)
+                {
+                    completion.TrySetCanceled(ex.CancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    completion.TrySetException(ex);
+                }
+            }))
+        {
+            completion.TrySetException(new InvalidOperationException(
+                ResourceService.GetString("Error.AppExitedBeforeFinish")));
+        }
+        return completion.Task;
+    }
+
     private enum FailureResolutionMode
     {
         Retry,
@@ -1457,6 +1545,9 @@ public sealed partial class MainWindow
         public CopyThroughputSampler VerifyThroughputSampler { get; } = new(
             sampledPhase: CopyPhase.Verifying);
         public CopyProgressInfo? LastProgress { get; set; }
+        public CopyProgressInfo? LastScanProgress { get; set; }
+        public CopyProgressInfo? LastCopyProgress { get; set; }
+        public CopyProgressInfo? LastVerifyProgress { get; set; }
         public CopyResult? Result { get; set; }
         public bool IsPaused { get; set; }
         public long CopiedBytes { get; set; }

@@ -40,6 +40,12 @@ public static class TaskReportBuilder
             result.VerificationPerformed
                 ? VerificationAlgorithms.GetDisplayName(result.VerificationAlgorithm)
                 : ResourceService.GetString("Common.Disabled")));
+        report.AppendLine(ResourceService.Format(
+            "Report.VerificationExecutionMode",
+            ResourceService.GetString(
+                job.VerificationExecutionMode == VerificationExecutionMode.OpportunisticDuringCopy
+                    ? "Report.VerificationDuringCopy"
+                    : "Report.VerificationAfterCopy")));
         if (result.VerificationPerformed)
         {
             report.AppendLine(ResourceService.Format(
@@ -109,6 +115,12 @@ public static class TaskReportBuilder
             report.AppendLine(ResourceService.Format(
                 "Report.VerificationAlgorithm",
                 VerificationAlgorithms.GetDisplayName(job.VerificationAlgorithm)));
+            report.AppendLine(ResourceService.Format(
+                "Report.VerificationExecutionMode",
+                ResourceService.GetString(
+                    job.VerificationExecutionMode == VerificationExecutionMode.OpportunisticDuringCopy
+                        ? "Report.VerificationDuringCopy"
+                        : "Report.VerificationAfterCopy")));
             report.AppendLine(ResourceService.Format(
                 "Report.VerifiedProgress",
                 job.VerifiedFiles.ToString("N0"),

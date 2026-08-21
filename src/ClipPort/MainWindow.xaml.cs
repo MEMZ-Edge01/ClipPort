@@ -19,9 +19,6 @@ namespace ClipPort;
 
 public sealed partial class MainWindow : Window
 {
-    private const double TaskContentMaximumWidth = 1180;
-    private const double TaskContentHorizontalMargin = 92;
-
     private readonly FileCopyService _copyService = new();
     private readonly AppSettings _appSettings = App.Settings;
     private readonly JobHistoryService _historyService;
@@ -141,11 +138,9 @@ public sealed partial class MainWindow : Window
 
     private void TaskContentScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        // An explicit width avoids a WinUI ScrollViewer layout jump when a stretched
-        // child crosses MaxWidth, while retaining the same 1180-DIP reading width.
-        TaskContentGrid.Width = Math.Min(
-            TaskContentMaximumWidth,
-            Math.Max(0, e.NewSize.Width - TaskContentHorizontalMargin));
+        // Keep an explicit width to avoid WinUI ScrollViewer layout jumps while
+        // allowing the task cards and charts to use every available wide-window DIP.
+        TaskContentGrid.Width = ResponsiveLayout.GetTaskContentWidth(e.NewSize.Width);
     }
 
     private async Task LoadHistoryAsync()
@@ -338,7 +333,12 @@ public sealed partial class MainWindow : Window
                     VerifyFiles: verifyOnly || VerifyFilesToggle.IsOn,
                     UseFastCopyAlgorithm: false,
                     SkipCopy: verifyOnly,
-                    VerificationAlgorithm: GetSelectedVerificationAlgorithm());
+                    VerificationAlgorithm: GetSelectedVerificationAlgorithm(),
+                    VerificationExecutionMode: OpportunisticVerificationToggle.IsOn &&
+                                               !verifyOnly &&
+                                               VerifyFilesToggle.IsOn
+                        ? VerificationExecutionMode.OpportunisticDuringCopy
+                        : VerificationExecutionMode.AfterCopy);
                 SourcePathText.Text = _sourcePath;
                 DestinationPathText.Text = _destinationPath;
                 HeroNameText.Text = GetDisplayName(_sourcePath);
@@ -446,6 +446,7 @@ public sealed partial class MainWindow : Window
         DestinationPathText.Text = ResourceService.GetString("Info.NotSelected");
         PriorityExecutionToggle.IsOn = false;
         UseFastCopyAlgorithmToggle.IsOn = false;
+        OpportunisticVerificationToggle.IsOn = false;
         VerificationAlgorithmComboBox.SelectedIndex = 0;
         UpdateVerificationAlgorithmDescription();
         UpdateVerificationAlgorithmControls();
@@ -1204,6 +1205,7 @@ public sealed partial class MainWindow : Window
             DialogDestinationSubfolderName.Text = "";
             _automaticDialogSubfolderName = null;
             VerifyFilesToggle.IsOn = true;
+            OpportunisticVerificationToggle.IsOn = false;
         }
         AskExistingRadio.IsEnabled = enabled;
         OverwriteExistingRadio.IsEnabled = enabled;
@@ -1252,6 +1254,13 @@ public sealed partial class MainWindow : Window
         // Verification-only tasks always execute a hash comparison, even though
         // the ordinary verification toggle is locked on in that mode.
         bool verificationWillRun = !EnableCopyToggle.IsOn || VerifyFilesToggle.IsOn;
+        bool opportunisticAvailable = EnableCopyToggle.IsOn && VerifyFilesToggle.IsOn;
+        OpportunisticVerificationToggle.IsEnabled = opportunisticAvailable;
+        OpportunisticVerificationHintText.Opacity = opportunisticAvailable ? 1 : 0.55;
+        if (!opportunisticAvailable)
+        {
+            OpportunisticVerificationToggle.IsOn = false;
+        }
         VerificationAlgorithmComboBox.IsEnabled = verificationWillRun;
         VerificationAlgorithmHintText.Opacity = verificationWillRun ? 1 : 0.55;
     }
