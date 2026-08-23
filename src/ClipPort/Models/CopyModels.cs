@@ -116,6 +116,11 @@ public sealed record CopyProgressInfo(
 {
     public long SuccessfulBytes { get; init; } = ProcessedBytes;
     public int SuccessfulFiles { get; init; } = ProcessedFiles;
+    /// <summary>
+    /// False when a background phase is waiting for more work. This lets the
+    /// UI clear a stale throughput value without treating the phase as finished.
+    /// </summary>
+    public bool IsPhaseActive { get; init; } = true;
     public bool IsTotalKnown { get; init; } = true;
     public int ScannedDirectories { get; init; }
 }

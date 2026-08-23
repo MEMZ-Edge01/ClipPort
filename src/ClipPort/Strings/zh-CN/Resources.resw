@@ -49,6 +49,7 @@
   <data name="Status.CountingFiles" xml:space="preserve"><value>正在统计文件…</value></data>
   <data name="Status.ReadingDirectories" xml:space="preserve"><value>正在读取目录</value></data>
   <data name="Status.Queued" xml:space="preserve"><value>等待开始</value></data>
+  <data name="Status.Waiting" xml:space="preserve"><value>正在等待</value></data>
   <data name="Status.Copying" xml:space="preserve"><value>正在拷贝</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>拷贝文件</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>正在校验</value></data>
@@ -57,6 +58,7 @@
   <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>等待处理失败文件</value></data>
   <data name="Status.Cancelling" xml:space="preserve"><value>正在取消</value></data>
   <data name="Status.Paused" xml:space="preserve"><value>已暂停</value></data>
+  <data name="Status.PausedByPriority" xml:space="preserve"><value>已被优先任务暂停</value></data>
   <data name="Status.ProcessingResumed" xml:space="preserve"><value>继续处理中</value></data>
   <data name="Status.Preparing" xml:space="preserve"><value>准备执行</value></data>
   <data name="Status.TaskStarting" xml:space="preserve"><value>任务即将开始</value></data>
@@ -77,14 +79,16 @@
   <data name="Info.ChooseActionPerFile" xml:space="preserve"><value>请为每个重复文件选择处理方式</value></data>
   <data name="Info.ChooseActionEach" xml:space="preserve"><value>请逐个选择处理方式</value></data>
   <data name="Info.OtherFilesContinue" xml:space="preserve"><value>其他文件已继续复制和校验。完成下方每一项选择后即可继续处理重复文件。</value></data>
-  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>优先任务已排到队列最前面，将先于普通任务执行。</value></data>
-  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>优先任务已排到队列前面，前面还有 {0} 个任务。</value></data>
-  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>优先任务正在执行；队列中的其他任务会依次等待。</value></data>
+  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>已有优先任务正在执行，本任务已按创建顺序排队。</value></data>
+  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>本优先任务前面还有 {0} 个优先任务。</value></data>
+  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>优先任务正在执行；原本运行的普通任务已自动暂停。</value></data>
   <data name="Info.TaskQueued" xml:space="preserve"><value>任务已加入队列，当前任务完成后将自动开始。</value></data>
   <data name="Info.TaskQueuedAhead" xml:space="preserve"><value>任务已加入队列，前面还有 {0} 个任务。</value></data>
   <data name="Info.TaskRunning" xml:space="preserve"><value>当前任务正在执行；队列中的其他任务会依次等待。</value></data>
   <data name="Info.WaitingToResume" xml:space="preserve"><value>等待用户继续</value></data>
   <data name="Info.TaskPaused" xml:space="preserve"><value>任务已暂停。</value></data>
+  <data name="Info.WaitingForPriorityTask" xml:space="preserve"><value>等待优先任务完成</value></data>
+  <data name="Info.PriorityPauseAutomaticResume" xml:space="preserve"><value>优先任务暂停或全部结束后会自动继续；也可点击“继续”强制执行。</value></data>
   <data name="Info.TaskResumed" xml:space="preserve"><value>任务已继续。</value></data>
   <data name="Info.BatchHint" xml:space="preserve"><value>可勾选多项后批量设置；仍可在每行单独修改。</value></data>
   <data name="Info.FailedFilesHint" xml:space="preserve"><value>勾选文件后选择覆盖、重试或跳过；覆盖仅适用于校验不一致文件。</value></data>
@@ -474,7 +478,8 @@
   <data name="PriorityExecutionToggle.Header" xml:space="preserve"><value>优先执行</value></data>
   <data name="PriorityExecutionToggle.OnContent" xml:space="preserve"><value>开启</value></data>
   <data name="PriorityExecutionToggle.OffContent" xml:space="preserve"><value>关闭</value></data>
-  <data name="PriorityHintText.Text" xml:space="preserve"><value>任务会逐个排队执行；勾选“优先执行”的任务会排到队列最前面。</value></data>
+  <data name="PriorityHintText.Text" xml:space="preserve"><value>普通任务在安全检查点停稳后，优先任务才会开始；多个优先任务仍按创建顺序执行。</value></data>
+  <data name="PriorityTaskBadgeText.Text" xml:space="preserve"><value>优先任务</value></data>
   <data name="NewTaskDialog.Title" xml:space="preserve"><value>新建拷卡任务</value></data>
   <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>开始任务</value></data>
   <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>取消</value></data>

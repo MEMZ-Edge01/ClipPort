@@ -10,6 +10,7 @@
                 <ResourceDictionary Source="TraeWorkTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <converters:LocalizedTextConverter x:Key="LocalizedTextConverter" />
+            <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

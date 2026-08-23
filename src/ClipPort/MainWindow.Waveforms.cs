@@ -277,7 +277,13 @@ public sealed partial class MainWindow
         double drawableHeight = Math.Max(1, height - verticalPadding * 2);
         double bottomY = verticalPadding + drawableHeight;
         double scaleMaximum = Math.Max(chartMaximum, double.Epsilon);
-        var linePoints = new List<Point>(samples.Count + 1);
+        int maximumDisplayPointCount = Math.Clamp(
+            (int)Math.Ceiling(width / 2),
+            64,
+            1024);
+        IReadOnlyList<WaveformDisplaySample> displaySamples =
+            WaveformTimeline.CreateDisplaySamples(samples, maximumDisplayPointCount);
+        var linePoints = new List<Point>(displaySamples.Count + 1);
         if (samples.Count == 1)
         {
             double normalized = Math.Clamp(samples[0] / scaleMaximum, 0, 1);
@@ -289,10 +295,13 @@ public sealed partial class MainWindow
         }
         else
         {
-            for (int index = 0; index < samples.Count; index++)
+            foreach (WaveformDisplaySample sample in displaySamples)
             {
-                double x = width * WaveformTimeline.GetNormalizedX(samples.Count, index);
-                double normalized = Math.Clamp(samples[index] / scaleMaximum, 0, 1);
+                double normalizedX = progressPositions.Count == samples.Count
+                    ? Math.Clamp(progressPositions[sample.SourceIndex], 0, 1)
+                    : WaveformTimeline.GetNormalizedX(samples.Count, sample.SourceIndex);
+                double x = width * normalizedX;
+                double normalized = Math.Clamp(sample.Value / scaleMaximum, 0, 1);
                 double y = verticalPadding + drawableHeight * (1 - normalized);
                 linePoints.Add(new Point(x, y));
             }
@@ -333,8 +342,7 @@ public sealed partial class MainWindow
 
         List<Point> startLinePoints = AlignStartPoints(
             currentLinePoints,
-            targetLinePoints,
-            targetFillPoints[^1].Y);
+            targetLinePoints);
         List<Point> startFillPoints = BuildFillPoints(
             startLinePoints,
             targetFillPoints[^1].Y);
@@ -401,33 +409,19 @@ public sealed partial class MainWindow
 
     private static List<Point> AlignStartPoints(
         IReadOnlyList<Point> currentPoints,
-        IReadOnlyList<Point> targetPoints,
-        double bottomY)
+        IReadOnlyList<Point> targetPoints)
     {
-        if (currentPoints.Count == 0)
-        {
-            return Enumerable.Repeat(new Point(0, bottomY), targetPoints.Count).ToList();
-        }
-
-        var aligned = new List<Point>(targetPoints.Count);
-        if (currentPoints.Count <= targetPoints.Count)
-        {
-            aligned.AddRange(currentPoints);
-            while (aligned.Count < targetPoints.Count)
-            {
-                aligned.Add(currentPoints[^1]);
-            }
-            return aligned;
-        }
-
-        for (int index = 0; index < targetPoints.Count; index++)
-        {
-            int sourceIndex = targetPoints.Count == 1
-                ? currentPoints.Count - 1
-                : (int)Math.Round(index * (currentPoints.Count - 1d) / (targetPoints.Count - 1d));
-            aligned.Add(currentPoints[sourceIndex]);
-        }
-        return aligned;
+        IReadOnlyList<WaveformCoordinate> aligned =
+            WaveformTimeline.AlignHorizontalTransition(
+                currentPoints
+                    .Select(point => new WaveformCoordinate(point.X, point.Y))
+                    .ToArray(),
+                targetPoints
+                    .Select(point => new WaveformCoordinate(point.X, point.Y))
+                    .ToArray());
+        return aligned
+            .Select(point => new Point(point.X, point.Y))
+            .ToList();
     }
 
     private static List<Point> BuildFillPoints(

@@ -180,6 +180,7 @@ public sealed partial class MainWindow
         try
         {
             await WaitForQueueTurnAsync(runtime, runtime.Cancellation.Token);
+            RefreshSchedulingPresentation();
             runtime.Job.Status = JobStatus.Running;
             RefreshHistoryItem(runtime.Job);
             await SaveHistorySafeAsync();
@@ -197,7 +198,10 @@ public sealed partial class MainWindow
                 (conflicts, token) => InvokeOnUiThreadAsync(
                     () => WaitForJobDuplicateChoicesAsync(runtime, conflicts, token)),
                 token => WaitWhilePausedAsync(runtime, token),
-                runtime.Cancellation.Token);
+                runtime.Cancellation.Token,
+                token => _jobScheduler.AcquireExecutionLeaseAsync(
+                    runtime.ScheduleRegistration!,
+                    token));
 
             runtime.Result = result;
             await ResolveFailedFilesAsync(runtime, result.FailedFiles, runtime.Cancellation.Token);
@@ -231,6 +235,7 @@ public sealed partial class MainWindow
             runtime.ScheduleRegistration = null;
             runtime.Cancellation.Dispose();
             _jobRuntimes.Remove(runtime.Job.Id);
+            RefreshSchedulingPresentation();
             bool historyTrimmed = TrimHistory();
             UpdateSleepPreventionState();
             RefreshSelectedRuntime();
@@ -303,13 +308,19 @@ public sealed partial class MainWindow
                         runtime.Options,
                         retryProgress,
                         token => WaitWhilePausedAsync(runtime, token),
-                        cancellationToken)
+                        cancellationToken,
+                        token => _jobScheduler.AcquireExecutionLeaseAsync(
+                            runtime.ScheduleRegistration!,
+                            token))
                     : await _copyService.RetryFailedFilesAsync(
                         action.Failures,
                         runtime.Options,
                         retryProgress,
                         token => WaitWhilePausedAsync(runtime, token),
-                        cancellationToken);
+                        cancellationToken,
+                        token => _jobScheduler.AcquireExecutionLeaseAsync(
+                            runtime.ScheduleRegistration!,
+                            token));
                 EndThroughputInterval(runtime, runtime.RetryProgress?.Phase, null);
                 retryCopyDuration += retryResult.CopyDuration;
                 retryVerifyDuration += retryResult.VerifyDuration;
@@ -405,12 +416,7 @@ public sealed partial class MainWindow
         CopyJobRuntime runtime,
         CancellationToken cancellationToken)
     {
-        while (runtime.IsPaused)
-        {
-            await Task.Delay(120, cancellationToken);
-        }
-
-        // 每个任务只在开始时申请一次队列执行权；执行期间的检查点只处理暂停。
+        // 每个任务只在开始时申请一次队列执行权；后续检查点负责确认安全交接。
         await _jobScheduler.WaitForTurnAsync(
             runtime.ScheduleRegistration!,
             cancellationToken);
@@ -420,11 +426,20 @@ public sealed partial class MainWindow
         CopyJobRuntime runtime,
         CancellationToken cancellationToken)
     {
-        while (runtime.IsPaused)
-        {
-            await Task.Delay(120, cancellationToken);
-        }
+        await _jobScheduler.WaitForExecutionAsync(
+            runtime.ScheduleRegistration!,
+            cancellationToken);
     }
+
+    private bool IsRuntimePaused(CopyJobRuntime runtime) =>
+        runtime.IsPaused ||
+        runtime.Job.Status == JobStatus.Running &&
+        runtime.ScheduleRegistration is not null &&
+        !_jobScheduler.CanExecute(runtime.ScheduleRegistration);
+
+    private bool IsRuntimeAutomaticallyPaused(CopyJobRuntime runtime) =>
+        runtime.ScheduleRegistration is not null &&
+        _jobScheduler.IsPreempted(runtime.ScheduleRegistration);
 
     private void UpdateJobProgress(CopyJobRuntime runtime, CopyProgressInfo info)
     {
@@ -493,6 +508,15 @@ public sealed partial class MainWindow
 
     private static void SampleThroughput(CopyJobRuntime runtime, CopyProgressInfo info)
     {
+        if (info.Phase == CopyPhase.Verifying && !info.IsPhaseActive)
+        {
+            runtime.VerifyThroughputSampler.TryAppendIdleSample(
+                runtime.Job.VerifyByteSpeedSamples,
+                runtime.Job.VerifyItemSpeedSamples,
+                runtime.Job.VerifyThroughputProgressSamples);
+            return;
+        }
+
         runtime.CopyThroughputSampler.TrySample(
             info,
             runtime.Job.CopyByteSpeedSamples,
@@ -677,7 +701,8 @@ public sealed partial class MainWindow
         CopyProgressInfo? scanInfo = runtime.LastScanProgress;
         CopyProgressInfo? copyInfo = runtime.LastCopyProgress;
         CopyProgressInfo? verifyInfo = runtime.LastVerifyProgress;
-        HeroNameText.Text = job.DisplayName + (job.IsPriority ? ResourceService.GetString("Common.Priority") : string.Empty);
+        HeroNameText.Text = job.DisplayName;
+        HeroPriorityBadge.Visibility = job.IsPriority ? Visibility.Visible : Visibility.Collapsed;
         SourcePathText.Text = job.SourcePath;
         DestinationPathText.Text = job.DestinationPath;
         TotalSizeText.Text = info is null ? "--" : FormatBytes(info.TotalBytes);
@@ -741,13 +766,16 @@ public sealed partial class MainWindow
         PercentText.Text = scanning
             ? ResourceService.GetString("Status.Scanning")
             : $"{overall:F2}%";
-        CopySpeedText.Text = copyStillActive && copyInfo is not null
+        bool automaticallyPaused = IsRuntimeAutomaticallyPaused(runtime);
+        bool runtimePaused = runtime.IsPaused || automaticallyPaused;
+        CopySpeedText.Text = !runtimePaused && copyStillActive && copyInfo is not null
             ? $"{FormatBytes(copyInfo.BytesPerSecond)}/s"
             : "--";
-        VerifySpeedText.Text = runtime.Options.VerifyFiles &&
-                               verifyInfo is not null &&
-                               runtime.ProcessedVerifyFiles < totalFiles
-            ? $"{FormatBytes(verifyInfo.BytesPerSecond)}/s"
+        bool verificationActive = !runtimePaused &&
+            verifyInfo is { IsPhaseActive: true } &&
+            runtime.ProcessedVerifyFiles < totalFiles;
+        VerifySpeedText.Text = runtime.Options.VerifyFiles
+            ? $"{FormatBytes(verificationActive ? verifyInfo!.BytesPerSecond : 0)}/s"
             : "--";
         UpdateThroughputCharts(
             job.CopyByteSpeedSamples,
@@ -794,8 +822,8 @@ public sealed partial class MainWindow
         CancelButton.Visibility = Visibility.Visible;
         PauseButton.IsEnabled = true;
         CancelButton.IsEnabled = true;
-        PauseText.Text = runtime.IsPaused ? ResourceService.GetString("Button.Resume") : ResourceService.GetString("Button.Pause");
-        PauseIcon.Glyph = runtime.IsPaused ? "\uE768" : "\uE769";
+        PauseText.Text = runtimePaused ? ResourceService.GetString("Button.Resume") : ResourceService.GetString("Button.Pause");
+        PauseIcon.Glyph = runtimePaused ? "\uE768" : "\uE769";
         NewJobButton.IsEnabled = !_isMultiSelectMode;
         SourcePickerButton.IsEnabled = false;
         DestinationPickerButton.IsEnabled = false;
@@ -823,6 +851,12 @@ public sealed partial class MainWindow
             CurrentFileText.Text = ResourceService.Format("Format.NFilesAwaitingAction", runtime.FailedFileChoices.Count.ToString("N0"));
             LogText.Text = ResourceService.GetString("Info.OtherFilesProcessed");
         }
+        else if (automaticallyPaused)
+        {
+            StatusText.Text = ResourceService.GetString("Status.PausedByPriority");
+            PhaseText.Text = ResourceService.GetString("Info.WaitingForPriorityTask");
+            LogText.Text = ResourceService.GetString("Info.PriorityPauseAutomaticResume");
+        }
         else if (runtime.IsPaused)
         {
             StatusText.Text = ResourceService.GetString("Status.Paused");
@@ -848,10 +882,14 @@ public sealed partial class MainWindow
         }
         else
         {
-            bool copyingAndVerifying = copyStillActive && verifyInfo is not null;
+            bool copyingAndVerifying = copyStillActive && verifyInfo is { IsPhaseActive: true };
+            CopyPhase? displayedPhase = DisplayFormatting.GetDisplayedOperationPhase(
+                copyStillActive,
+                info,
+                verifyInfo);
             StatusText.Text = copyingAndVerifying
                 ? ResourceService.GetString("Status.CopyingAndVerifying")
-                : info?.Phase switch
+                : displayedPhase switch
             {
                 CopyPhase.Scanning => ResourceService.GetString("Status.Scanning"),
                 CopyPhase.Copying => ResourceService.GetString("Status.Copying"),
@@ -861,7 +899,7 @@ public sealed partial class MainWindow
             };
             PhaseText.Text = copyingAndVerifying
                 ? ResourceService.GetString("Status.BackgroundVerification")
-                : info?.Phase switch
+                : displayedPhase switch
             {
                 CopyPhase.Scanning => ResourceService.GetString("Status.ReadingDirectories"),
                 CopyPhase.Copying => ResourceService.GetString("Status.CopyingFiles"),
@@ -1122,8 +1160,44 @@ public sealed partial class MainWindow
         {
             return;
         }
-        runtime.IsPaused = !runtime.IsPaused;
-        ShowRuntimeJob(runtime);
+        if (runtime.ScheduleRegistration is null)
+        {
+            return;
+        }
+
+        if (IsRuntimeAutomaticallyPaused(runtime))
+        {
+            _jobScheduler.ForceResumeOrdinary(runtime.ScheduleRegistration);
+        }
+        else
+        {
+            _jobScheduler.SetPaused(runtime.ScheduleRegistration, !runtime.IsPaused);
+        }
+
+        SyncRuntimePauseStates();
+        RefreshSchedulingPresentation();
+    }
+
+    private void SyncRuntimePauseStates()
+    {
+        foreach (CopyJobRuntime candidate in _jobRuntimes.Values)
+        {
+            if (candidate.ScheduleRegistration is not null)
+            {
+                candidate.IsPaused = _jobScheduler.IsPaused(candidate.ScheduleRegistration);
+            }
+        }
+    }
+
+    private void RefreshSchedulingPresentation()
+    {
+        foreach (CopyJobRuntime candidate in _jobRuntimes.Values)
+        {
+            candidate.Job.IsWaitingForPriority = IsRuntimeAutomaticallyPaused(candidate);
+            RefreshHistoryItem(candidate.Job);
+        }
+
+        RefreshSelectedRuntime();
     }
 
     private void ConcurrentCancelButton_Click(object sender, RoutedEventArgs e)

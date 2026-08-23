@@ -37,6 +37,7 @@ internal sealed class BackgroundVerificationWorker : IDisposable
     private readonly VerificationAlgorithmKind _algorithm;
     private readonly IProgress<CopyProgressInfo> _progress;
     private readonly Func<CancellationToken, Task> _waitWhilePaused;
+    private readonly Func<CancellationToken, ValueTask<IDisposable>>? _executionLeaseFactory;
     private readonly CancellationToken _cancellationToken;
     private readonly long _totalBytes;
     private readonly int _totalFiles;
@@ -53,6 +54,7 @@ internal sealed class BackgroundVerificationWorker : IDisposable
         int totalFiles,
         IProgress<CopyProgressInfo> progress,
         Func<CancellationToken, Task> waitWhilePaused,
+        Func<CancellationToken, ValueTask<IDisposable>>? executionLeaseFactory,
         CancellationToken cancellationToken)
     {
         _algorithm = VerificationAlgorithms.Normalize(algorithm);
@@ -60,6 +62,7 @@ internal sealed class BackgroundVerificationWorker : IDisposable
         _totalFiles = totalFiles;
         _progress = progress;
         _waitWhilePaused = waitWhilePaused;
+        _executionLeaseFactory = executionLeaseFactory;
         _cancellationToken = cancellationToken;
         _thread = new Thread(Run)
         {
@@ -102,29 +105,57 @@ internal sealed class BackgroundVerificationWorker : IDisposable
             watch.Start();
             long processedBytes = 0;
             int processedFiles = 0;
-            foreach (VerificationWorkItem item in _queue.GetConsumingEnumerable(_cancellationToken))
+            bool verificationHasStarted = false;
+            while (true)
             {
+                VerificationWorkItem item;
+                if (!_queue.TryTake(out item!))
+                {
+                    if (verificationHasStarted)
+                    {
+                        ReportProgress(
+                            watch,
+                            processedBytes,
+                            processedFiles,
+                            currentFile: string.Empty,
+                            bytesPerSecond: 0,
+                            isPhaseActive: false);
+                    }
+                    try
+                    {
+                        item = _queue.Take(_cancellationToken);
+                    }
+                    catch (InvalidOperationException) when (_queue.IsCompleted)
+                    {
+                        break;
+                    }
+                }
+
                 _cancellationToken.ThrowIfCancellationRequested();
                 _waitWhilePaused(_cancellationToken).GetAwaiter().GetResult();
+                using IDisposable? executionLease = _executionLeaseFactory?
+                    .Invoke(_cancellationToken)
+                    .GetAwaiter()
+                    .GetResult();
+                verificationHasStarted = true;
+                ReportProgress(
+                    watch,
+                    processedBytes,
+                    processedFiles,
+                    item.Source.RelativePath,
+                    processedBytes / Math.Max(watch.Elapsed.TotalSeconds, 0.001),
+                    isPhaseActive: true);
                 BackgroundVerificationOutcome outcome = Verify(item);
                 _outcomes.Add(outcome);
                 processedBytes += item.Source.Length;
                 processedFiles++;
-                _progress.Report(new CopyProgressInfo(
-                    CopyPhase.Verifying,
-                    _totalBytes,
+                ReportProgress(
+                    watch,
                     processedBytes,
-                    _totalFiles,
                     processedFiles,
                     item.Source.RelativePath,
                     processedBytes / Math.Max(watch.Elapsed.TotalSeconds, 0.001),
-                    watch.Elapsed)
-                {
-                    SuccessfulBytes = _outcomes
-                        .Where(result => result.Failure is null)
-                        .Sum(result => result.WorkItem.Source.Length),
-                    SuccessfulFiles = _outcomes.Count(result => result.Failure is null)
-                });
+                    isPhaseActive: true);
             }
 
             watch.Stop();
@@ -149,6 +180,32 @@ internal sealed class BackgroundVerificationWorker : IDisposable
                 TrySetBackgroundMode(ThreadModeBackgroundEnd);
             }
         }
+    }
+
+    private void ReportProgress(
+        Stopwatch watch,
+        long processedBytes,
+        int processedFiles,
+        string currentFile,
+        double bytesPerSecond,
+        bool isPhaseActive)
+    {
+        _progress.Report(new CopyProgressInfo(
+            CopyPhase.Verifying,
+            _totalBytes,
+            processedBytes,
+            _totalFiles,
+            processedFiles,
+            currentFile,
+            bytesPerSecond,
+            watch.Elapsed)
+        {
+            SuccessfulBytes = _outcomes
+                .Where(result => result.Failure is null)
+                .Sum(result => result.WorkItem.Source.Length),
+            SuccessfulFiles = _outcomes.Count(result => result.Failure is null),
+            IsPhaseActive = isPhaseActive
+        });
     }
 
     private BackgroundVerificationOutcome Verify(VerificationWorkItem item)

@@ -218,7 +218,6 @@ public sealed class JobHistoryService
     private static List<double> NormalizeSpeedSamples(List<double>? samples) =>
         (samples ?? [])
         .Where(value => double.IsFinite(value) && value >= 0)
-        .TakeLast(CopyThroughputSampler.DefaultCapacity)
         .ToList();
 
     private static (
@@ -240,20 +239,31 @@ public sealed class JobHistoryService
             .Select(value => Math.Clamp(value, 0, 1))
             .TakeLast(sampleCount)
             .ToList();
-        if (normalizedProgress.Count != sampleCount)
+        bool hasPersistedProgress = normalizedProgress.Count == sampleCount;
+        if (!hasPersistedProgress)
         {
-            // Older histories have no progress positions and are rendered by
-            // the legacy full-width fallback instead of inventing timestamps.
-            normalizedProgress.Clear();
+            // Temporary positions let compaction keep all three collections
+            // aligned. They are cleared again so older histories continue to
+            // use the full-width rendering fallback.
+            normalizedProgress = Enumerable.Range(0, sampleCount)
+                .Select(index => sampleCount <= 1 ? 1d : index / (sampleCount - 1d))
+                .ToList();
         }
-        else
+
+        for (int index = 1; index < normalizedProgress.Count; index++)
         {
-            for (int index = 1; index < normalizedProgress.Count; index++)
-            {
-                normalizedProgress[index] = Math.Max(
-                    normalizedProgress[index - 1],
-                    normalizedProgress[index]);
-            }
+            normalizedProgress[index] = Math.Max(
+                normalizedProgress[index - 1],
+                normalizedProgress[index]);
+        }
+
+        CopyThroughputSampler.CompactToCapacity(
+            normalizedByteRates,
+            normalizedItemRates,
+            normalizedProgress);
+        if (!hasPersistedProgress)
+        {
+            normalizedProgress.Clear();
         }
 
         return (normalizedByteRates, normalizedItemRates, normalizedProgress);

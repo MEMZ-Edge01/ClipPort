@@ -21,6 +21,7 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     private DateTimeOffset _startedAt;
     private long _totalBytes;
     private bool _isAcknowledged = true;
+    private bool _isWaitingForPriority;
     private JobStatus _status;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -94,6 +95,22 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
         VerificationExecutionMode.AfterCopy;
     public bool UseFastCopyAlgorithm { get; set; }
     public bool IsPriority { get; set; }
+    /// <summary>
+    /// 仅用于当前运行会话的侧栏显示，不写入历史记录。
+    /// </summary>
+    [JsonIgnore]
+    public bool IsWaitingForPriority
+    {
+        get => _isWaitingForPriority;
+        set
+        {
+            if (!SetProperty(ref _isWaitingForPriority, value))
+                return;
+
+            OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(nameof(StatusGlyph));
+        }
+    }
     public bool PreventSleep { get; set; } = true;
     public bool IsAcknowledged
     {
@@ -130,7 +147,9 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     public string MetaText => $"{DisplayFormatting.FormatBytes(TotalBytes)} · {StartedAt:MM/dd HH:mm:ss}";
 
     [JsonIgnore]
-    public string StatusText => Status == JobStatus.CompletedWithErrors ? "Result.CompletedWithErrors" : Status switch
+    public string StatusText => IsWaitingForPriority
+        ? "Status.Waiting"
+        : Status == JobStatus.CompletedWithErrors ? "Result.CompletedWithErrors" : Status switch
     {
         JobStatus.Queued => "Status.Queued",
         JobStatus.Running => CopyEnabled ? "Status.Copying" : "Status.Verifying",
@@ -147,7 +166,9 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     };
 
     [JsonIgnore]
-    public string StatusGlyph => Status == JobStatus.CompletedWithErrors ? "\uE7BA" : Status switch
+    public string StatusGlyph => IsWaitingForPriority
+        ? "\uE823"
+        : Status == JobStatus.CompletedWithErrors ? "\uE7BA" : Status switch
     {
         JobStatus.Completed => "\uE73E",
         JobStatus.Queued => "\uE823",

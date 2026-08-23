@@ -452,6 +452,7 @@ public sealed partial class MainWindow : Window
         UpdateVerificationAlgorithmControls();
         PreventSleepToggle.IsOn = true;
         HeroNameText.Text = ResourceService.GetString("Info.PrepareNewTask");
+        HeroPriorityBadge.Visibility = Visibility.Collapsed;
         CurrentFileText.Text = ResourceService.GetString("Info.SelectSourceAndDest");
         LogText.Text = ResourceService.GetString("Info.Ready");
         ResetProgress();
@@ -476,6 +477,7 @@ public sealed partial class MainWindow : Window
     private void ShowHistorySummary(JobHistoryItem job)
     {
         HeroNameText.Text = job.DisplayName;
+        HeroPriorityBadge.Visibility = job.IsPriority ? Visibility.Visible : Visibility.Collapsed;
         SourcePathText.Text = job.SourcePath;
         DestinationPathText.Text = job.DestinationPath;
         TotalSizeText.Text = FormatBytes(job.TotalBytes);

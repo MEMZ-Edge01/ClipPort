@@ -63,7 +63,8 @@ internal static class Program
             ("history retention protects active jobs", TestHistoryRetentionProtectsActiveJobsAsync),
             ("legacy failure reasons normalize", TestLegacyFailureReasonNormalizationAsync),
             ("retry results preserve warnings", TestRetryResultWarningsAsync),
-            ("tasks run serially with priority at the front of the queue", TestPrioritySchedulerAsync),
+            ("priority task status and badges stay visible", TestPriorityTaskPresentationAsync),
+            ("priority tasks preempt ordinary tasks", TestPrioritySchedulerAsync),
             ("update version comparison follows semantic versioning", TestUpdateVersionComparisonAsync),
             ("update release assets match the portable zip pattern", TestUpdateReleaseAssetSelectionAsync)
         };
@@ -1058,6 +1059,12 @@ internal static class Program
                 "Background verification and its non-blocking backlog must verify every file.");
             Assert(events.Any(info => info.Phase == CopyPhase.Verifying),
                 "Opportunistic mode must publish independent verification progress.");
+            Assert(events.Any(info =>
+                    info.Phase == CopyPhase.Verifying &&
+                    !info.IsPhaseActive &&
+                    info.BytesPerSecond == 0 &&
+                    string.IsNullOrEmpty(info.CurrentFile)),
+                "Background verification must publish a zero-speed idle state instead of leaving the last rate visible.");
             Assert(verificationBeforeCommit == 0,
                 "A file must be atomically committed before background verification starts.");
             Assert(!Directory.EnumerateFiles(destination, "*.clipport-partial", SearchOption.AllDirectories).Any(),
@@ -1513,9 +1520,15 @@ internal static class Program
                 IsPriority = true,
                 PreventSleep = false,
                 IsAcknowledged = false,
-                CopyByteSpeedSamples = [125 * 1024 * 1024, 140 * 1024 * 1024],
-                CopyItemSpeedSamples = [12.5, 14],
-                CopyThroughputProgressSamples = [0.4, 1],
+                CopyByteSpeedSamples = Enumerable.Range(1, 91)
+                    .Select(index => index * 1024d)
+                    .ToList(),
+                CopyItemSpeedSamples = Enumerable.Range(1, 91)
+                    .Select(index => index / 10d)
+                    .ToList(),
+                CopyThroughputProgressSamples = Enumerable.Range(1, 91)
+                    .Select(index => index / 91d)
+                    .ToList(),
                 DuplicateFiles = [new DuplicateFileConflict("clip.mov", @"F:\clip.mov", @"D:\Media\CardA\clip.mov", 1024)],
                 DuplicateDecisions = new Dictionary<string, ExistingFilePolicy>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -1634,11 +1647,47 @@ internal static class Program
         }
     }
 
+    private static Task TestPriorityTaskPresentationAsync()
+    {
+        var ordinaryJob = new JobHistoryItem
+        {
+            Status = JobStatus.Running,
+            CopyEnabled = true
+        };
+        ordinaryJob.IsWaitingForPriority = true;
+        Assert(ordinaryJob.StatusText == "Status.Waiting",
+            "A running ordinary task preempted by priority work must appear as waiting in the sidebar.");
+        ordinaryJob.IsWaitingForPriority = false;
+        Assert(ordinaryJob.StatusText == "Status.Copying",
+            "A resumed ordinary task must return to its live copy status in the sidebar.");
+
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XDocument mainWindow = XDocument.Load(
+            Path.Combine(AppContext.BaseDirectory, "Localization", "MainWindow.xaml"));
+        XElement[] priorityBadges = mainWindow
+            .Descendants(presentation + "Border")
+            .Where(element => element
+                .Elements(presentation + "TextBlock")
+                .Any(text => (string?)text.Attribute(x + "Uid") == "PriorityTaskBadgeText"))
+            .ToArray();
+        Assert(priorityBadges.Length == 3,
+            "Priority badges must appear beside both sidebar task titles and the selected task title.");
+        Assert(priorityBadges.All(element =>
+                (string?)element.Attribute("Style") ==
+                "{StaticResource PriorityTaskBadgeBorderStyle}") &&
+               mainWindow.Descendants(presentation + "Style").Any(style =>
+                   (string?)style.Attribute(x + "Key") == "PriorityTaskBadgeBorderStyle"),
+            "Every priority badge must use the shared gray rounded-rectangle style.");
+
+        return Task.CompletedTask;
+    }
+
     private static async Task TestPrioritySchedulerAsync()
     {
         var scheduler = new CopyJobScheduler();
 
-        // 空队列时第一个任务立即获得执行权，其余任务排队等待。
+        // 空队列时第一个普通任务立即获得执行权，其余普通任务排队等待。
         using CopyJobScheduler.CopyJobScheduleRegistration firstOrdinary = scheduler.Register(false);
         using CopyJobScheduler.CopyJobScheduleRegistration secondOrdinary = scheduler.Register(false);
         using CopyJobScheduler.CopyJobScheduleRegistration thirdOrdinary = scheduler.Register(false);
@@ -1654,30 +1703,87 @@ internal static class Program
         Assert(scheduler.WaitingCount == 2 && scheduler.HasActiveJob,
             "Two tasks should be queued while one is active.");
 
-        // 后到的优先任务必须插到普通任务前面。
+        IDisposable firstOrdinaryReadLease =
+            await scheduler.AcquireExecutionLeaseAsync(firstOrdinary);
+        IDisposable firstOrdinaryWriteLease =
+            await scheduler.AcquireExecutionLeaseAsync(firstOrdinary);
+
+        // 后到的优先任务必须先等待普通任务在安全检查点确认停稳。
         CopyJobScheduler.CopyJobScheduleRegistration firstPriority = scheduler.Register(true);
         Task firstPriorityTurn = scheduler.WaitForTurnAsync(firstPriority);
+        Assert(!firstPriorityTurn.IsCompleted &&
+               scheduler.CanExecute(firstOrdinary) &&
+               !scheduler.IsPreempted(firstOrdinary) &&
+               scheduler.GetWaitingPosition(firstPriority) == 0,
+            "A priority task must not start before the ordinary task acknowledges a safe checkpoint.");
+        Assert(scheduler.WaitForExecutionAsync(firstOrdinary).IsCompletedSuccessfully,
+            "An in-flight safe region must be allowed to release all of its I/O leases.");
+        firstOrdinaryReadLease.Dispose();
         Assert(!firstPriorityTurn.IsCompleted,
-            "A priority task must wait for the active task to finish.");
-        Assert(scheduler.GetWaitingPosition(firstPriority) == 0,
-            "The priority task should queue ahead of ordinary tasks.");
-        Assert(scheduler.GetWaitingPosition(secondOrdinary) == 1,
-            "Ordinary tasks should see the priority task ahead of them.");
+            "One remaining I/O lease must keep the priority task blocked.");
+        firstOrdinaryWriteLease.Dispose();
+        await firstPriorityTurn.WaitAsync(TimeSpan.FromSeconds(1));
+        Task firstOrdinaryBlocked = scheduler.WaitForExecutionAsync(firstOrdinary);
+        Assert(!firstOrdinaryBlocked.IsCompleted &&
+               scheduler.IsPreempted(firstOrdinary) &&
+               scheduler.CanExecute(firstPriority),
+            "The priority task should start only after the ordinary task confirms it has stopped.");
+        Assert(scheduler.WaitingCount == 2 &&
+               !secondOrdinaryTurn.IsCompleted &&
+               !thirdOrdinaryTurn.IsCompleted,
+            "Preemption must pause the active ordinary task without starting queued ordinary tasks.");
 
-        // 多个优先任务之间保持先来先执行。
+        // 暂停当前优先任务时，也必须在安全检查点确认后才恢复普通任务。
+        scheduler.SetPaused(firstPriority, true);
+        Assert(scheduler.CanExecute(firstPriority) && scheduler.IsPreempted(firstOrdinary),
+            "Pausing a priority task must not transfer ownership before its safe checkpoint.");
+        Task firstPriorityBlocked = scheduler.WaitForExecutionAsync(firstPriority);
+        await firstOrdinaryBlocked.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(scheduler.CanExecute(firstOrdinary) &&
+               !scheduler.CanExecute(firstPriority) &&
+               !scheduler.IsPreempted(firstOrdinary) &&
+               !firstPriorityBlocked.IsCompleted,
+            "The ordinary task should resume after the paused priority task confirms it has stopped.");
+
+        scheduler.SetPaused(firstPriority, false);
+        Assert(scheduler.CanExecute(firstOrdinary) && !firstPriorityBlocked.IsCompleted,
+            "Resuming a priority task must still wait for the ordinary safe checkpoint.");
+        Task firstOrdinaryBlockedAgain = scheduler.WaitForExecutionAsync(firstOrdinary);
+        await firstPriorityBlocked.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(!firstOrdinaryBlockedAgain.IsCompleted &&
+               scheduler.CanExecute(firstPriority) &&
+               scheduler.IsPreempted(firstOrdinary),
+            "Resuming the priority task must safely preempt the ordinary task again.");
+
+        // 多个优先任务之间仍保持先来先执行，不能并行占用磁盘。
         CopyJobScheduler.CopyJobScheduleRegistration secondPriority = scheduler.Register(true);
         Task secondPriorityTurn = scheduler.WaitForTurnAsync(secondPriority);
-        Assert(scheduler.GetWaitingPosition(firstPriority) == 0 &&
-               scheduler.GetWaitingPosition(secondPriority) == 1,
-            "Priority tasks should preserve arrival order among themselves.");
+        Assert(!secondPriorityTurn.IsCompleted &&
+               scheduler.GetWaitingPosition(secondPriority) == 0 &&
+               scheduler.GetWaitingPosition(secondOrdinary) == 1,
+            "Additional priority tasks should wait ahead of ordinary tasks in arrival order.");
 
-        firstOrdinary.Dispose();
-        await firstPriorityTurn.WaitAsync(TimeSpan.FromSeconds(1));
-        Assert(firstPriorityTurn.IsCompletedSuccessfully &&
-               !secondOrdinaryTurn.IsCompleted && !thirdOrdinaryTurn.IsCompleted,
-            "The priority task should run before ordinary tasks once the active task finishes.");
-        Assert(scheduler.GetWaitingPosition(secondPriority) == 0,
-            "The second priority task should move to the front of the queue.");
+        // 用户可强制继续被抢占的普通任务；所有优先任务都应转为手动暂停。
+        scheduler.ForceResumeOrdinary(firstOrdinary);
+        Assert(scheduler.CanExecute(firstPriority) &&
+               scheduler.IsPaused(firstPriority) &&
+               scheduler.IsPaused(secondPriority),
+            "Forcing an ordinary task to resume must request every priority task to pause safely.");
+        Task firstPriorityBlockedForForce = scheduler.WaitForExecutionAsync(firstPriority);
+        await firstOrdinaryBlockedAgain.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(scheduler.CanExecute(firstOrdinary) &&
+               !scheduler.CanExecute(firstPriority) &&
+               !scheduler.CanExecute(secondPriority) &&
+               !firstPriorityBlockedForForce.IsCompleted,
+            "The ordinary task must resume only after the priority task reaches a safe checkpoint.");
+
+        scheduler.SetPaused(firstPriority, false);
+        Task firstOrdinaryBlockedThird = scheduler.WaitForExecutionAsync(firstOrdinary);
+        await firstPriorityBlockedForForce.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(scheduler.CanExecute(firstPriority) &&
+               scheduler.IsPreempted(firstOrdinary) &&
+               !firstOrdinaryBlockedThird.IsCompleted,
+            "Explicitly resuming a priority task must restore its execution right after safe handoff.");
 
         // 取消一个排队中的任务应当把它从队列移除。
         using CopyJobScheduler.CopyJobScheduleRegistration cancelledOrdinary = scheduler.Register(false);
@@ -1698,13 +1804,21 @@ internal static class Program
         Assert(scheduler.GetWaitingPosition(secondOrdinary) == 1,
             "Removing a queued task should close the gap behind it.");
 
+        scheduler.SetPaused(secondPriority, false);
         firstPriority.Dispose();
         await secondPriorityTurn.WaitAsync(TimeSpan.FromSeconds(1));
         Assert(secondPriorityTurn.IsCompletedSuccessfully &&
+               scheduler.IsPreempted(firstOrdinary) &&
                !secondOrdinaryTurn.IsCompleted && !thirdOrdinaryTurn.IsCompleted,
-            "The second priority task should run next, before ordinary tasks.");
+            "The next priority task should run while the ordinary task remains preempted.");
         secondPriority.Dispose();
 
+        Assert(!scheduler.IsPreempted(firstOrdinary) &&
+               !secondOrdinaryTurn.IsCompleted &&
+               !thirdOrdinaryTurn.IsCompleted,
+            "The original ordinary task should resume only after all priority tasks finish.");
+
+        firstOrdinary.Dispose();
         await secondOrdinaryTurn.WaitAsync(TimeSpan.FromSeconds(1));
         secondOrdinary.Dispose();
         await thirdOrdinaryTurn.WaitAsync(TimeSpan.FromSeconds(1));
@@ -1712,6 +1826,39 @@ internal static class Program
 
         Assert(scheduler.WaitingCount == 0 && !scheduler.HasActiveJob,
             "The scheduler should return to an idle state after all tasks finish.");
+
+        // 被优先任务暂挂时取消普通任务，优先任务结束后不得把已取消任务恢复。
+        var cancellationScheduler = new CopyJobScheduler();
+        CopyJobScheduler.CopyJobScheduleRegistration cancelledWhilePreempted =
+            cancellationScheduler.Register(false);
+        CopyJobScheduler.CopyJobScheduleRegistration preemptingPriority =
+            cancellationScheduler.Register(true);
+        CopyJobScheduler.CopyJobScheduleRegistration nextOrdinary =
+            cancellationScheduler.Register(false);
+        await cancellationScheduler.WaitForTurnAsync(cancelledWhilePreempted);
+        Task preemptingPriorityTurn = cancellationScheduler.WaitForTurnAsync(preemptingPriority);
+        Task cancelledOrdinaryBlocked =
+            cancellationScheduler.WaitForExecutionAsync(cancelledWhilePreempted);
+        await preemptingPriorityTurn.WaitAsync(TimeSpan.FromSeconds(1));
+        Task nextOrdinaryTurn = cancellationScheduler.WaitForTurnAsync(nextOrdinary);
+        Assert(cancellationScheduler.IsPreempted(cancelledWhilePreempted),
+            "The ordinary task should be preempted before its cancellation is tested.");
+        cancelledWhilePreempted.Dispose();
+        try
+        {
+            await cancelledOrdinaryBlocked.WaitAsync(TimeSpan.FromSeconds(1));
+            throw new InvalidOperationException(
+                "A cancelled preempted task should remain stopped.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected: disposing the preempted task cancels its blocked checkpoint.
+        }
+        preemptingPriority.Dispose();
+        await nextOrdinaryTurn.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(!cancellationScheduler.IsPreempted(cancelledWhilePreempted),
+            "A cancelled preempted task must not resume after the priority task finishes.");
+        nextOrdinary.Dispose();
     }
 
     private static Task TestPathSafetyAsync()
@@ -1770,6 +1917,24 @@ internal static class Program
                DisplayFormatting.GetWaveformDivisionStep(600) == 200 &&
                DisplayFormatting.GetWaveformDivisionStep(601) == 300,
             "Waveform divisions should use readable half-step values that cover the visible peak.");
+
+        var idleVerification = new CopyProgressInfo(
+            CopyPhase.Verifying,
+            100,
+            40,
+            10,
+            4,
+            string.Empty,
+            0,
+            TimeSpan.FromSeconds(2))
+        {
+            IsPhaseActive = false
+        };
+        Assert(DisplayFormatting.GetDisplayedOperationPhase(
+                   true,
+                   idleVerification,
+                   idleVerification) == CopyPhase.Copying,
+            "Idle background verification must not replace an active foreground copy status.");
         return Task.CompletedTask;
     }
 
@@ -2039,6 +2204,8 @@ internal static class Program
         var progressPositions = new List<double>();
         for (int index = 1; index <= 91; index++)
         {
+            double elapsedSeconds = index * 0.1;
+            double cumulativeTransferredBytes = 1000 + index - 1;
             sampler.TrySample(
                 new CopyProgressInfo(
                     CopyPhase.Copying,
@@ -2047,16 +2214,69 @@ internal static class Program
                     91,
                     index,
                     $"sample-{index}",
-                    1,
-                    TimeSpan.FromSeconds(index * 0.1)),
+                    cumulativeTransferredBytes / elapsedSeconds,
+                    TimeSpan.FromSeconds(elapsedSeconds)),
                 byteRates,
                 itemRates,
                 progressPositions);
         }
-        Assert(byteRates.Count == 90 && itemRates.Count == 90 &&
-               progressPositions.Count == 90 &&
-               progressPositions[0] > 1d / 91 && progressPositions[^1] == 1,
-            "The ninety-first sample should evict the oldest point and remain at the right edge.");
+        Assert(byteRates.Count == 91 && itemRates.Count == 91 &&
+               progressPositions.Count == 91 &&
+               Math.Abs(progressPositions[0] - 1d / 91) < 0.0001 &&
+               byteRates[0] > byteRates.Skip(1).Max() &&
+               progressPositions[^1] == 1,
+            "New samples must compress the full timeline without discarding the first reading or its peak.");
+
+        double[] longTimeline = Enumerable.Repeat(10d, 2048).ToArray();
+        longTimeline[0] = 900;
+        longTimeline[777] = 700;
+        longTimeline[^1] = 20;
+        IReadOnlyList<WaveformDisplaySample> displaySamples =
+            WaveformTimeline.CreateDisplaySamples(longTimeline, 128);
+        Assert(displaySamples.Count <= 128 &&
+               displaySamples[0].SourceIndex == 0 &&
+               displaySamples[^1].SourceIndex == longTimeline.Length - 1 &&
+               displaySamples.Any(sample => sample.SourceIndex == 777),
+            "Display downsampling must preserve the full time range and old extrema.");
+
+        WaveformCoordinate[] currentPoints =
+        [
+            new(0, 80),
+            new(100, 20)
+        ];
+        WaveformCoordinate[] targetPoints =
+        [
+            new(0, 70),
+            new(50, 40),
+            new(100, 10)
+        ];
+        IReadOnlyList<WaveformCoordinate> animationStart =
+            WaveformTimeline.AlignHorizontalTransition(currentPoints, targetPoints);
+        Assert(animationStart.Select(point => point.Y)
+                   .SequenceEqual(targetPoints.Select(point => point.Y)) &&
+               animationStart.Select(point => point.X).SequenceEqual([0d, 100d, 100d]),
+            "Waveform updates should animate horizontal compression without vertically wobbling old points.");
+
+        var compactedByteRates = Enumerable.Range(0, 5000)
+            .Select(index => index == 0 ? 9000d : index % 97)
+            .ToList();
+        var compactedItemRates = Enumerable.Range(0, 5000)
+            .Select(index => index == 1777 ? 7000d : index % 41)
+            .ToList();
+        var compactedPositions = Enumerable.Range(0, 5000)
+            .Select(index => index / 4999d)
+            .ToList();
+        CopyThroughputSampler.CompactToCapacity(
+            compactedByteRates,
+            compactedItemRates,
+            compactedPositions);
+        Assert(compactedByteRates.Count <= CopyThroughputSampler.DefaultCapacity &&
+               compactedByteRates.Count == compactedItemRates.Count &&
+               compactedByteRates.Count == compactedPositions.Count &&
+               compactedByteRates[0] == 9000 &&
+               compactedItemRates.Contains(7000) &&
+               compactedPositions[^1] == 1,
+            "Long waveform histories must stay bounded while retaining their beginning, end, and extrema.");
         return Task.CompletedTask;
     }
 

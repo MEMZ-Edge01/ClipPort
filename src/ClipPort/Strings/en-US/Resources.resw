@@ -49,6 +49,7 @@
   <data name="Status.CountingFiles" xml:space="preserve"><value>Counting files…</value></data>
   <data name="Status.ReadingDirectories" xml:space="preserve"><value>Reading folders</value></data>
   <data name="Status.Queued" xml:space="preserve"><value>Waiting to start</value></data>
+  <data name="Status.Waiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="Status.Copying" xml:space="preserve"><value>Copying</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>Copying files</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>Verifying</value></data>
@@ -57,6 +58,7 @@
   <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>Waiting to handle failed files</value></data>
   <data name="Status.Cancelling" xml:space="preserve"><value>Cancelling</value></data>
   <data name="Status.Paused" xml:space="preserve"><value>Paused</value></data>
+  <data name="Status.PausedByPriority" xml:space="preserve"><value>Paused by a priority task</value></data>
   <data name="Status.ProcessingResumed" xml:space="preserve"><value>Processing resumed</value></data>
   <data name="Status.Preparing" xml:space="preserve"><value>Preparing</value></data>
   <data name="Status.TaskStarting" xml:space="preserve"><value>Task is about to start</value></data>
@@ -77,14 +79,16 @@
   <data name="Info.ChooseActionPerFile" xml:space="preserve"><value>Choose an action for every duplicate file</value></data>
   <data name="Info.ChooseActionEach" xml:space="preserve"><value>Choose an action for each file</value></data>
   <data name="Info.OtherFilesContinue" xml:space="preserve"><value>Other files continue copying and verification. Complete every choice below to continue processing duplicates.</value></data>
-  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>The priority task is at the front of the queue and will run before ordinary tasks.</value></data>
-  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>The priority task is at the front of the queue with {0} task(s) ahead.</value></data>
-  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>The priority task is running; queued tasks will wait in turn.</value></data>
+  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>Another priority task is running; this task is queued in creation order.</value></data>
+  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>This priority task has {0} priority task(s) ahead.</value></data>
+  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>The priority task is running; the ordinary task that was running is paused automatically.</value></data>
   <data name="Info.TaskQueued" xml:space="preserve"><value>The task has joined the queue and will start automatically after the current task finishes.</value></data>
   <data name="Info.TaskQueuedAhead" xml:space="preserve"><value>The task has joined the queue with {0} task(s) ahead.</value></data>
   <data name="Info.TaskRunning" xml:space="preserve"><value>The current task is running; queued tasks will wait in turn.</value></data>
   <data name="Info.WaitingToResume" xml:space="preserve"><value>Waiting to resume</value></data>
   <data name="Info.TaskPaused" xml:space="preserve"><value>Task paused.</value></data>
+  <data name="Info.WaitingForPriorityTask" xml:space="preserve"><value>Waiting for the priority task to finish</value></data>
+  <data name="Info.PriorityPauseAutomaticResume" xml:space="preserve"><value>This task resumes when the priority task is paused or all priority tasks finish; select Resume to force it to run now.</value></data>
   <data name="Info.TaskResumed" xml:space="preserve"><value>Task resumed.</value></data>
   <data name="Info.BatchHint" xml:space="preserve"><value>Select multiple rows for a batch action, or change each row individually.</value></data>
   <data name="Info.FailedFilesHint" xml:space="preserve"><value>Select files to overwrite, retry, or skip. Overwrite is available only for verification mismatches.</value></data>
@@ -474,7 +478,8 @@
   <data name="PriorityExecutionToggle.Header" xml:space="preserve"><value>Run with priority</value></data>
   <data name="PriorityExecutionToggle.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="PriorityExecutionToggle.OffContent" xml:space="preserve"><value>Off</value></data>
-  <data name="PriorityHintText.Text" xml:space="preserve"><value>Tasks run one at a time; priority tasks are queued at the front.</value></data>
+  <data name="PriorityHintText.Text" xml:space="preserve"><value>A priority task starts only after the ordinary task stops at a safe checkpoint; multiple priority tasks still run in creation order.</value></data>
+  <data name="PriorityTaskBadgeText.Text" xml:space="preserve"><value>Priority task</value></data>
   <data name="NewTaskDialog.Title" xml:space="preserve"><value>New copy task</value></data>
   <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>Start task</value></data>
   <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>Cancel</value></data>

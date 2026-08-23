@@ -49,6 +49,7 @@
   <data name="Status.CountingFiles" xml:space="preserve"><value>正计文卷…</value></data>
   <data name="Status.ReadingDirectories" xml:space="preserve"><value>正读目录</value></data>
   <data name="Status.Queued" xml:space="preserve"><value>待启</value></data>
+  <data name="Status.Waiting" xml:space="preserve"><value>候行中</value></data>
   <data name="Status.Copying" xml:space="preserve"><value>传写中</value></data>
   <data name="Status.CopyingFiles" xml:space="preserve"><value>传写文卷</value></data>
   <data name="Status.Verifying" xml:space="preserve"><value>校验中</value></data>
@@ -57,6 +58,7 @@
   <data name="Status.WaitingFailedFiles" xml:space="preserve"><value>败卷待处</value></data>
   <data name="Status.Cancelling" xml:space="preserve"><value>撤销中</value></data>
   <data name="Status.Paused" xml:space="preserve"><value>已暂止</value></data>
+  <data name="Status.PausedByPriority" xml:space="preserve"><value>為先行之役所暫止</value></data>
   <data name="Status.ProcessingResumed" xml:space="preserve"><value>续治中</value></data>
   <data name="Status.Preparing" xml:space="preserve"><value>备行</value></data>
   <data name="Status.TaskStarting" xml:space="preserve"><value>役将启</value></data>
@@ -77,14 +79,16 @@
   <data name="Info.ChooseActionPerFile" xml:space="preserve"><value>请为各重文择处置之法</value></data>
   <data name="Info.ChooseActionEach" xml:space="preserve"><value>请逐一择其处置</value></data>
   <data name="Info.OtherFilesContinue" xml:space="preserve"><value>他卷已续传写并验。下列诸项皆择毕，乃续治重文。</value></data>
-  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>先行之役已居列首，先于常役而行。</value></data>
-  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>先行之役已居列前，其前尚有 {0} 役。</value></data>
-  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>先行之役方行；列中之役依次以俟。</value></data>
+  <data name="Info.PriorityTaskQueued" xml:space="preserve"><value>已有先行之役方行，此役依所建之序以俟。</value></data>
+  <data name="Info.PriorityTaskQueuedAhead" xml:space="preserve"><value>此先行之役前尚有 {0} 役。</value></data>
+  <data name="Info.PriorityTaskRunning" xml:space="preserve"><value>先行之役方行；原行之常役已自止。</value></data>
   <data name="Info.TaskQueued" xml:space="preserve"><value>此役已入列，俟今役毕则自行。</value></data>
   <data name="Info.TaskQueuedAhead" xml:space="preserve"><value>此役已入列，其前尚有 {0} 役。</value></data>
   <data name="Info.TaskRunning" xml:space="preserve"><value>今役方行；列中之役依次以俟。</value></data>
   <data name="Info.WaitingToResume" xml:space="preserve"><value>候君续行</value></data>
   <data name="Info.TaskPaused" xml:space="preserve"><value>役已暂止。</value></data>
+  <data name="Info.WaitingForPriorityTask" xml:space="preserve"><value>俟先行之役毕</value></data>
+  <data name="Info.PriorityPauseAutomaticResume" xml:space="preserve"><value>先行之役暂止或皆毕，此役自续；亦可按“续行”强行之。</value></data>
   <data name="Info.TaskResumed" xml:space="preserve"><value>役已续行。</value></data>
   <data name="Info.BatchHint" xml:space="preserve"><value>可勾多项而批设；亦可逐行别改。</value></data>
   <data name="Info.FailedFilesHint" xml:space="preserve"><value>勾卷后可覆写、复试或略之；惟验而不合者可覆写。</value></data>
@@ -474,7 +478,8 @@
   <data name="PriorityExecutionToggle.Header" xml:space="preserve"><value>先行</value></data>
   <data name="PriorityExecutionToggle.OnContent" xml:space="preserve"><value>启</value></data>
   <data name="PriorityExecutionToggle.OffContent" xml:space="preserve"><value>闭</value></data>
-  <data name="PriorityHintText.Text" xml:space="preserve"><value>诸役依次单行，一役毕则次役启；勾选先行之役者，居列首以行。</value></data>
+  <data name="PriorityHintText.Text" xml:space="preserve"><value>常役至安止之处而定，先行之役乃行；诸先行之役仍依所建之序而行。</value></data>
+  <data name="PriorityTaskBadgeText.Text" xml:space="preserve"><value>先行之役</value></data>
   <data name="NewTaskDialog.Title" xml:space="preserve"><value>立传写之役</value></data>
   <data name="NewTaskDialog.PrimaryButtonText" xml:space="preserve"><value>启役</value></data>
   <data name="NewTaskDialog.CloseButtonText" xml:space="preserve"><value>罢</value></data>

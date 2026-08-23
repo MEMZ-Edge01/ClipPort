@@ -55,4 +55,16 @@ public static class DisplayFormatting
 
         return 10 * magnitude;
     }
+
+    /// <summary>
+    /// An idle background-verification event updates its speed but must not
+    /// replace the foreground copy phase shown to the user.
+    /// </summary>
+    public static CopyPhase? GetDisplayedOperationPhase(
+        bool copyStillActive,
+        CopyProgressInfo? latestProgress,
+        CopyProgressInfo? verificationProgress) =>
+        copyStillActive && verificationProgress is { IsPhaseActive: false }
+            ? CopyPhase.Copying
+            : latestProgress?.Phase;
 }

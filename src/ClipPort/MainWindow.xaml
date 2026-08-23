@@ -24,6 +24,18 @@
                 </Setter>
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             </Style>
+            <Style x:Key="PriorityTaskBadgeBorderStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource OverlayL2Brush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource BorderNeutralL1Brush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="5" />
+                <Setter Property="Padding" Value="7,2" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="PriorityTaskBadgeTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10" />
+                <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            </Style>
         </Grid.Resources>
 
         <Grid.RowDefinitions>
@@ -100,8 +112,20 @@
                         <Border CornerRadius="8" Padding="18"
                                 Loaded="NewJobCard_Loaded" Unloaded="NewJobCard_Unloaded">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis" />
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <Border Grid.Column="1"
+                                            Style="{StaticResource PriorityTaskBadgeBorderStyle}"
+                                            Visibility="{Binding IsPriority, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock x:Uid="PriorityTaskBadgeText" Text="优先任务"
+                                                   Style="{StaticResource PriorityTaskBadgeTextStyle}" />
+                                    </Border>
+                                </Grid>
                                 <TextBlock Text="{Binding MetaText}" Foreground="{StaticResource MutedTextBrush}"
                                            FontSize="12" TextTrimming="CharacterEllipsis" />
                                 <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,10,0,0">
@@ -207,8 +231,20 @@
                             <DataTemplate>
                                 <Border CornerRadius="8" Padding="18">
                                     <StackPanel Spacing="8">
-                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis" />
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <Border Grid.Column="1"
+                                                    Style="{StaticResource PriorityTaskBadgeBorderStyle}"
+                                                    Visibility="{Binding IsPriority, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <TextBlock x:Uid="PriorityTaskBadgeText" Text="优先任务"
+                                                           Style="{StaticResource PriorityTaskBadgeTextStyle}" />
+                                            </Border>
+                                        </Grid>
                                         <TextBlock Text="{Binding MetaText}" Foreground="{StaticResource MutedTextBrush}"
                                                    FontSize="12" TextTrimming="CharacterEllipsis" />
                                         <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,10,0,0">
@@ -249,7 +285,16 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock x:Name="HeroNameText" x:Uid="HeroNameText" Text="准备新任务" FontSize="24" FontWeight="SemiBold" />
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock x:Name="HeroNameText" x:Uid="HeroNameText" Text="准备新任务" FontSize="24" FontWeight="SemiBold" />
+                                <Border x:Name="HeroPriorityBadge"
+                                        Style="{StaticResource PriorityTaskBadgeBorderStyle}"
+                                        Padding="8,3" Visibility="Collapsed">
+                                    <TextBlock x:Uid="PriorityTaskBadgeText" Text="优先任务"
+                                               Style="{StaticResource PriorityTaskBadgeTextStyle}"
+                                               FontSize="11" />
+                                </Border>
+                            </StackPanel>
                             <TextBlock x:Name="CurrentFileText" x:Uid="CurrentFileText" Text="请选择源目录和目标目录" Margin="0,8,0,0"
                                        Foreground="{StaticResource MutedTextBrush}" FontSize="12"
                                        TextTrimming="CharacterEllipsis" MaxWidth="650" HorizontalAlignment="Left" />
@@ -1153,7 +1198,7 @@
                                       OffContent="&#x5173;&#x95ED;" OnContent="&#x5F00;&#x542F;"
                                       IsOn="False"
                                       HorizontalAlignment="Stretch" />
-                        <TextBlock x:Name="PriorityHintText" x:Uid="PriorityHintText" Text="&#x4F18;&#x5148;&#x4EFB;&#x52A1;&#x4F1A;&#x5E76;&#x884C;&#x6267;&#x884C;&#xFF1B;&#x5176;&#x4ED6;&#x4EFB;&#x52A1;&#x5C06;&#x5728;&#x5B89;&#x5168;&#x68C0;&#x67E5;&#x70B9;&#x7B49;&#x5F85;&#xFF0C;&#x76F4;&#x5230;&#x5168;&#x90E8;&#x4F18;&#x5148;&#x4EFB;&#x52A1;&#x7ED3;&#x675F;&#x3002;"
+                        <TextBlock x:Name="PriorityHintText" x:Uid="PriorityHintText" Text="普通任务在安全检查点停稳后，优先任务才会开始；多个优先任务仍按创建顺序执行。"
                                    FontSize="11"
                                    Foreground="{StaticResource MutedTextBrush}"
                                    TextWrapping="Wrap" />

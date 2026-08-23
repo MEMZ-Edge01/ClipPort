@@ -13,6 +13,7 @@ public sealed class FileCopyService
     private const int BufferSize = 4 * 1024 * 1024;
     private const int PipelineBufferCount = 4;
     private readonly SourceScanner _sourceScanner;
+    private static readonly IDisposable NoopExecutionLease = new NoopDisposable();
 
     public FileCopyService()
         : this(new SourceScanner())
@@ -67,7 +68,8 @@ public sealed class FileCopyService
         IProgress<DuplicateFileConflict> duplicateProgress,
         Func<IReadOnlyList<DuplicateFileConflict>, CancellationToken, Task<IReadOnlyDictionary<string, ExistingFilePolicy>>> resolveDuplicates,
         Func<CancellationToken, Task> waitWhilePaused,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<CancellationToken, ValueTask<IDisposable>>? executionLeaseFactory = null)
     {
         options = options with
         {
@@ -101,67 +103,78 @@ public sealed class FileCopyService
             IsTotalKnown = false
         });
 
-        SourceScanResult scan = await _sourceScanner.ScanAsync(
-            sourceRoot,
-            progress,
-            waitWhilePaused,
-            cancellationToken).ConfigureAwait(false);
+        SourceScanResult scan;
+        using (await AcquireExecutionLeaseAsync(
+                   executionLeaseFactory,
+                   cancellationToken).ConfigureAwait(false))
+        {
+            scan = await _sourceScanner.ScanAsync(
+                sourceRoot,
+                progress,
+                waitWhilePaused,
+                cancellationToken).ConfigureAwait(false);
+        }
 
         List<SourceFile> files = scan.Files;
         long totalBytes = scan.TotalBytes;
         var errors = new List<string>(scan.Errors);
         var warnings = new List<string>();
         var failedFiles = new List<FileOperationFailure>();
-        if (!options.SkipCopy)
-        {
-            PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationRoot);
-            EnsureDestinationCapacity(destinationRoot, totalBytes);
-            Directory.CreateDirectory(destinationRoot);
-            foreach (string relativeDirectory in scan.Directories)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await waitWhilePaused(cancellationToken);
-                string destinationDirectory = Path.Combine(destinationRoot, relativeDirectory);
-                try
-                {
-                    PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationDirectory);
-                    Directory.CreateDirectory(destinationDirectory);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    errors.Add(ResourceService.Format(
-                        "Format.CannotCreateDirectory",
-                        relativeDirectory,
-                        ex.Message));
-                }
-            }
-        }
-
         var immediateFiles = new List<SourceFile>(files.Count);
         var duplicateFiles = new List<SourceFile>();
         var detectedConflicts = new List<DuplicateFileConflict>();
-        foreach (SourceFile file in files)
+        using (await AcquireExecutionLeaseAsync(
+                   executionLeaseFactory,
+                   cancellationToken).ConfigureAwait(false))
         {
-            if (options.SkipCopy)
+            if (!options.SkipCopy)
             {
-                immediateFiles.Add(file);
-                continue;
-            }
-
-            string destinationPath = Path.Combine(destinationRoot, file.RelativePath);
-            if (File.Exists(destinationPath))
-            {
-                var conflict = new DuplicateFileConflict(
-                    file.RelativePath, file.FullPath, destinationPath, file.Length);
-                detectedConflicts.Add(conflict);
-                duplicateProgress.Report(conflict);
-                if (options.ExistingFilePolicy == ExistingFilePolicy.Ask)
+                PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationRoot);
+                EnsureDestinationCapacity(destinationRoot, totalBytes);
+                Directory.CreateDirectory(destinationRoot);
+                foreach (string relativeDirectory in scan.Directories)
                 {
-                    duplicateFiles.Add(file);
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await waitWhilePaused(cancellationToken);
+                    string destinationDirectory = Path.Combine(destinationRoot, relativeDirectory);
+                    try
+                    {
+                        PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationDirectory);
+                        Directory.CreateDirectory(destinationDirectory);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        errors.Add(ResourceService.Format(
+                            "Format.CannotCreateDirectory",
+                            relativeDirectory,
+                            ex.Message));
+                    }
                 }
             }
-            immediateFiles.Add(file);
+
+            foreach (SourceFile file in files)
+            {
+                if (options.SkipCopy)
+                {
+                    immediateFiles.Add(file);
+                    continue;
+                }
+
+                string destinationPath = Path.Combine(destinationRoot, file.RelativePath);
+                if (File.Exists(destinationPath))
+                {
+                    var conflict = new DuplicateFileConflict(
+                        file.RelativePath, file.FullPath, destinationPath, file.Length);
+                    detectedConflicts.Add(conflict);
+                    duplicateProgress.Report(conflict);
+                    if (options.ExistingFilePolicy == ExistingFilePolicy.Ask)
+                    {
+                        duplicateFiles.Add(file);
+                        continue;
+                    }
+                }
+                immediateFiles.Add(file);
+            }
         }
 
         var destinationPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -191,6 +204,7 @@ public sealed class FileCopyService
                 files.Count,
                 progress,
                 waitWhilePaused,
+                executionLeaseFactory,
                 cancellationToken)
             : null;
 
@@ -217,6 +231,9 @@ public sealed class FileCopyService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await waitWhilePaused(cancellationToken);
+                using IDisposable executionLease = await AcquireExecutionLeaseAsync(
+                    executionLeaseFactory,
+                    cancellationToken).ConfigureAwait(false);
 
                 string destinationPath = Path.Combine(destinationRoot, file.RelativePath);
                 if (File.Exists(destinationPath))
@@ -342,6 +359,9 @@ public sealed class FileCopyService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await waitWhilePaused(cancellationToken);
+                using IDisposable executionLease = await AcquireExecutionLeaseAsync(
+                    executionLeaseFactory,
+                    cancellationToken).ConfigureAwait(false);
 
                 if (!destinationPaths.TryGetValue(file.RelativePath, out string? destinationPath))
                 {
@@ -474,43 +494,48 @@ public sealed class FileCopyService
 
         if (options.SkipCopy)
         {
-            foreach (SourceFile file in files)
+            using (await AcquireExecutionLeaseAsync(
+                       executionLeaseFactory,
+                       cancellationToken).ConfigureAwait(false))
             {
-                string destinationPath =
-                    options.DestinationPaths?.TryGetValue(
-                        file.RelativePath,
-                        out string? mappedPath) == true
-                        ? mappedPath
-                        : Path.Combine(destinationRoot, file.RelativePath);
-                try
+                foreach (SourceFile file in files)
                 {
-                    if (!PathSafety.IsSameOrDescendantPath(destinationPath, destinationRoot))
+                    string destinationPath =
+                        options.DestinationPaths?.TryGetValue(
+                            file.RelativePath,
+                            out string? mappedPath) == true
+                            ? mappedPath
+                            : Path.Combine(destinationRoot, file.RelativePath);
+                    try
                     {
-                        throw new IOException(ResourceService.Format(
-                            "Format.InvalidDestinationMapping",
-                            file.RelativePath));
+                        if (!PathSafety.IsSameOrDescendantPath(destinationPath, destinationRoot))
+                        {
+                            throw new IOException(ResourceService.Format(
+                                "Format.InvalidDestinationMapping",
+                                file.RelativePath));
+                        }
+                        PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationPath);
                     }
-                    PathSafety.EnsureDestinationDoesNotTraverseReparsePoint(destinationPath);
+                    catch (Exception ex) when (
+                        ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                    {
+                        string error = ResourceService.Format(
+                            "Format.CannotVerifyFile",
+                            file.RelativePath,
+                            ex.Message);
+                        errors.Add(error);
+                        failedFiles.Add(new FileOperationFailure(
+                            file.RelativePath,
+                            file.FullPath,
+                            destinationPath,
+                            file.Length,
+                            FileOperationStage.Verifying,
+                            error,
+                            FileOperationFailureReason.VerificationIo));
+                        continue;
+                    }
+                    destinationPaths[file.RelativePath] = destinationPath;
                 }
-                catch (Exception ex) when (
-                    ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-                {
-                    string error = ResourceService.Format(
-                        "Format.CannotVerifyFile",
-                        file.RelativePath,
-                        ex.Message);
-                    errors.Add(error);
-                    failedFiles.Add(new FileOperationFailure(
-                        file.RelativePath,
-                        file.FullPath,
-                        destinationPath,
-                        file.Length,
-                        FileOperationStage.Verifying,
-                        error,
-                        FileOperationFailureReason.VerificationIo));
-                    continue;
-                }
-                destinationPaths[file.RelativePath] = destinationPath;
             }
             await VerifyGroupAsync(files);
         }
@@ -611,7 +636,8 @@ public sealed class FileCopyService
         CopyOptions options,
         IProgress<CopyProgressInfo> progress,
         Func<CancellationToken, Task> waitWhilePaused,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken,
+        Func<CancellationToken, ValueTask<IDisposable>>? executionLeaseFactory = null) =>
         Task.Run(
             () => RetryFailedFilesCoreAsync(
                 failures,
@@ -619,6 +645,7 @@ public sealed class FileCopyService
                 overwriteVerificationMismatches: false,
                 progress,
                 waitWhilePaused,
+                executionLeaseFactory,
                 cancellationToken),
             cancellationToken);
 
@@ -627,7 +654,8 @@ public sealed class FileCopyService
         CopyOptions options,
         IProgress<CopyProgressInfo> progress,
         Func<CancellationToken, Task> waitWhilePaused,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<CancellationToken, ValueTask<IDisposable>>? executionLeaseFactory = null)
     {
         if (failures.Count == 0 || failures.Any(failure => !failure.IsVerificationMismatch))
         {
@@ -643,6 +671,7 @@ public sealed class FileCopyService
                 overwriteVerificationMismatches: true,
                 progress,
                 waitWhilePaused,
+                executionLeaseFactory,
                 cancellationToken),
             cancellationToken);
     }
@@ -653,6 +682,7 @@ public sealed class FileCopyService
         bool overwriteVerificationMismatches,
         IProgress<CopyProgressInfo> progress,
         Func<CancellationToken, Task> waitWhilePaused,
+        Func<CancellationToken, ValueTask<IDisposable>>? executionLeaseFactory,
         CancellationToken cancellationToken)
     {
         options = options with
@@ -677,24 +707,32 @@ public sealed class FileCopyService
         var copyWatch = new Stopwatch();
         var verifyWatch = new Stopwatch();
 
-        foreach (IGrouping<string, FileOperationFailure> destinationVolume in failures
-                     .Where(failure => failure.Stage == FileOperationStage.Copying ||
-                                       overwriteVerificationMismatches)
-                     .GroupBy(
-                         failure => Path.GetPathRoot(Path.GetFullPath(failure.DestinationPath)) ??
-                                    failure.DestinationPath,
-                         StringComparer.OrdinalIgnoreCase))
+        using (await AcquireExecutionLeaseAsync(
+                   executionLeaseFactory,
+                   cancellationToken).ConfigureAwait(false))
         {
-            // Retrying several files on one volume must not re-query free space for each file.
-            EnsureDestinationCapacity(
-                destinationVolume.Key,
-                destinationVolume.Sum(failure => failure.Length));
+            foreach (IGrouping<string, FileOperationFailure> destinationVolume in failures
+                         .Where(failure => failure.Stage == FileOperationStage.Copying ||
+                                           overwriteVerificationMismatches)
+                         .GroupBy(
+                             failure => Path.GetPathRoot(Path.GetFullPath(failure.DestinationPath)) ??
+                                        failure.DestinationPath,
+                             StringComparer.OrdinalIgnoreCase))
+            {
+                // Retrying several files on one volume must not re-query free space for each file.
+                EnsureDestinationCapacity(
+                    destinationVolume.Key,
+                    destinationVolume.Sum(failure => failure.Length));
+            }
         }
 
         foreach (FileOperationFailure failure in failures)
         {
             cancellationToken.ThrowIfCancellationRequested();
             await waitWhilePaused(cancellationToken);
+            using IDisposable executionLease = await AcquireExecutionLeaseAsync(
+                executionLeaseFactory,
+                cancellationToken).ConfigureAwait(false);
 
             bool shouldCopy = failure.Stage == FileOperationStage.Copying ||
                               overwriteVerificationMismatches;
@@ -1115,6 +1153,19 @@ public sealed class FileCopyService
             VerificationAlgorithmKind.Md5 => HashAlgorithmName.MD5,
             _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, null)
         };
+
+    private static ValueTask<IDisposable> AcquireExecutionLeaseAsync(
+        Func<CancellationToken, ValueTask<IDisposable>>? executionLeaseFactory,
+        CancellationToken cancellationToken) =>
+        executionLeaseFactory?.Invoke(cancellationToken) ??
+        ValueTask.FromResult(NoopExecutionLease);
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        public void Dispose()
+        {
+        }
+    }
 
     private static void EnsureDestinationCapacity(string destinationRoot, long requiredBytes)
     {
