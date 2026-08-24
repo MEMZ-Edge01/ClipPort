@@ -722,7 +722,8 @@
                         </Grid>
                     </Border>
 
-                    <Grid Grid.Row="7" Margin="0,18,0,0">
+                    <Grid x:Name="CopyThroughputChartsSection" Grid.Row="7" Margin="0,18,0,0"
+                          Visibility="{Binding CopyEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -898,7 +899,8 @@
                         </Grid>
                     </Grid>
 
-                    <Grid Grid.Row="8" Margin="0,24,0,0">
+                    <Grid x:Name="VerifyThroughputChartsSection" Grid.Row="8" Margin="0,24,0,0"
+                          Visibility="{Binding VerificationEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />

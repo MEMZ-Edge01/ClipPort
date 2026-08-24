@@ -18,16 +18,14 @@ public sealed partial class MainWindow
 
     private static readonly IReadOnlyList<double> EmptyWaveformSamples = Array.Empty<double>();
     private static readonly double[] WaveformScaleMultipliers = [3, 2, 1, 0];
-    private static readonly TimeSpan WaveformAnimationDuration = TimeSpan.FromMilliseconds(120);
+    private static readonly TimeSpan WaveformAnimationDuration = TimeSpan.FromMilliseconds(180);
     private static readonly TimeSpan WaveformFrameInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly Dictionary<Polyline, WaveformAnimationState> _waveformAnimations = [];
     private IReadOnlyList<double> _displayedCopyByteSpeedSamples = EmptyWaveformSamples;
     private IReadOnlyList<double> _displayedCopyItemSpeedSamples = EmptyWaveformSamples;
-    private IReadOnlyList<double> _displayedCopyThroughputProgressSamples = EmptyWaveformSamples;
     private IReadOnlyList<double> _displayedVerifyByteSpeedSamples = EmptyWaveformSamples;
     private IReadOnlyList<double> _displayedVerifyItemSpeedSamples = EmptyWaveformSamples;
-    private IReadOnlyList<double> _displayedVerifyThroughputProgressSamples = EmptyWaveformSamples;
     private bool _areCopyThroughputChartsStacked;
     private bool _areVerifyThroughputChartsStacked;
 
@@ -90,18 +88,14 @@ public sealed partial class MainWindow
     private void UpdateThroughputCharts(
         IReadOnlyList<double>? copyByteSpeedSamples,
         IReadOnlyList<double>? copyItemSpeedSamples,
-        IReadOnlyList<double>? copyThroughputProgressSamples,
         IReadOnlyList<double>? verifyByteSpeedSamples,
         IReadOnlyList<double>? verifyItemSpeedSamples,
-        IReadOnlyList<double>? verifyThroughputProgressSamples,
         bool animate = true)
     {
         _displayedCopyByteSpeedSamples = copyByteSpeedSamples ?? EmptyWaveformSamples;
         _displayedCopyItemSpeedSamples = copyItemSpeedSamples ?? EmptyWaveformSamples;
-        _displayedCopyThroughputProgressSamples = copyThroughputProgressSamples ?? EmptyWaveformSamples;
         _displayedVerifyByteSpeedSamples = verifyByteSpeedSamples ?? EmptyWaveformSamples;
         _displayedVerifyItemSpeedSamples = verifyItemSpeedSamples ?? EmptyWaveformSamples;
-        _displayedVerifyThroughputProgressSamples = verifyThroughputProgressSamples ?? EmptyWaveformSamples;
 
         UpdateByteRateChart(
             CopyByteRateCurrentText,
@@ -114,7 +108,6 @@ public sealed partial class MainWindow
             CopyByteRateLine,
             CopyByteRateGlow,
             _displayedCopyByteSpeedSamples,
-            _displayedCopyThroughputProgressSamples,
             animate);
         UpdateItemRateChart(
             CopyItemRateCurrentText,
@@ -127,7 +120,6 @@ public sealed partial class MainWindow
             CopyItemRateLine,
             CopyItemRateGlow,
             _displayedCopyItemSpeedSamples,
-            _displayedCopyThroughputProgressSamples,
             animate);
         UpdateByteRateChart(
             VerifyByteRateCurrentText,
@@ -140,7 +132,6 @@ public sealed partial class MainWindow
             VerifyByteRateLine,
             VerifyByteRateGlow,
             _displayedVerifyByteSpeedSamples,
-            _displayedVerifyThroughputProgressSamples,
             animate);
         UpdateItemRateChart(
             VerifyItemRateCurrentText,
@@ -153,7 +144,6 @@ public sealed partial class MainWindow
             VerifyItemRateLine,
             VerifyItemRateGlow,
             _displayedVerifyItemSpeedSamples,
-            _displayedVerifyThroughputProgressSamples,
             animate);
     }
 
@@ -161,10 +151,8 @@ public sealed partial class MainWindow
         UpdateThroughputCharts(
             _displayedCopyByteSpeedSamples,
             _displayedCopyItemSpeedSamples,
-            _displayedCopyThroughputProgressSamples,
             _displayedVerifyByteSpeedSamples,
             _displayedVerifyItemSpeedSamples,
-            _displayedVerifyThroughputProgressSamples,
             animate: false);
 
     private void UpdateByteRateChart(
@@ -178,7 +166,6 @@ public sealed partial class MainWindow
         Polyline line,
         Polyline glow,
         IReadOnlyList<double> samples,
-        IReadOnlyList<double> progressPositions,
         bool animate)
     {
         double peak = GetPeak(samples);
@@ -200,7 +187,6 @@ public sealed partial class MainWindow
             line,
             glow,
             samples,
-            progressPositions,
             chartMaximum,
             animate);
     }
@@ -216,7 +202,6 @@ public sealed partial class MainWindow
         Polyline line,
         Polyline glow,
         IReadOnlyList<double> samples,
-        IReadOnlyList<double> progressPositions,
         bool animate)
     {
         double peak = GetPeak(samples);
@@ -233,7 +218,6 @@ public sealed partial class MainWindow
             line,
             glow,
             samples,
-            progressPositions,
             divisionStep * 4,
             animate);
     }
@@ -261,7 +245,6 @@ public sealed partial class MainWindow
         Polyline line,
         Polyline glow,
         IReadOnlyList<double> samples,
-        IReadOnlyList<double> progressPositions,
         double chartMaximum,
         bool animate)
     {
@@ -281,9 +264,11 @@ public sealed partial class MainWindow
             (int)Math.Ceiling(width / 2),
             64,
             1024);
-        IReadOnlyList<WaveformDisplaySample> displaySamples =
-            WaveformTimeline.CreateDisplaySamples(samples, maximumDisplayPointCount);
-        var linePoints = new List<Point>(displaySamples.Count + 1);
+        IReadOnlyList<WaveformCoordinate> displayCoordinates =
+            WaveformTimeline.CreateDisplayCoordinates(
+                samples,
+                maximumDisplayPointCount);
+        var linePoints = new List<Point>(displayCoordinates.Count + 1);
         if (samples.Count == 1)
         {
             double normalized = Math.Clamp(samples[0] / scaleMaximum, 0, 1);
@@ -295,13 +280,10 @@ public sealed partial class MainWindow
         }
         else
         {
-            foreach (WaveformDisplaySample sample in displaySamples)
+            foreach (WaveformCoordinate sample in displayCoordinates)
             {
-                double normalizedX = progressPositions.Count == samples.Count
-                    ? Math.Clamp(progressPositions[sample.SourceIndex], 0, 1)
-                    : WaveformTimeline.GetNormalizedX(samples.Count, sample.SourceIndex);
-                double x = width * normalizedX;
-                double normalized = Math.Clamp(sample.Value / scaleMaximum, 0, 1);
+                double x = width * sample.X;
+                double normalized = Math.Clamp(sample.Y / scaleMaximum, 0, 1);
                 double y = verticalPadding + drawableHeight * (1 - normalized);
                 linePoints.Add(new Point(x, y));
             }
@@ -331,18 +313,40 @@ public sealed partial class MainWindow
         }
 
         List<Point> currentLinePoints = line.Points.ToList();
-        if (!animate || targetLinePoints.Count == 0 ||
+        if (!animate || targetLinePoints.Count == 0 || currentLinePoints.Count == 0 ||
             PointsEqual(currentLinePoints, targetLinePoints))
         {
-            ReplacePoints(line.Points, targetLinePoints);
-            ReplacePoints(glow.Points, targetLinePoints);
-            ReplacePoints(fill.Points, targetFillPoints);
+            ReplaceWaveformGeometry(
+                fill,
+                line,
+                glow,
+                targetLinePoints,
+                targetFillPoints);
             return;
         }
 
-        List<Point> startLinePoints = AlignStartPoints(
-            currentLinePoints,
-            targetLinePoints);
+        IReadOnlyList<WaveformCoordinate> aligned =
+            WaveformTimeline.AlignContinuousTransition(
+                currentLinePoints
+                    .Select(point => new WaveformCoordinate(point.X, point.Y))
+                    .ToArray(),
+                targetLinePoints
+                    .Select(point => new WaveformCoordinate(point.X, point.Y))
+                    .ToArray());
+        List<Point> startLinePoints = aligned
+            .Select(point => new Point(point.X, point.Y))
+            .ToList();
+        if (PointsEqual(startLinePoints, targetLinePoints))
+        {
+            ReplaceWaveformGeometry(
+                fill,
+                line,
+                glow,
+                targetLinePoints,
+                targetFillPoints);
+            return;
+        }
+
         List<Point> startFillPoints = BuildFillPoints(
             startLinePoints,
             targetFillPoints[^1].Y);
@@ -377,8 +381,7 @@ public sealed partial class MainWindow
             elapsedSeconds / WaveformAnimationDuration.TotalSeconds,
             0,
             1);
-        // Cubic ease-out is quick to respond while settling gently at the new point.
-        double easedProgress = 1 - Math.Pow(1 - linearProgress, 3);
+        double easedProgress = WaveformTimeline.EaseOutCubic(linearProgress);
         InterpolatePoints(
             animation.Line.Points,
             animation.StartLinePoints,
@@ -402,26 +405,12 @@ public sealed partial class MainWindow
 
         animation.Timer.Stop();
         _waveformAnimations.Remove(animationKey);
-        ReplacePoints(animation.Line.Points, animation.TargetLinePoints);
-        ReplacePoints(animation.Glow.Points, animation.TargetLinePoints);
-        ReplacePoints(animation.Fill.Points, animation.TargetFillPoints);
-    }
-
-    private static List<Point> AlignStartPoints(
-        IReadOnlyList<Point> currentPoints,
-        IReadOnlyList<Point> targetPoints)
-    {
-        IReadOnlyList<WaveformCoordinate> aligned =
-            WaveformTimeline.AlignHorizontalTransition(
-                currentPoints
-                    .Select(point => new WaveformCoordinate(point.X, point.Y))
-                    .ToArray(),
-                targetPoints
-                    .Select(point => new WaveformCoordinate(point.X, point.Y))
-                    .ToArray());
-        return aligned
-            .Select(point => new Point(point.X, point.Y))
-            .ToList();
+        ReplaceWaveformGeometry(
+            animation.Fill,
+            animation.Line,
+            animation.Glow,
+            animation.TargetLinePoints,
+            animation.TargetFillPoints);
     }
 
     private static List<Point> BuildFillPoints(
@@ -440,6 +429,29 @@ public sealed partial class MainWindow
         return fillPoints;
     }
 
+    private static void ReplacePoints(
+        PointCollection destination,
+        IReadOnlyList<Point> source)
+    {
+        destination.Clear();
+        foreach (Point point in source)
+        {
+            destination.Add(point);
+        }
+    }
+
+    private static void ReplaceWaveformGeometry(
+        Polygon fill,
+        Polyline line,
+        Polyline glow,
+        IReadOnlyList<Point> linePoints,
+        IReadOnlyList<Point> fillPoints)
+    {
+        ReplacePoints(line.Points, linePoints);
+        ReplacePoints(glow.Points, linePoints);
+        ReplacePoints(fill.Points, fillPoints);
+    }
+
     private static void InterpolatePoints(
         PointCollection destination,
         IReadOnlyList<Point> startPoints,
@@ -454,17 +466,6 @@ public sealed partial class MainWindow
             destination.Add(new Point(
                 start.X + (target.X - start.X) * progress,
                 start.Y + (target.Y - start.Y) * progress));
-        }
-    }
-
-    private static void ReplacePoints(
-        PointCollection destination,
-        IReadOnlyList<Point> source)
-    {
-        destination.Clear();
-        foreach (Point point in source)
-        {
-            destination.Add(point);
         }
     }
 

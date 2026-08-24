@@ -20,6 +20,7 @@
     <Compile Include="..\..\src\ClipPort\Models\WaveformTimeline.cs" Link="Models\WaveformTimeline.cs" />
     <Compile Include="..\..\src\ClipPort\Models\ResponsiveLayout.cs" Link="Models\ResponsiveLayout.cs" />
     <Compile Include="..\..\src\ClipPort\Models\DisplayFormatting.cs" Link="Models\DisplayFormatting.cs" />
+    <Compile Include="..\..\src\ClipPort\Models\PhaseProgressObservation.cs" Link="Models\PhaseProgressObservation.cs" />
     <Compile Include="..\..\src\ClipPort\Models\JobHistoryItem.cs" Link="Models\JobHistoryItem.cs" />
     <Compile Include="..\..\src\ClipPort\Models\QuickStartModels.cs" Link="Models\QuickStartModels.cs" />
     <Compile Include="..\..\src\ClipPort\Services\FileCopyService.cs" Link="Services\FileCopyService.cs" />

@@ -91,11 +91,40 @@ public static class WaveformTimeline
     }
 
     /// <summary>
-    /// Keeps vertical values fixed at their new targets while existing points
-    /// slide left. This prevents a sampling update from animating the entire
-    /// waveform up and down.
+    /// Builds normalized coordinates for the retained display samples.
+    /// Keeping this mapping outside the WinUI drawing code makes the live
+    /// timeline behavior deterministic and directly testable.
     /// </summary>
-    public static IReadOnlyList<WaveformCoordinate> AlignHorizontalTransition(
+    public static IReadOnlyList<WaveformCoordinate> CreateDisplayCoordinates(
+        IReadOnlyList<double> samples,
+        int maximumPointCount)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+
+        IReadOnlyList<WaveformDisplaySample> displaySamples =
+            CreateDisplaySamples(samples, maximumPointCount);
+        return displaySamples
+            .Select(sample => new WaveformCoordinate(
+                GetNormalizedX(samples.Count, sample.SourceIndex),
+                sample.Value))
+            .ToArray();
+    }
+
+    public static double EaseOutCubic(double progress)
+    {
+        double normalized = double.IsFinite(progress)
+            ? Math.Clamp(progress, 0, 1)
+            : 0;
+        return 1 - Math.Pow(1 - normalized, 3);
+    }
+
+    /// <summary>
+    /// Preserves the currently rendered geometry as the first animation frame.
+    /// Existing points keep their exact screen coordinates, while newly appended
+    /// points begin at the previous tail. Both axes can then move continuously
+    /// without a refresh-time coordinate jump.
+    /// </summary>
+    public static IReadOnlyList<WaveformCoordinate> AlignContinuousTransition(
         IReadOnlyList<WaveformCoordinate> currentPoints,
         IReadOnlyList<WaveformCoordinate> targetPoints)
     {
@@ -105,29 +134,35 @@ public static class WaveformTimeline
         {
             return [];
         }
+        if (currentPoints.Count == 0)
+        {
+            return targetPoints.ToArray();
+        }
+        if (currentPoints.Count == targetPoints.Count)
+        {
+            return currentPoints.ToArray();
+        }
 
-        var aligned = new List<WaveformCoordinate>(targetPoints.Count);
+        var aligned = new WaveformCoordinate[targetPoints.Count];
+        if (targetPoints.Count > currentPoints.Count)
+        {
+            for (int index = 0; index < targetPoints.Count; index++)
+            {
+                aligned[index] = currentPoints[Math.Min(index, currentPoints.Count - 1)];
+            }
+            return aligned;
+        }
+
         for (int index = 0; index < targetPoints.Count; index++)
         {
-            double startX;
-            if (currentPoints.Count == 0)
-            {
-                startX = 0;
-            }
-            else if (currentPoints.Count <= targetPoints.Count)
-            {
-                startX = currentPoints[Math.Min(index, currentPoints.Count - 1)].X;
-            }
-            else
-            {
-                int sourceIndex = targetPoints.Count == 1
-                    ? currentPoints.Count - 1
-                    : (int)Math.Round(
-                        index * (currentPoints.Count - 1d) / (targetPoints.Count - 1d));
-                startX = currentPoints[sourceIndex].X;
-            }
-            aligned.Add(new WaveformCoordinate(startX, targetPoints[index].Y));
+            int sourceIndex = targetPoints.Count == 1
+                ? currentPoints.Count - 1
+                : (int)Math.Round(
+                    index * (currentPoints.Count - 1d) /
+                    (targetPoints.Count - 1d));
+            aligned[index] = currentPoints[sourceIndex];
         }
         return aligned;
     }
+
 }

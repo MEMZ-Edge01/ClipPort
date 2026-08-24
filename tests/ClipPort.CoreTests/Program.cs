@@ -40,9 +40,11 @@ internal static class Program
             ("ask mode supports per-file decisions", TestAskPerFileDecisionsAsync),
             ("path safety and root-folder naming", TestPathSafetyAsync),
             ("shared display formatting", TestDisplayFormattingAsync),
+            ("runtime clock refreshes without progress events", TestRuntimeClockRefreshAsync),
             ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
             ("source scanning yields the caller thread", TestSourceScanningYieldsCallerAsync),
             ("waveform timeline fills and compresses", TestWaveformTimelineAsync),
+            ("task modes show only their throughput charts", TestTaskModeThroughputChartsAsync),
             ("wide layouts keep stretching", TestWideLayoutsKeepStretchingAsync),
             ("quick-start requests preserve the opposite directory", TestQuickStartRequestsAsync),
             ("traditional quick-start registration is certificate-free", TestLegacyExplorerContextMenuRegistrationAsync),
@@ -1111,6 +1113,11 @@ internal static class Program
                 "Verification-only mode must never enter the copying phase.");
             Assert(events.Any(item => item.Phase == CopyPhase.Verifying),
                 "Verification-only mode must report verification progress.");
+            CopyProgressInfo firstVerificationEvent = events.First(item =>
+                item.Phase == CopyPhase.Verifying);
+            Assert(firstVerificationEvent.ProcessedFiles == 0 &&
+                   firstVerificationEvent.ProcessedBytes == 0,
+                "Verification must publish its active phase before hashing the first file.");
             Assert(await File.ReadAllTextAsync(Path.Combine(destination, "different.txt")) == "keep destination content",
                 "Verification-only mode must not overwrite destination files.");
             Assert(!File.Exists(Path.Combine(destination, "missing.txt")),
@@ -1152,14 +1159,20 @@ internal static class Program
                    result.VerificationAlgorithm == VerificationAlgorithmKind.Md5,
                 "A hash mismatch should be eligible for overwrite.");
 
+            var retryEvents = new List<CopyProgressInfo>();
             FileRetryResult retry = await service.RetryFailedFilesAsync(
                 result.FailedFiles,
                 options,
-                new InlineProgress<CopyProgressInfo>(_ => { }),
+                new InlineProgress<CopyProgressInfo>(retryEvents.Add),
                 _ => Task.CompletedTask,
                 CancellationToken.None);
             Assert(retry.FailedFiles.Count == 1,
                 "Retrying a mismatch without overwrite should only reverify it.");
+            CopyProgressInfo firstRetryVerification = retryEvents.First(item =>
+                item.Phase == CopyPhase.Verifying);
+            Assert(firstRetryVerification.ProcessedFiles == 0 &&
+                   firstRetryVerification.ProcessedBytes == 0,
+                "Retry verification must announce the active phase before hashing.");
             Assert(await File.ReadAllTextAsync(destinationFile) == "stale destination",
                 "The ordinary retry action must not overwrite a verification mismatch.");
 
@@ -2196,6 +2209,14 @@ internal static class Program
                WaveformTimeline.GetNormalizedX(90, 89) == 1,
             "Ninety retained samples should continue to fill the chart.");
 
+        IReadOnlyList<WaveformCoordinate> lowProgressCoordinates =
+            WaveformTimeline.CreateDisplayCoordinates(
+                [10, 20, 30],
+                64);
+        Assert(lowProgressCoordinates[0].X == 0 &&
+               lowProgressCoordinates[^1].X == 1,
+            "Live samples must fill the chart even while task progress remains low.");
+
         var sampler = new CopyThroughputSampler(
             CopyThroughputSampler.DefaultCapacity,
             minimumIntervalSeconds: 0.01);
@@ -2239,23 +2260,29 @@ internal static class Program
                displaySamples.Any(sample => sample.SourceIndex == 777),
             "Display downsampling must preserve the full time range and old extrema.");
 
+        Assert(WaveformTimeline.EaseOutCubic(0) == 0 &&
+               Math.Abs(WaveformTimeline.EaseOutCubic(0.5) - 0.875) < 0.0001 &&
+               WaveformTimeline.EaseOutCubic(1) == 1,
+            "Waveform interpolation must use a nonlinear cubic ease-out curve.");
         WaveformCoordinate[] currentPoints =
         [
             new(0, 80),
+            new(50, 50),
             new(100, 20)
         ];
         WaveformCoordinate[] targetPoints =
         [
-            new(0, 70),
-            new(50, 40),
+            new(0, 80),
+            new(33, 50),
+            new(66, 20),
             new(100, 10)
         ];
-        IReadOnlyList<WaveformCoordinate> animationStart =
-            WaveformTimeline.AlignHorizontalTransition(currentPoints, targetPoints);
-        Assert(animationStart.Select(point => point.Y)
-                   .SequenceEqual(targetPoints.Select(point => point.Y)) &&
-               animationStart.Select(point => point.X).SequenceEqual([0d, 100d, 100d]),
-            "Waveform updates should animate horizontal compression without vertically wobbling old points.");
+        IReadOnlyList<WaveformCoordinate> continuousStart =
+            WaveformTimeline.AlignContinuousTransition(currentPoints, targetPoints);
+        Assert(continuousStart.Select(point => point.X)
+                   .SequenceEqual([0d, 50d, 100d, 100d]) &&
+               continuousStart.Select(point => point.Y).SequenceEqual([80d, 50d, 20d, 20d]),
+            "Appending a sample must preserve the current first frame and animate the new point from the previous tail.");
 
         var compactedByteRates = Enumerable.Range(0, 5000)
             .Select(index => index == 0 ? 9000d : index % 97)
@@ -2277,6 +2304,96 @@ internal static class Program
                compactedItemRates.Contains(7000) &&
                compactedPositions[^1] == 1,
             "Long waveform histories must stay bounded while retaining their beginning, end, and extrema.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestTaskModeThroughputChartsAsync()
+    {
+        XNamespace presentation =
+            "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XDocument mainWindow = XDocument.Load(
+            Path.Combine(AppContext.BaseDirectory, "Localization", "MainWindow.xaml"));
+
+        XElement? copySection = mainWindow
+            .Descendants(presentation + "Grid")
+            .SingleOrDefault(element =>
+                (string?)element.Attribute(x + "Name") ==
+                "CopyThroughputChartsSection");
+        XElement? verificationSection = mainWindow
+            .Descendants(presentation + "Grid")
+            .SingleOrDefault(element =>
+                (string?)element.Attribute(x + "Name") ==
+                "VerifyThroughputChartsSection");
+
+        Assert(copySection is not null &&
+               (string?)copySection.Attribute("Visibility") ==
+               "{Binding CopyEnabled, Converter={StaticResource BooleanToVisibilityConverter}}",
+            "The copy waveform section must follow the selected task's copy mode.");
+        Assert(verificationSection is not null &&
+               (string?)verificationSection.Attribute("Visibility") ==
+               "{Binding VerificationEnabled, Converter={StaticResource BooleanToVisibilityConverter}}",
+            "The verification waveform section must follow the selected task's verification mode.");
+
+        return Task.CompletedTask;
+    }
+
+    private static Task TestRuntimeClockRefreshAsync()
+    {
+        long observedTimestamp = 1_000_000;
+        long laterTimestamp = observedTimestamp + Stopwatch.Frequency * 37;
+        var progress = new CopyProgressInfo(
+            CopyPhase.Verifying,
+            100,
+            0,
+            1,
+            0,
+            "large-file.bin",
+            0,
+            TimeSpan.FromSeconds(5));
+        var observation = new PhaseProgressObservation(
+            progress,
+            observedTimestamp);
+
+        Assert(observation.ProjectElapsed(laterTimestamp, isActive: true) ==
+               TimeSpan.FromSeconds(42),
+            "An active phase clock must keep advancing without a progress event.");
+        Assert(DisplayFormatting.ProjectAccumulatedElapsed(
+                   TimeSpan.FromSeconds(12),
+                   observation,
+                   laterTimestamp,
+                   isActive: true) == TimeSpan.FromSeconds(54),
+            "A live retry phase must be added to durations completed by earlier phases.");
+        Assert(observation.ProjectElapsed(laterTimestamp, isActive: false) ==
+                   TimeSpan.FromSeconds(5) &&
+               observation.ProjectElapsed(observedTimestamp - 1, isActive: true) ==
+                   TimeSpan.FromSeconds(5),
+            "Inactive phases and invalid monotonic timestamps must not inflate elapsed time.");
+
+        Assert(DisplayFormatting.ShouldProjectCopyElapsed(
+                   jobIsRunning: true,
+                   copyPhaseIsActive: true,
+                   verificationMode: VerificationExecutionMode.OpportunisticDuringCopy,
+                   latestPhase: CopyPhase.Verifying,
+                   copyStillActive: true,
+                   isAwaitingDuplicateDecision: false),
+            "Background-verification events must not freeze an active copy clock.");
+        Assert(!DisplayFormatting.ShouldProjectCopyElapsed(
+                   jobIsRunning: true,
+                   copyPhaseIsActive: true,
+                   verificationMode: VerificationExecutionMode.OpportunisticDuringCopy,
+                   latestPhase: CopyPhase.Verifying,
+                   copyStillActive: true,
+                   isAwaitingDuplicateDecision: true) &&
+               !DisplayFormatting.ShouldProjectCopyElapsed(
+                   jobIsRunning: true,
+                   copyPhaseIsActive: true,
+                   verificationMode: VerificationExecutionMode.OpportunisticDuringCopy,
+                   latestPhase: CopyPhase.WaitingForDuplicateDecision,
+                   copyStillActive: true,
+                   isAwaitingDuplicateDecision: true),
+            "Waiting for duplicate decisions must not extend the stopped copy stopwatch.");
+
         return Task.CompletedTask;
     }
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 
 namespace ClipPort.Models;
@@ -31,6 +32,67 @@ public static class DisplayFormatting
                 $"{(int)safeValue.TotalDays}:{safeValue.Hours:00}:{safeValue.Minutes:00}:{safeValue.Seconds:00}")
             : safeValue.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
     }
+
+    /// <summary>
+    /// Advances an observed operation duration while the phase is still active.
+    /// File progress can remain unchanged for a long time during a large hash,
+    /// so the UI clock must not depend on another progress event arriving.
+    /// </summary>
+    public static TimeSpan ProjectLiveElapsed(
+        TimeSpan observedElapsed,
+        long? observedTimestamp,
+        long currentTimestamp,
+        bool isActive)
+    {
+        TimeSpan safeObserved = observedElapsed < TimeSpan.Zero
+            ? TimeSpan.Zero
+            : observedElapsed;
+        if (!isActive || observedTimestamp is null ||
+            currentTimestamp <= observedTimestamp.Value)
+        {
+            return safeObserved;
+        }
+
+        return safeObserved + Stopwatch.GetElapsedTime(
+            observedTimestamp.Value,
+            currentTimestamp);
+    }
+
+    /// <summary>
+    /// Adds the current retry phase to durations already committed by earlier
+    /// task and retry phases.
+    /// </summary>
+    public static TimeSpan ProjectAccumulatedElapsed(
+        TimeSpan completedElapsed,
+        PhaseProgressObservation? currentObservation,
+        long currentTimestamp,
+        bool isActive)
+    {
+        TimeSpan safeCompleted = completedElapsed < TimeSpan.Zero
+            ? TimeSpan.Zero
+            : completedElapsed;
+        return safeCompleted +
+            (currentObservation?.ProjectElapsed(currentTimestamp, isActive) ??
+             TimeSpan.Zero);
+    }
+
+    /// <summary>
+    /// Opportunistic verification reports can temporarily become the newest
+    /// event while copying is still active. Waiting-for-user phases must not
+    /// extend the copy stopwatch because the copy service has already stopped it.
+    /// </summary>
+    public static bool ShouldProjectCopyElapsed(
+        bool jobIsRunning,
+        bool copyPhaseIsActive,
+        VerificationExecutionMode verificationMode,
+        CopyPhase? latestPhase,
+        bool copyStillActive,
+        bool isAwaitingDuplicateDecision) =>
+        jobIsRunning && copyPhaseIsActive && !isAwaitingDuplicateDecision &&
+        (latestPhase == CopyPhase.Copying ||
+         verificationMode == VerificationExecutionMode.OpportunisticDuringCopy &&
+         latestPhase == CopyPhase.Verifying &&
+         copyStillActive);
 
     public static double GetWaveformDivisionStep(double displayPeak)
     {

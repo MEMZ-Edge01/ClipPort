@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using ClipPort.Models;
 using ClipPort.Services;
@@ -257,8 +258,6 @@ public sealed partial class MainWindow
             runtime.FailedFileChoices.Add(new FailedFileChoice(failure));
         }
 
-        TimeSpan retryCopyDuration = TimeSpan.Zero;
-        TimeSpan retryVerifyDuration = TimeSpan.Zero;
         long retryCopiedBytes = 0;
         int retryCopiedFiles = 0;
         var retryVerifications = new Dictionary<string, FileVerificationResult>(
@@ -294,10 +293,24 @@ public sealed partial class MainWindow
             {
                 runtime.IsRetryingFailures = true;
                 runtime.ActiveFailureAction = action.Mode;
+                runtime.LastRetryObservation = null;
+                runtime.RetryCopyObservation = null;
+                runtime.RetryVerifyObservation = null;
                 var retryProgress = new Progress<CopyProgressInfo>(info =>
                 {
-                    CopyPhase? previousRetryPhase = runtime.RetryProgress?.Phase;
-                    runtime.RetryProgress = info;
+                    CopyPhase? previousRetryPhase =
+                        runtime.LastRetryObservation?.Progress.Phase;
+                    PhaseProgressObservation observation =
+                        PhaseProgressObservation.Capture(info);
+                    runtime.LastRetryObservation = observation;
+                    if (info.Phase == CopyPhase.Copying)
+                    {
+                        runtime.RetryCopyObservation = observation;
+                    }
+                    else if (info.Phase == CopyPhase.Verifying)
+                    {
+                        runtime.RetryVerifyObservation = observation;
+                    }
                     EndThroughputInterval(runtime, previousRetryPhase, info.Phase);
                     SampleThroughput(runtime, info);
                     RefreshSelectedRuntime();
@@ -321,9 +334,12 @@ public sealed partial class MainWindow
                         token => _jobScheduler.AcquireExecutionLeaseAsync(
                             runtime.ScheduleRegistration!,
                             token));
-                EndThroughputInterval(runtime, runtime.RetryProgress?.Phase, null);
-                retryCopyDuration += retryResult.CopyDuration;
-                retryVerifyDuration += retryResult.VerifyDuration;
+                EndThroughputInterval(
+                    runtime,
+                    runtime.LastRetryObservation?.Progress.Phase,
+                    null);
+                runtime.CompletedRetryCopyDuration += retryResult.CopyDuration;
+                runtime.CompletedRetryVerifyDuration += retryResult.VerifyDuration;
                 retryCopiedBytes += retryResult.CopiedBytes;
                 retryCopiedFiles += retryResult.CopiedFiles;
                 foreach (FileVerificationResult verification in retryResult.VerificationResults)
@@ -345,7 +361,9 @@ public sealed partial class MainWindow
                 }
                 runtime.IsRetryingFailures = false;
                 runtime.ActiveFailureAction = null;
-                runtime.RetryProgress = null;
+                runtime.LastRetryObservation = null;
+                runtime.RetryCopyObservation = null;
+                runtime.RetryVerifyObservation = null;
             }
             else
             {
@@ -388,8 +406,10 @@ public sealed partial class MainWindow
             runtime.Result = original with
             {
                 Success = unresolvedErrors.Length == 0,
-                CopyDuration = original.CopyDuration + retryCopyDuration,
-                VerifyDuration = original.VerifyDuration + retryVerifyDuration,
+                CopyDuration = original.CopyDuration +
+                    runtime.CompletedRetryCopyDuration,
+                VerifyDuration = original.VerifyDuration +
+                    runtime.CompletedRetryVerifyDuration,
                 FailedFiles = skipped,
                 Errors = unresolvedErrors,
                 CopiedBytes = Math.Min(
@@ -409,6 +429,10 @@ public sealed partial class MainWindow
                     .Distinct(StringComparer.Ordinal)
                     .ToArray()
             };
+            // The final result now owns the accumulated retry durations, so
+            // keeping the temporary totals would double-count them in the UI.
+            runtime.CompletedRetryCopyDuration = TimeSpan.Zero;
+            runtime.CompletedRetryVerifyDuration = TimeSpan.Zero;
         }
     }
 
@@ -443,6 +467,8 @@ public sealed partial class MainWindow
 
     private void UpdateJobProgress(CopyJobRuntime runtime, CopyProgressInfo info)
     {
+        PhaseProgressObservation observation =
+            PhaseProgressObservation.Capture(info);
         CopyPhase? previousPhase = runtime.LastProgress?.Phase;
         runtime.LastProgress = info;
         if (runtime.Options.VerificationExecutionMode == VerificationExecutionMode.AfterCopy)
@@ -460,26 +486,24 @@ public sealed partial class MainWindow
         switch (info.Phase)
         {
             case CopyPhase.Scanning:
-                runtime.LastScanProgress = info;
+                runtime.ScanObservation = observation;
                 break;
             case CopyPhase.Copying:
-                runtime.LastCopyProgress = info;
+                runtime.CopyObservation = observation;
                 runtime.ProcessedCopyBytes = info.ProcessedBytes;
                 runtime.ProcessedCopyFiles = info.ProcessedFiles;
                 runtime.CopiedBytes = info.SuccessfulBytes;
                 runtime.CopiedFiles = info.SuccessfulFiles;
-                runtime.CopyElapsed = info.Elapsed;
                 runtime.Job.CopiedBytes = info.SuccessfulBytes;
                 runtime.Job.CopiedFiles = info.SuccessfulFiles;
                 runtime.Job.CopySeconds = info.Elapsed.TotalSeconds;
                 break;
             case CopyPhase.Verifying:
-                runtime.LastVerifyProgress = info;
+                runtime.VerifyObservation = observation;
                 runtime.ProcessedVerifyBytes = info.ProcessedBytes;
                 runtime.ProcessedVerifyFiles = info.ProcessedFiles;
                 runtime.VerifiedBytes = info.SuccessfulBytes;
                 runtime.VerifiedFiles = info.SuccessfulFiles;
-                runtime.VerifyElapsed = info.Elapsed;
                 runtime.Job.VerifiedFiles = info.SuccessfulFiles;
                 runtime.Job.VerifySeconds = info.Elapsed.TotalSeconds;
                 break;
@@ -625,8 +649,10 @@ public sealed partial class MainWindow
             ? result.CopiedFiles
             : runtime.CopiedFiles;
         job.VerifiedFiles = result?.VerifiedFileCount ?? runtime.VerifiedFiles;
-        job.CopySeconds = result?.CopyDuration.TotalSeconds ?? runtime.CopyElapsed.TotalSeconds;
-        job.VerifySeconds = result?.VerifyDuration.TotalSeconds ?? runtime.VerifyElapsed.TotalSeconds;
+        job.CopySeconds = result?.CopyDuration.TotalSeconds ??
+            runtime.CopyObservation?.Progress.Elapsed.TotalSeconds ?? 0;
+        job.VerifySeconds = result?.VerifyDuration.TotalSeconds ??
+            runtime.VerifyObservation?.Progress.Elapsed.TotalSeconds ?? 0;
         job.VerificationEnabled = result?.VerificationPerformed ?? runtime.Options.VerifyFiles;
         job.VerificationAlgorithm = result?.VerificationAlgorithm ?? runtime.Options.VerificationAlgorithm;
         job.ErrorMessage = error;
@@ -697,10 +723,11 @@ public sealed partial class MainWindow
     private void ShowRuntimeJob(CopyJobRuntime runtime)
     {
         JobHistoryItem job = runtime.Job;
+        TaskContentGrid.DataContext = job;
         CopyProgressInfo? info = runtime.LastProgress;
-        CopyProgressInfo? scanInfo = runtime.LastScanProgress;
-        CopyProgressInfo? copyInfo = runtime.LastCopyProgress;
-        CopyProgressInfo? verifyInfo = runtime.LastVerifyProgress;
+        CopyProgressInfo? scanInfo = runtime.ScanObservation?.Progress;
+        CopyProgressInfo? copyInfo = runtime.CopyObservation?.Progress;
+        CopyProgressInfo? verifyInfo = runtime.VerifyObservation?.Progress;
         HeroNameText.Text = job.DisplayName;
         HeroPriorityBadge.Visibility = job.IsPriority ? Visibility.Visible : Visibility.Collapsed;
         SourcePathText.Text = job.SourcePath;
@@ -711,20 +738,61 @@ public sealed partial class MainWindow
         EndTimeText.Text = job.FinishedAt?.ToString(
             "MM/dd HH:mm:ss",
             CultureInfo.InvariantCulture) ?? "--";
-        TimeSpan activeElapsed = runtime.Options.VerificationExecutionMode ==
-                                 VerificationExecutionMode.OpportunisticDuringCopy
-            ? TimeSpan.FromSeconds(Math.Max(
-                runtime.CopyElapsed.TotalSeconds,
-                runtime.VerifyElapsed.TotalSeconds))
-            : runtime.CopyElapsed + runtime.VerifyElapsed;
-        if (info?.Phase == CopyPhase.Scanning)
-        {
-            activeElapsed = scanInfo?.Elapsed ?? TimeSpan.Zero;
-        }
-        DurationText.Text = FormatDuration(activeElapsed);
+        long currentTimestamp = Stopwatch.GetTimestamp();
         bool copyStillActive = copyInfo is not null &&
             (copyInfo.ProcessedBytes < copyInfo.TotalBytes ||
              copyInfo.ProcessedFiles < copyInfo.TotalFiles);
+        bool opportunisticVerification = runtime.Options.VerificationExecutionMode ==
+            VerificationExecutionMode.OpportunisticDuringCopy;
+        bool copyClockActive = DisplayFormatting.ShouldProjectCopyElapsed(
+            job.Status == JobStatus.Running,
+            copyInfo is { IsPhaseActive: true },
+            runtime.Options.VerificationExecutionMode,
+            info?.Phase,
+            copyStillActive,
+            runtime.DuplicateDecisionSource is not null);
+        bool verificationClockActive = job.Status == JobStatus.Running &&
+            verifyInfo is { IsPhaseActive: true } &&
+            (info?.Phase == CopyPhase.Verifying || opportunisticVerification);
+        TimeSpan mainCopyElapsed = runtime.Result?.CopyDuration ??
+            runtime.CopyObservation?.ProjectElapsed(
+                currentTimestamp,
+                copyClockActive) ?? TimeSpan.Zero;
+        TimeSpan mainVerifyElapsed = runtime.Result?.VerifyDuration ??
+            runtime.VerifyObservation?.ProjectElapsed(
+                currentTimestamp,
+                verificationClockActive) ?? TimeSpan.Zero;
+        CopyPhase? retryPhase = runtime.LastRetryObservation?.Progress.Phase;
+        bool retryCopyClockActive = job.Status == JobStatus.Running &&
+            runtime.IsRetryingFailures &&
+            retryPhase == CopyPhase.Copying &&
+            runtime.RetryCopyObservation?.Progress.IsPhaseActive == true;
+        bool retryVerifyClockActive = job.Status == JobStatus.Running &&
+            runtime.IsRetryingFailures &&
+            retryPhase == CopyPhase.Verifying &&
+            runtime.RetryVerifyObservation?.Progress.IsPhaseActive == true;
+        TimeSpan displayedCopyElapsed = DisplayFormatting.ProjectAccumulatedElapsed(
+            mainCopyElapsed + runtime.CompletedRetryCopyDuration,
+            runtime.RetryCopyObservation,
+            currentTimestamp,
+            retryCopyClockActive);
+        TimeSpan displayedVerifyElapsed = DisplayFormatting.ProjectAccumulatedElapsed(
+            mainVerifyElapsed + runtime.CompletedRetryVerifyDuration,
+            runtime.RetryVerifyObservation,
+            currentTimestamp,
+            retryVerifyClockActive);
+        TimeSpan activeElapsed = opportunisticVerification
+            ? TimeSpan.FromSeconds(Math.Max(
+                displayedCopyElapsed.TotalSeconds,
+                displayedVerifyElapsed.TotalSeconds))
+            : displayedCopyElapsed + displayedVerifyElapsed;
+        if (info?.Phase == CopyPhase.Scanning)
+        {
+            activeElapsed = runtime.ScanObservation?.ProjectElapsed(
+                currentTimestamp,
+                job.Status == JobStatus.Running) ?? TimeSpan.Zero;
+        }
+        DurationText.Text = FormatDuration(activeElapsed);
         string? currentFile = copyStillActive
             ? copyInfo?.CurrentFile
             : verifyInfo?.CurrentFile ?? scanInfo?.CurrentFile ?? info?.CurrentFile;
@@ -780,12 +848,10 @@ public sealed partial class MainWindow
         UpdateThroughputCharts(
             job.CopyByteSpeedSamples,
             job.CopyItemSpeedSamples,
-            job.CopyThroughputProgressSamples,
             job.VerifyByteSpeedSamples,
-            job.VerifyItemSpeedSamples,
-            job.VerifyThroughputProgressSamples);
-        CopyTimeText.Text = FormatDuration(runtime.CopyElapsed);
-        VerifyTimeText.Text = FormatDuration(runtime.VerifyElapsed);
+            job.VerifyItemSpeedSamples);
+        CopyTimeText.Text = FormatDuration(displayedCopyElapsed);
+        VerifyTimeText.Text = FormatDuration(displayedVerifyElapsed);
         CopyCountText.Text = runtime.Options.SkipCopy ? "--" : $"{runtime.CopiedFiles}/{totalFiles}";
         VerifyCountText.Text = $"{runtime.VerifiedFiles}/{totalFiles}";
         bool copyDone = runtime.Options.SkipCopy ||
@@ -839,7 +905,8 @@ public sealed partial class MainWindow
             PhaseText.Text = overwriting
                 ? ResourceService.GetString("Info.ReverifyAfterOverwrite")
                 : ResourceService.GetString("Info.OnlySelectedFailures");
-            CurrentFileText.Text = runtime.RetryProgress?.CurrentFile ?? job.SourcePath;
+            CurrentFileText.Text =
+                runtime.LastRetryObservation?.Progress.CurrentFile ?? job.SourcePath;
             LogText.Text = overwriting
                 ? ResourceService.GetString("Info.OverwriteAndReverifyDesc")
                 : ResourceService.GetString("Info.StillFailedRemain");
@@ -1586,6 +1653,15 @@ public sealed partial class MainWindow
         return completion.Task;
     }
 
+    private void RefreshSelectedRuntimeClock()
+    {
+        if (TryGetSelectedRuntime(out CopyJobRuntime runtime) &&
+            runtime.Job.Status == JobStatus.Running)
+        {
+            ShowRuntimeJob(runtime);
+        }
+    }
+
     private enum FailureResolutionMode
     {
         Retry,
@@ -1619,9 +1695,12 @@ public sealed partial class MainWindow
         public CopyThroughputSampler VerifyThroughputSampler { get; } = new(
             sampledPhase: CopyPhase.Verifying);
         public CopyProgressInfo? LastProgress { get; set; }
-        public CopyProgressInfo? LastScanProgress { get; set; }
-        public CopyProgressInfo? LastCopyProgress { get; set; }
-        public CopyProgressInfo? LastVerifyProgress { get; set; }
+        public PhaseProgressObservation? ScanObservation { get; set; }
+        public PhaseProgressObservation? CopyObservation { get; set; }
+        public PhaseProgressObservation? VerifyObservation { get; set; }
+        public PhaseProgressObservation? LastRetryObservation { get; set; }
+        public PhaseProgressObservation? RetryCopyObservation { get; set; }
+        public PhaseProgressObservation? RetryVerifyObservation { get; set; }
         public CopyResult? Result { get; set; }
         public bool IsPaused { get; set; }
         public long CopiedBytes { get; set; }
@@ -1630,15 +1709,14 @@ public sealed partial class MainWindow
         public bool IsAwaitingFailureDecision { get; set; }
         public bool IsRetryingFailures { get; set; }
         public FailureResolutionMode? ActiveFailureAction { get; set; }
-        public CopyProgressInfo? RetryProgress { get; set; }
+        public TimeSpan CompletedRetryCopyDuration { get; set; }
+        public TimeSpan CompletedRetryVerifyDuration { get; set; }
 
         public int CopiedFiles { get; set; }
         public long VerifiedBytes { get; set; }
         public int VerifiedFiles { get; set; }
         public long ProcessedVerifyBytes { get; set; }
         public int ProcessedVerifyFiles { get; set; }
-        public TimeSpan CopyElapsed { get; set; }
-        public TimeSpan VerifyElapsed { get; set; }
         public string Report { get; set; } = string.Empty;
     }
 }

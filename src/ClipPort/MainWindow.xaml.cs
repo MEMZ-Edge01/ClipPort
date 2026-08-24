@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using ClipPort.Models;
 using ClipPort.Services;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Windowing;
@@ -45,6 +46,7 @@ public sealed partial class MainWindow : Window
     private bool _updatingDuplicateSelection;
     private bool _isApplyingAppearance;
     private JobHistoryItem? _selectedJob;
+    private readonly DispatcherQueueTimer _runtimeUiRefreshTimer;
 
     public MainWindow()
     {
@@ -53,6 +55,10 @@ public sealed partial class MainWindow : Window
         _previousLanguage = _appSettings.Language;
         _lastSavedSettings = CloneSettings(_appSettings);
         InitializeComponent();
+        _runtimeUiRefreshTimer = DispatcherQueue.CreateTimer();
+        _runtimeUiRefreshTimer.Interval = TimeSpan.FromSeconds(1);
+        _runtimeUiRefreshTimer.Tick += (_, _) => RefreshSelectedRuntimeClock();
+        _runtimeUiRefreshTimer.Start();
         UpdateVerificationAlgorithmDescription();
         UpdateVerificationAlgorithmControls();
         ApplyThroughputChartLayouts();
@@ -431,6 +437,8 @@ public sealed partial class MainWindow : Window
     }
     private void PrepareNewJobView()
     {
+        // The setup screen has no selected job yet, so preview both chart groups.
+        TaskContentGrid.DataContext = new JobHistoryItem();
         if (_isMultiSelectMode)
         {
             ExitMultiSelectMode(false);
@@ -462,6 +470,7 @@ public sealed partial class MainWindow : Window
 
     private void ShowHistoryJob(JobHistoryItem job)
     {
+        TaskContentGrid.DataContext = job;
         ShowHistorySummary(job);
         CurrentFileText.Text = job.ErrorMessage ?? $"{job.SourcePath} → {job.DestinationPath}";
         ShowDuplicateHistory(job);
@@ -641,10 +650,8 @@ public sealed partial class MainWindow : Window
         UpdateThroughputCharts(
             job.CopyByteSpeedSamples,
             job.CopyItemSpeedSamples,
-            job.CopyThroughputProgressSamples,
             job.VerifyByteSpeedSamples,
-            job.VerifyItemSpeedSamples,
-            job.VerifyThroughputProgressSamples);
+            job.VerifyItemSpeedSamples);
         CopyTimeText.Text = job.CopyEnabled
             ? FormatDuration(TimeSpan.FromSeconds(job.CopySeconds))
             : "--";
@@ -1044,8 +1051,6 @@ public sealed partial class MainWindow : Window
         CopySpeedText.Text = "0 B/s";
         VerifySpeedText.Text = "0 B/s";
         UpdateThroughputCharts(
-            EmptyWaveformSamples,
-            EmptyWaveformSamples,
             EmptyWaveformSamples,
             EmptyWaveformSamples,
             EmptyWaveformSamples,

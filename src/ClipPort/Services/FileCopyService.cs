@@ -363,6 +363,11 @@ public sealed class FileCopyService
                     executionLeaseFactory,
                     cancellationToken).ConfigureAwait(false);
 
+                // Announce the active verification phase before hashing. A
+                // single large file may otherwise produce no UI event for a
+                // long time because both source and destination hashes must
+                // finish before the completed-file progress is available.
+                ReportVerifyProgress(file);
                 if (!destinationPaths.TryGetValue(file.RelativePath, out string? destinationPath))
                 {
                     processedVerifyBytes += file.Length;
@@ -857,6 +862,9 @@ public sealed class FileCopyService
         async Task VerifyFailureAsync(FileOperationFailure failure)
         {
             verifyWatch.Start();
+            // Retry verification needs the same pre-hash phase announcement as
+            // the main path so a large file can drive the independent UI clock.
+            ReportRetryVerificationProgress(failure);
             try
             {
                 byte[] sourceHash = await ComputeHashAsync(failure.SourcePath, options.VerificationAlgorithm, waitWhilePaused, cancellationToken);
@@ -912,6 +920,12 @@ public sealed class FileCopyService
 
             processedVerifyBytes += failure.Length;
             processedVerifyFiles++;
+            ReportRetryVerificationProgress(failure);
+            verifyWatch.Stop();
+        }
+
+        void ReportRetryVerificationProgress(FileOperationFailure failure)
+        {
             progress.Report(new CopyProgressInfo(
                 CopyPhase.Verifying,
                 totalBytes,
@@ -925,7 +939,6 @@ public sealed class FileCopyService
                 SuccessfulBytes = verifiedBytes,
                 SuccessfulFiles = verifiedFiles
             });
-            verifyWatch.Stop();
         }
     }
 
