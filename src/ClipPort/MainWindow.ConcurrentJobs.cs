@@ -692,7 +692,13 @@ public sealed partial class MainWindow
 
         RefreshHistoryItem(job);
         await SaveHistorySafeAsync();
-        await SendJobNotificationSafeAsync(job);
+        QueueJobNotification(job);
+    }
+
+    private void QueueJobNotification(JobHistoryItem job)
+    {
+        // Network delivery must not retain this job's scheduler registration.
+        _ = SendJobNotificationSafeAsync(job);
     }
 
     private async Task SendJobNotificationSafeAsync(JobHistoryItem job)

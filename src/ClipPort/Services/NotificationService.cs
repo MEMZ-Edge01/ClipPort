@@ -58,7 +58,7 @@ public sealed class NotificationService
         NotificationMessage message = CreateJobMessage(job);
         NotificationChannelSettings[] channels = (settings.Channels ?? [])
             .Where(channel => channel.IsEnabled)
-            .Select(CloneChannel)
+            .Select(channel => channel.Clone())
             .ToArray();
         NotificationDeliveryResult[] deliveries = await Task.WhenAll(
             channels.Select(channel => SendAsync(channel, message, cancellationToken)));
@@ -77,7 +77,7 @@ public sealed class NotificationService
                 "Notification.TestBody",
                 channelName,
                 DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss")));
-        return SendAsync(CloneChannel(channel), message, cancellationToken);
+        return SendAsync(channel.Clone(), message, cancellationToken);
     }
 
     public static bool ShouldNotify(NotificationSettings settings, JobStatus status) =>
@@ -310,21 +310,6 @@ public sealed class NotificationService
             ? ResourceService.GetString($"Notification.ChannelKind.{channel.Kind}")
             : channel.DisplayName.Trim();
 
-    private static NotificationChannelSettings CloneChannel(NotificationChannelSettings channel) =>
-        new()
-        {
-            Id = channel.Id,
-            DisplayName = channel.DisplayName,
-            Kind = channel.Kind,
-            IsEnabled = channel.IsEnabled,
-            Endpoint = channel.Endpoint,
-            SmtpHost = channel.SmtpHost,
-            SmtpPort = channel.SmtpPort,
-            SmtpUsername = channel.SmtpUsername,
-            SmtpPassword = channel.SmtpPassword,
-            SmtpFrom = channel.SmtpFrom,
-            SmtpRecipients = channel.SmtpRecipients
-        };
 }
 
 public sealed record NotificationMessage(string Title, string Body);

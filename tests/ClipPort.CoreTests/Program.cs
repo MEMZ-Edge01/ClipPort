@@ -61,6 +61,7 @@ internal static class Program
             ("traditional quick-start registration is certificate-free", TestLegacyExplorerContextMenuRegistrationAsync),
             ("traditional quick-start registry lifecycle is reversible", TestLegacyExplorerContextMenuRegistryLifecycleAsync),
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
+            ("notification channel snapshots preserve every field", TestNotificationChannelCloneAsync),
             ("notification settings persist multiple channels", TestNotificationSettingsPersistenceAsync),
             ("notification channels use provider payloads", TestNotificationChannelsAsync),
             ("notification scenes match terminal task states", TestNotificationScenarioPolicyAsync),
@@ -2309,6 +2310,40 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task TestNotificationChannelCloneAsync()
+    {
+        var channel = new NotificationChannelSettings
+        {
+            Id = "channel-id",
+            DisplayName = "operations",
+            Kind = NotificationChannelKind.Smtp,
+            IsEnabled = false,
+            Endpoint = "https://example.test/hook",
+            SmtpHost = "smtp.example.test",
+            SmtpPort = 587,
+            SmtpUsername = "sender@example.test",
+            SmtpPassword = "app-password",
+            SmtpFrom = "ClipPort <sender@example.test>",
+            SmtpRecipients = "first@example.test;second@example.test"
+        };
+
+        NotificationChannelSettings clone = channel.Clone();
+        Assert(!ReferenceEquals(channel, clone) &&
+               clone.Id == channel.Id &&
+               clone.DisplayName == channel.DisplayName &&
+               clone.Kind == channel.Kind &&
+               clone.IsEnabled == channel.IsEnabled &&
+               clone.Endpoint == channel.Endpoint &&
+               clone.SmtpHost == channel.SmtpHost &&
+               clone.SmtpPort == channel.SmtpPort &&
+               clone.SmtpUsername == channel.SmtpUsername &&
+               clone.SmtpPassword == channel.SmtpPassword &&
+               clone.SmtpFrom == channel.SmtpFrom &&
+               clone.SmtpRecipients == channel.SmtpRecipients,
+            "Notification channel snapshots must preserve every delivery and identity field.");
+        return Task.CompletedTask;
+    }
+
     private static Task TestNotificationSettingsPersistenceAsync()
     {
         string root = Path.Combine(
@@ -2502,10 +2537,14 @@ internal static class Program
             "await SaveHistorySafeAsync()",
             StringComparison.Ordinal);
         int notifyIndex = finalization.Groups["body"].Value.IndexOf(
-            "await SendJobNotificationSafeAsync(job)",
+            "QueueJobNotification(job)",
             StringComparison.Ordinal);
         Assert(finalization.Success && saveIndex >= 0 && notifyIndex > saveIndex,
-            "A terminal task should persist its result before awaiting external notification delivery.");
+            "A terminal task should persist its result before queueing external notification delivery.");
+        Assert(!finalization.Groups["body"].Value.Contains(
+                   "await SendJobNotificationSafeAsync(job)",
+                   StringComparison.Ordinal),
+            "External notification delivery must not delay scheduler release for the next task.");
         return Task.CompletedTask;
     }
 

@@ -93,4 +93,22 @@ public sealed class NotificationChannelSettings
     public string SmtpPassword { get; set; } = string.Empty;
     public string SmtpFrom { get; set; } = string.Empty;
     public string SmtpRecipients { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Creates a stable snapshot for persistence and background delivery.
+    /// </summary>
+    public NotificationChannelSettings Clone() => new()
+    {
+        Id = Id,
+        DisplayName = DisplayName,
+        Kind = Kind,
+        IsEnabled = IsEnabled,
+        Endpoint = Endpoint,
+        SmtpHost = SmtpHost,
+        SmtpPort = SmtpPort,
+        SmtpUsername = SmtpUsername,
+        SmtpPassword = SmtpPassword,
+        SmtpFrom = SmtpFrom,
+        SmtpRecipients = SmtpRecipients
+    };
 }

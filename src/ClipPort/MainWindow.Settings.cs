@@ -148,20 +148,7 @@ public sealed partial class MainWindow
     {
         NotifyOnTaskCompleted = settings.NotifyOnTaskCompleted,
         NotifyOnTaskFailed = settings.NotifyOnTaskFailed,
-        Channels = settings.Channels.Select(channel => new NotificationChannelSettings
-        {
-            Id = channel.Id,
-            DisplayName = channel.DisplayName,
-            Kind = channel.Kind,
-            IsEnabled = channel.IsEnabled,
-            Endpoint = channel.Endpoint,
-            SmtpHost = channel.SmtpHost,
-            SmtpPort = channel.SmtpPort,
-            SmtpUsername = channel.SmtpUsername,
-            SmtpPassword = channel.SmtpPassword,
-            SmtpFrom = channel.SmtpFrom,
-            SmtpRecipients = channel.SmtpRecipients
-        }).ToList()
+        Channels = settings.Channels.Select(channel => channel.Clone()).ToList()
     };
 
     private void ApplySettingsSnapshot(AppSettings settings)
