@@ -33,6 +33,16 @@ public static class DisplayFormatting
             : safeValue.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
     }
 
+    public static double GetAverageBytesPerSecond(long processedBytes, double seconds)
+    {
+        if (processedBytes <= 0 || !double.IsFinite(seconds) || seconds <= 0)
+        {
+            return 0;
+        }
+
+        return processedBytes / seconds;
+    }
+
     /// <summary>
     /// Advances an observed operation duration while the phase is still active.
     /// File progress can remain unchanged for a long time during a large hash,

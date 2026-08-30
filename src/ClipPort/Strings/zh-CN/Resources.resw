@@ -542,4 +542,53 @@
   <data name="Report.VerificationExecutionMode" xml:space="preserve"><value>校验执行方式：{0}</value></data>
   <data name="Report.VerificationDuringCopy" xml:space="preserve"><value>拷贝时后台校验</value></data>
   <data name="Report.VerificationAfterCopy" xml:space="preserve"><value>拷贝完成后校验</value></data>
+  <data name="NotificationNavText.Text" xml:space="preserve"><value>通知</value></data>
+  <data name="NotificationTitle.Text" xml:space="preserve"><value>通知</value></data>
+  <data name="NotificationDesc.Text" xml:space="preserve"><value>任务结束后，通过一个或多个外部渠道发送结果。</value></data>
+  <data name="NotificationScenesTitle.Text" xml:space="preserve"><value>发送场景</value></data>
+  <data name="NotifyOnCompletedToggle.Header" xml:space="preserve"><value>任务完成</value></data>
+  <data name="NotifyOnFailedToggle.Header" xml:space="preserve"><value>任务失败</value></data>
+  <data name="NotificationScenesHint.Text" xml:space="preserve"><value>失败包括部分完成、校验失败和执行失败；主动取消或应用中断不会发送失败通知。</value></data>
+  <data name="NotificationChannelsTitle.Text" xml:space="preserve"><value>通知渠道</value></data>
+  <data name="NotificationChannelsHint.Text" xml:space="preserve"><value>飞书、企业微信、钉钉与 Bark 使用 HTTP/HTTPS 推送地址，并非 WebSocket。渠道密钥与 SMTP 密码会用当前 Windows 用户凭据加密后保存。</value></data>
+  <data name="AddNotificationChannelButton.Content" xml:space="preserve"><value>添加渠道</value></data>
+  <data name="NotificationChannelsEmptyText.Text" xml:space="preserve"><value>尚未添加通知渠道。</value></data>
+  <data name="NotificationChannelNameBox.Header" xml:space="preserve"><value>渠道名称</value></data>
+  <data name="NotificationChannelKindBox.Header" xml:space="preserve"><value>渠道类型</value></data>
+  <data name="RemoveNotificationChannelButton.Content" xml:space="preserve"><value>移除</value></data>
+  <data name="NotificationChannelEnabledToggle.Header" xml:space="preserve"><value>启用此渠道</value></data>
+  <data name="NotificationHttpHint.Text" xml:space="preserve"><value>请粘贴机器人 Webhook；Bark 请填写包含设备 Key 的地址，例如 https://api.day.app/your-device-key。</value></data>
+  <data name="SmtpHostBox.Header" xml:space="preserve"><value>SMTP 服务器</value></data>
+  <data name="SmtpPortBox.Header" xml:space="preserve"><value>端口</value></data>
+  <data name="SmtpUsernameBox.Header" xml:space="preserve"><value>登录账号</value></data>
+  <data name="SmtpPasswordBox.Header" xml:space="preserve"><value>密码或授权码</value></data>
+  <data name="SmtpFromBox.Header" xml:space="preserve"><value>发件人地址或显示名（可选）</value></data>
+  <data name="SmtpRecipientsBox.Header" xml:space="preserve"><value>收件人</value></data>
+  <data name="SmtpSecurityHint.Text" xml:space="preserve"><value>连接会自动选择 SSL/TLS 或 STARTTLS；请优先使用邮箱服务商提供的应用专用密码。</value></data>
+  <data name="TestNotificationChannelButton.Content" xml:space="preserve"><value>测试推送</value></data>
+  <data name="Notification.ChannelKind.WeCom" xml:space="preserve"><value>企业微信</value></data>
+  <data name="Notification.ChannelKind.DingTalk" xml:space="preserve"><value>钉钉</value></data>
+  <data name="Notification.ChannelKind.Feishu" xml:space="preserve"><value>飞书</value></data>
+  <data name="Notification.ChannelKind.Bark" xml:space="preserve"><value>Bark</value></data>
+  <data name="Notification.ChannelKind.Smtp" xml:space="preserve"><value>SMTP 邮件</value></data>
+  <data name="Notification.WebhookAddress" xml:space="preserve"><value>Webhook 地址</value></data>
+  <data name="Notification.BarkAddress" xml:space="preserve"><value>Bark 推送地址</value></data>
+  <data name="Notification.TestTitle" xml:space="preserve"><value>ClipPort 测试通知</value></data>
+  <data name="Notification.TestBody" xml:space="preserve"><value>此消息由 ClipPort 通知设置发送。&#xA;渠道：{0}&#xA;时间：{1}</value></data>
+  <data name="Notification.TestSending" xml:space="preserve"><value>正在发送测试通知…</value></data>
+  <data name="Notification.TestSucceeded" xml:space="preserve"><value>测试推送成功。</value></data>
+  <data name="Notification.TestFailed" xml:space="preserve"><value>测试推送失败：{0}</value></data>
+  <data name="Notification.SendSucceeded" xml:space="preserve"><value>发送成功</value></data>
+  <data name="Notification.JobCompletedTitle" xml:space="preserve"><value>ClipPort：任务完成</value></data>
+  <data name="Notification.JobFailedTitle" xml:space="preserve"><value>ClipPort：任务失败</value></data>
+  <data name="Notification.JobBody" xml:space="preserve"><value>任务：{0}&#xA;状态：{1}&#xA;文件：{2}&#xA;数据量：{3}&#xA;耗时：{4}&#xA;详情：{5}&#xA;结束时间：{6}</value></data>
+  <data name="Notification.NoErrorDetail" xml:space="preserve"><value>无</value></data>
+  <data name="Notification.DeliveryFailures" xml:space="preserve"><value>任务状态已保存，但部分通知发送失败：{0}</value></data>
+  <data name="Notification.Error.Timeout" xml:space="preserve"><value>连接超时</value></data>
+  <data name="Notification.Error.UnsupportedChannel" xml:space="preserve"><value>不支持的通知渠道</value></data>
+  <data name="Notification.Error.SmtpFieldsRequired" xml:space="preserve"><value>请完整填写 SMTP 服务器、端口、账号、密码或授权码以及收件人。</value></data>
+  <data name="Notification.Error.HttpAddressRequired" xml:space="preserve"><value>此渠道需要有效的 HTTP 或 HTTPS 地址，不支持 ws:// 或 wss:// WebSocket 地址。</value></data>
+  <data name="Notification.Error.BarkKeyRequired" xml:space="preserve"><value>Bark 地址中缺少设备 Key。</value></data>
+  <data name="Notification.Error.HttpStatus" xml:space="preserve"><value>HTTP {0}：{1}</value></data>
+  <data name="Notification.Error.ProviderCode" xml:space="preserve"><value>服务返回错误码 {0}</value></data>
 </root>

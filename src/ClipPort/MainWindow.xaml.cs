@@ -24,6 +24,7 @@ public sealed partial class MainWindow : Window
     private readonly AppSettings _appSettings = App.Settings;
     private readonly JobHistoryService _historyService;
     private readonly AppLogService _logService;
+    private readonly NotificationService _notificationService = new();
     private readonly ExplorerContextMenuService _explorerContextMenuService = new();
     private readonly LegacyExplorerContextMenuService _legacyExplorerContextMenuService = new();
     private readonly UISettings _uiSettings = new();
@@ -69,6 +70,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         ConfigureWindow();
+        SettingsPage.ConfigureNotificationService(_notificationService);
         SettingsPage.Initialize(_appSettings);
         SettingsPage.BackRequested += SettingsPage_BackRequested;
         SettingsPage.SettingsChanged += SettingsPage_SettingsChanged;
@@ -641,12 +643,12 @@ public sealed partial class MainWindow : Window
 
     private void ShowHistoryPerformance(JobHistoryItem job)
     {
-        CopySpeedText.Text = job.CopyEnabled && job.CopySeconds > 0
-            ? $"{FormatBytes(job.CopiedBytes / job.CopySeconds)}/s"
+        CopySpeedText.Text = job.CopyEnabled
+            ? GetCompletedAverageSpeed(job.CopiedBytes, job.CopySeconds)
             : "--";
-        VerifySpeedText.Text = job.VerifySeconds > 0
-            ? $"{FormatBytes(job.TotalBytes / job.VerifySeconds)}/s"
-            : "--";
+        VerifySpeedText.Text = GetCompletedAverageSpeed(
+            job.TotalBytes,
+            job.VerifySeconds);
         UpdateThroughputCharts(
             job.CopyByteSpeedSamples,
             job.CopyItemSpeedSamples,
@@ -1181,6 +1183,11 @@ public sealed partial class MainWindow : Window
 
     private static string FormatBytes(double bytes) =>
         DisplayFormatting.FormatBytes(bytes);
+
+    private static string GetCompletedAverageSpeed(long bytes, double seconds) =>
+        seconds > 0
+            ? $"{FormatBytes(DisplayFormatting.GetAverageBytesPerSecond(bytes, seconds))}/s"
+            : "--";
 
     private static string FormatDuration(TimeSpan value) =>
         DisplayFormatting.FormatDuration(value);

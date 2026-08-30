@@ -24,6 +24,15 @@ public enum AppLanguage
     ClassicalChinese
 }
 
+public enum NotificationChannelKind
+{
+    WeCom,
+    DingTalk,
+    Feishu,
+    Bark,
+    Smtp
+}
+
 public sealed record AppLanguageDefinition(
     AppLanguage Language,
     string LanguageTag,
@@ -55,6 +64,33 @@ public sealed class AppSettings
     public AppLanguage Language { get; set; } = AppLanguage.SimplifiedChinese;
     public bool ExplorerContextMenuEnabled { get; set; }
     public bool LegacyExplorerContextMenuEnabled { get; set; }
+    public NotificationSettings Notifications { get; set; } = new();
     public string LogAndReportDirectory { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ClipPort");
+}
+
+public sealed class NotificationSettings
+{
+    public bool NotifyOnTaskCompleted { get; set; } = true;
+    public bool NotifyOnTaskFailed { get; set; } = true;
+    public List<NotificationChannelSettings> Channels { get; set; } = [];
+}
+
+public sealed class NotificationChannelSettings
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string DisplayName { get; set; } = string.Empty;
+    public NotificationChannelKind Kind { get; set; } = NotificationChannelKind.Feishu;
+    public bool IsEnabled { get; set; } = true;
+
+    // Webhook providers and Bark use this HTTP(S) endpoint. WebSocket URLs are
+    // deliberately rejected because these providers expose HTTP push APIs.
+    public string Endpoint { get; set; } = string.Empty;
+
+    public string SmtpHost { get; set; } = string.Empty;
+    public int SmtpPort { get; set; } = 465;
+    public string SmtpUsername { get; set; } = string.Empty;
+    public string SmtpPassword { get; set; } = string.Empty;
+    public string SmtpFrom { get; set; } = string.Empty;
+    public string SmtpRecipients { get; set; } = string.Empty;
 }

@@ -82,10 +82,10 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 
 ### 实时进度与吞吐图
 
-- 显示当前阶段、当前文件、完成百分比、文件数量、数据量、速度和实际处理耗时；复制、校验及失败重试均使用独立的一秒单调时钟持续刷新，即使首次校验或校验大文件时暂时没有新的完成事件，耗时也会连续增加；等待用户选择重复项或失败处理方案时，相应阶段计时暂停。
+- 显示当前阶段、当前文件、完成百分比、文件数量、数据量、速度和实际处理耗时；复制、校验及失败重试均使用独立的一秒单调时钟持续刷新，即使首次校验或校验大文件时暂时没有新的完成事件，耗时也会连续增加；等待用户选择重复项或失败处理方案时，相应阶段计时暂停；任务进入完成态后，速度栏立即改为对应阶段的平均速度。
 - 扫描阶段显示不定总量进度和已发现的数据，不会把尚未完成的扫描误报为 100%。
 - 分别记录复制与校验阶段的字节速度和项目数速度。
-- 提供实时波形、当前值、最高值、最低值和动态刻度；横轴按可见采样时间线始终铺满图表，不再按任务完成百分比挤压采样点。刷新时横纵坐标都会从当前屏幕位置使用三次缓出动画连续过渡，新采样从上一帧尾点进入，避免坐标瞬移造成整条历史颤抖。长任务超过采样上限后会保留首尾与峰谷的多尺度摘要，避免历史文件和内存无限增长。
+- 提供实时波形、当前值、最高值、最低值和动态刻度；横轴按可见采样时间线始终铺满图表，不再按任务完成百分比挤压采样点。刷新时横纵坐标都会从当前屏幕位置使用三次缓出动画连续过渡，新采样从上一帧尾点进入，避免坐标瞬移造成整条历史颤抖。长任务超过采样上限后会保留首尾与峰谷的多尺度摘要，避免历史文件和内存无限增长；拷贝时后台校验小文件的短暂队列间隙会保留最近一次有效速度和组合状态，不再反复跳到零速与“正在拷贝”。
 - 只复制或只校验的任务仅显示对应的一组两张波形图；同时启用时显示两组图表，复制图表与校验图表都可以在并排布局和纵向堆叠布局之间切换。
 - 吞吐采样会随任务历史保存，重新选择历史任务时仍可查看。
 
@@ -105,6 +105,16 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 - 支持简体中文、English 和文言三种界面语言。
 - 切换语言后可以立即安排应用安全重启，也可以稍后手动重启。
 - 可以自定义日志和报告的保存目录。
+
+### 多渠道任务通知
+
+- “设置 → 通知”可以同时添加并独立启用多个企业微信、钉钉、飞书、Bark 或 SMTP 邮件渠道，也支持添加多个同类型渠道。
+- 企业微信、钉钉和飞书填写机器人 HTTP/HTTPS Webhook；Bark 填写包含设备 Key 的 HTTP/HTTPS 推送地址。它们不是 WebSocket 服务，因此不接受 `ws://` 或 `wss://` 地址。
+- SMTP 支持服务器、端口、登录账号、密码或授权码、发件人和多个收件人配置，连接会自动选择 SSL/TLS 或 STARTTLS。
+- 每个渠道卡片底部都有“测试推送”，可以在正式启用前验证地址、凭据和服务响应。
+- 可以分别选择“任务完成”和“任务失败”场景。失败场景包括部分完成、校验失败和执行失败；主动取消或应用中断默认不发送失败通知。
+- 通知发送发生在任务结果、历史和报告保存之后；通知失败只写入日志，不会改变任务结果。多个已启用渠道会并行发送。
+- Webhook/Bark 地址中的 Token 和 SMTP 密码使用 Windows DPAPI 按当前用户加密后写入设置文件；把设置复制给其他 Windows 用户时，这些凭据无法解密，需要重新填写。
 
 ### 自动更新
 
@@ -131,7 +141,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 
 - 右击单个文件夹或文件夹空白处，打开“新建 ClipPort 任务”。
 - 选择“作为源目录”或“作为目标目录”，ClipPort 会打开并预填新任务窗口。
-- 如果 ClipPort 已在运行，请求会转交给现有实例并恢复窗口，不会启动多个主实例。
+- 如果 ClipPort 已在运行，请求会通过当前用户的本地进程协调通道转交给现有实例并恢复窗口；普通启动与稀疏包身份启动共用同一个主实例，不会让新进程把活动任务误判为中断。
 - 新式菜单在多选或选择非目录项目时不会显示该命令；传统菜单只注册到文件夹与文件夹空白处。
 - 菜单标题跟随简体中文、English 或文言界面语言。
 
@@ -155,6 +165,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 
 发布目录需要同时包含 `ClipPort.ShellExtension.dll`、`ClipPort.ShellIntegration.msix` 和签名包所对应的 `ClipPort.ShellIntegration.cer`。
 安装右键菜单组件后不要移动或拆分发布目录，因为稀疏包会引用该目录中的主程序和扩展 DLL。
+构建与开发注册脚本会从应用原图生成清单规定的 50×50、44×44 和 150×150 PNG，避免包身份启动时任务栏退回占位图标。
 
 ## 使用方法
 
@@ -178,6 +189,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 
 日志和报告目录可以在设置中更改。
 日志达到 5 MiB 后会轮换为 `ClipPort.old.log`。
+通知渠道的非敏感字段保存在设置文件中；Webhook/Bark 地址与 SMTP 密码以当前 Windows 用户可解密的 DPAPI 密文保存。
 
 ## 当前限制
 
@@ -329,15 +341,17 @@ It supports responsive streaming source scans, safe file copying, verification-o
 
 File verification can use SHA-256, SHA-512, SHA-1, MD5, or xxHash64.
 SHA-256 is the default, and the selected algorithm is preserved across retries, re-verification, history, and reports.
-An optional, default-off “verify while copying” mode verifies fully committed files on one low-priority background worker without allowing queue pressure to block copying; any backlog is completed after the copy phase.
+An optional, default-off “verify while copying” mode verifies fully committed files on one low-priority background worker without allowing queue pressure to block copying; any backlog is completed after the copy phase. Brief queue gaps between small files retain the latest useful verification rate and combined copy/verification status instead of flickering to zero and copy-only status.
 
 On Windows 11, an optional sparse-MSIX shell component adds modern File Explorer commands for using a folder as the source or destination of a new ClipPort task.
-Activation is redirected to the existing ClipPort window when the application is already running.
+Activation is redirected through a per-user local channel, so packaged and unpackaged launches share the existing ClipPort process without rewriting active jobs as interrupted.
+Completed tasks replace their live transfer rates with the average copy and verification rates immediately.
+Settings can hold multiple WeCom, DingTalk, Feishu, Bark, and SMTP notification channels. HTTP providers use their native webhook payloads, SMTP negotiates SSL/TLS or STARTTLS, and completion/failure scenes can be selected independently. Provider secrets are protected with per-user Windows DPAPI before being written to disk.
 
 The native C++ copy engine is built and packaged for engineering validation, but its UI switch is currently hidden and disabled.
 The default user-facing copy path is the sequential asynchronous implementation.
 
-Run the 47 core tests:
+Run the 59 core tests:
 
 ```powershell
 dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release

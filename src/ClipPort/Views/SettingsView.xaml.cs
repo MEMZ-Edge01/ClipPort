@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.ObjectModel;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
@@ -16,6 +17,9 @@ public sealed partial class SettingsView : UserControl
     private readonly ExplorerIntegrationOperationGate _explorerIntegrationOperationGate =
         new();
     private readonly UpdateService _updateService = new();
+    private readonly ObservableCollection<NotificationChannelEditorItem>
+        _notificationChannelEditors = [];
+    private NotificationService? _notificationService;
     private GitHubRelease? _pendingUpdate;
     private GitHubReleaseAsset? _pendingZipAsset;
     private bool _isUpdateOperationInProgress;
@@ -60,7 +64,11 @@ public sealed partial class SettingsView : UserControl
         string? version = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         VersionTextBlock.Text = version ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0-beta";
+        NotificationChannelsList.ItemsSource = _notificationChannelEditors;
     }
+
+    public void ConfigureNotificationService(NotificationService notificationService) =>
+        _notificationService = notificationService;
 
     private static void SetComboBoxItemContent(ComboBox combo, int index, string resourceKey)
     {
@@ -82,6 +90,9 @@ public sealed partial class SettingsView : UserControl
         ExplorerContextMenuToggle.IsOn = settings.ExplorerContextMenuEnabled;
         LegacyExplorerContextMenuToggle.IsOn =
             settings.LegacyExplorerContextMenuEnabled;
+        NotifyOnCompletedToggle.IsOn = settings.Notifications.NotifyOnTaskCompleted;
+        NotifyOnFailedToggle.IsOn = settings.Notifications.NotifyOnTaskFailed;
+        RebuildNotificationChannelEditors();
         UpdateAccentSelectionText();
         _initializing = false;
     }
@@ -109,11 +120,15 @@ public sealed partial class SettingsView : UserControl
     private void QuickStartNavButton_Click(object sender, RoutedEventArgs e) =>
         ShowSection(QuickStartPanel, QuickStartNavButton);
 
+    private void NotificationNavButton_Click(object sender, RoutedEventArgs e) =>
+        ShowSection(NotificationPanel, NotificationNavButton);
+
     private void ShowSection(UIElement panel, Button selectedButton)
     {
         AppearancePanel.Visibility = panel == AppearancePanel ? Visibility.Visible : Visibility.Collapsed;
         GeneralPanel.Visibility = panel == GeneralPanel ? Visibility.Visible : Visibility.Collapsed;
         QuickStartPanel.Visibility = panel == QuickStartPanel ? Visibility.Visible : Visibility.Collapsed;
+        NotificationPanel.Visibility = panel == NotificationPanel ? Visibility.Visible : Visibility.Collapsed;
         AboutPanel.Visibility = panel == AboutPanel ? Visibility.Visible : Visibility.Collapsed;
         AppearanceNavButton.Background = panel == AppearancePanel
             ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlSecondaryBrush"]
@@ -122,6 +137,9 @@ public sealed partial class SettingsView : UserControl
             ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlSecondaryBrush"]
             : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
         QuickStartNavButton.Background = panel == QuickStartPanel
+            ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlSecondaryBrush"]
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        NotificationNavButton.Background = panel == NotificationPanel
             ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ControlSecondaryBrush"]
             : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
         AboutNavButton.Background = panel == AboutPanel
@@ -191,6 +209,106 @@ public sealed partial class SettingsView : UserControl
         };
         AccentSelectionText.Text = ResourceService.GetString(key) + colorCode;
     }
+
+    private void NotifyOnCompletedToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing || _settings is null)
+        {
+            return;
+        }
+        _settings.Notifications.NotifyOnTaskCompleted = NotifyOnCompletedToggle.IsOn;
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void NotifyOnFailedToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing || _settings is null)
+        {
+            return;
+        }
+        _settings.Notifications.NotifyOnTaskFailed = NotifyOnFailedToggle.IsOn;
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void AddNotificationChannelButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        var channel = new NotificationChannelSettings();
+        _settings.Notifications.Channels.Add(channel);
+        _notificationChannelEditors.Add(CreateNotificationChannelEditor(channel));
+        RefreshNotificationChannelEmptyState();
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void RemoveNotificationChannelButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null ||
+            sender is not Button { Tag: NotificationChannelEditorItem editor })
+        {
+            return;
+        }
+
+        _notificationChannelEditors.Remove(editor);
+        _settings.Notifications.Channels.Remove(editor.Channel);
+        RefreshNotificationChannelEmptyState();
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private async void TestNotificationChannelButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_notificationService is null ||
+            sender is not Button { Tag: NotificationChannelEditorItem editor } button)
+        {
+            return;
+        }
+
+        button.IsEnabled = false;
+        editor.TestStatus = ResourceService.GetString("Notification.TestSending");
+        try
+        {
+            NotificationDeliveryResult result = await _notificationService.SendTestAsync(
+                editor.Channel);
+            editor.TestStatus = result.Success
+                ? ResourceService.GetString("Notification.TestSucceeded")
+                : ResourceService.Format("Notification.TestFailed", result.Detail);
+        }
+        finally
+        {
+            button.IsEnabled = true;
+        }
+    }
+
+    private void RebuildNotificationChannelEditors()
+    {
+        _notificationChannelEditors.Clear();
+        if (_settings is not null)
+        {
+            foreach (NotificationChannelSettings channel in _settings.Notifications.Channels)
+            {
+                _notificationChannelEditors.Add(CreateNotificationChannelEditor(channel));
+            }
+        }
+        RefreshNotificationChannelEmptyState();
+    }
+
+    private NotificationChannelEditorItem CreateNotificationChannelEditor(
+        NotificationChannelSettings channel) =>
+        new(channel, () =>
+        {
+            if (!_initializing)
+            {
+                SettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        });
+
+    private void RefreshNotificationChannelEmptyState() =>
+        NotificationChannelsEmptyText.Visibility = _notificationChannelEditors.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     private void BrowseDirectoryButton_Click(object sender, RoutedEventArgs e) =>
         BrowseDirectoryRequested?.Invoke(this, EventArgs.Empty);

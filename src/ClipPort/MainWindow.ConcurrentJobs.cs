@@ -692,6 +692,35 @@ public sealed partial class MainWindow
 
         RefreshHistoryItem(job);
         await SaveHistorySafeAsync();
+        await SendJobNotificationSafeAsync(job);
+    }
+
+    private async Task SendJobNotificationSafeAsync(JobHistoryItem job)
+    {
+        try
+        {
+            NotificationBatchResult result = await _notificationService.NotifyJobAsync(
+                _appSettings.Notifications,
+                job);
+            if (result.FailureCount > 0)
+            {
+                string failures = string.Join(
+                    "; ",
+                    result.Deliveries
+                        .Where(delivery => !delivery.Success)
+                        .Select(delivery => $"{delivery.ChannelName}: {delivery.Detail}"));
+                await _logService.WriteAsync(ResourceService.Format(
+                    "Notification.DeliveryFailures",
+                    failures));
+            }
+        }
+        catch (Exception ex)
+        {
+            // External notification failures must never change the task result.
+            await _logService.WriteAsync(ResourceService.Format(
+                "Notification.DeliveryFailures",
+                ex.Message));
+        }
     }
 
     private void ConcurrentHistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -836,15 +865,20 @@ public sealed partial class MainWindow
             : $"{overall:F2}%";
         bool automaticallyPaused = IsRuntimeAutomaticallyPaused(runtime);
         bool runtimePaused = runtime.IsPaused || automaticallyPaused;
-        CopySpeedText.Text = !runtimePaused && copyStillActive && copyInfo is not null
-            ? $"{FormatBytes(copyInfo.BytesPerSecond)}/s"
-            : "--";
+        bool taskFinished = job.Status is not JobStatus.Queued and not JobStatus.Running;
+        CopySpeedText.Text = taskFinished && job.CopyEnabled
+            ? GetCompletedAverageSpeed(job.CopiedBytes, job.CopySeconds)
+            : !runtimePaused && copyStillActive && copyInfo is not null
+                ? $"{FormatBytes(copyInfo.BytesPerSecond)}/s"
+                : "--";
         bool verificationActive = !runtimePaused &&
             verifyInfo is { IsPhaseActive: true } &&
             runtime.ProcessedVerifyFiles < totalFiles;
-        VerifySpeedText.Text = runtime.Options.VerifyFiles
-            ? $"{FormatBytes(verificationActive ? verifyInfo!.BytesPerSecond : 0)}/s"
-            : "--";
+        VerifySpeedText.Text = taskFinished && runtime.Options.VerifyFiles
+            ? GetCompletedAverageSpeed(job.TotalBytes, job.VerifySeconds)
+            : runtime.Options.VerifyFiles
+                ? $"{FormatBytes(verificationActive ? verifyInfo!.BytesPerSecond : 0)}/s"
+                : "--";
         UpdateThroughputCharts(
             job.CopyByteSpeedSamples,
             job.CopyItemSpeedSamples,

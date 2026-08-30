@@ -139,7 +139,29 @@ public sealed partial class MainWindow
         Language = settings.Language,
         ExplorerContextMenuEnabled = settings.ExplorerContextMenuEnabled,
         LegacyExplorerContextMenuEnabled = settings.LegacyExplorerContextMenuEnabled,
+        Notifications = CloneNotificationSettings(settings.Notifications),
         LogAndReportDirectory = settings.LogAndReportDirectory
+    };
+
+    private static NotificationSettings CloneNotificationSettings(
+        NotificationSettings settings) => new()
+    {
+        NotifyOnTaskCompleted = settings.NotifyOnTaskCompleted,
+        NotifyOnTaskFailed = settings.NotifyOnTaskFailed,
+        Channels = settings.Channels.Select(channel => new NotificationChannelSettings
+        {
+            Id = channel.Id,
+            DisplayName = channel.DisplayName,
+            Kind = channel.Kind,
+            IsEnabled = channel.IsEnabled,
+            Endpoint = channel.Endpoint,
+            SmtpHost = channel.SmtpHost,
+            SmtpPort = channel.SmtpPort,
+            SmtpUsername = channel.SmtpUsername,
+            SmtpPassword = channel.SmtpPassword,
+            SmtpFrom = channel.SmtpFrom,
+            SmtpRecipients = channel.SmtpRecipients
+        }).ToList()
     };
 
     private void ApplySettingsSnapshot(AppSettings settings)
@@ -150,6 +172,7 @@ public sealed partial class MainWindow
         _appSettings.ExplorerContextMenuEnabled = settings.ExplorerContextMenuEnabled;
         _appSettings.LegacyExplorerContextMenuEnabled =
             settings.LegacyExplorerContextMenuEnabled;
+        _appSettings.Notifications = CloneNotificationSettings(settings.Notifications);
         _appSettings.LogAndReportDirectory = settings.LogAndReportDirectory;
     }
 

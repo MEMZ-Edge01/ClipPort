@@ -105,22 +105,15 @@ internal sealed class BackgroundVerificationWorker : IDisposable
             watch.Start();
             long processedBytes = 0;
             int processedFiles = 0;
-            bool verificationHasStarted = false;
             while (true)
             {
                 VerificationWorkItem item;
                 if (!_queue.TryTake(out item!))
                 {
-                    if (verificationHasStarted)
-                    {
-                        ReportProgress(
-                            watch,
-                            processedBytes,
-                            processedFiles,
-                            currentFile: string.Empty,
-                            bytesPerSecond: 0,
-                            isPhaseActive: false);
-                    }
+                    // Files arrive one by one after their destination writes commit.
+                    // A brief empty queue is not the end of background verification;
+                    // keep the last useful rate and combined status until more work
+                    // arrives or the whole task completes.
                     try
                     {
                         item = _queue.Take(_cancellationToken);
@@ -137,14 +130,12 @@ internal sealed class BackgroundVerificationWorker : IDisposable
                     .Invoke(_cancellationToken)
                     .GetAwaiter()
                     .GetResult();
-                verificationHasStarted = true;
                 ReportProgress(
                     watch,
                     processedBytes,
                     processedFiles,
                     item.Source.RelativePath,
-                    processedBytes / Math.Max(watch.Elapsed.TotalSeconds, 0.001),
-                    isPhaseActive: true);
+                    processedBytes / Math.Max(watch.Elapsed.TotalSeconds, 0.001));
                 BackgroundVerificationOutcome outcome = Verify(item);
                 _outcomes.Add(outcome);
                 processedBytes += item.Source.Length;
@@ -154,8 +145,7 @@ internal sealed class BackgroundVerificationWorker : IDisposable
                     processedBytes,
                     processedFiles,
                     item.Source.RelativePath,
-                    processedBytes / Math.Max(watch.Elapsed.TotalSeconds, 0.001),
-                    isPhaseActive: true);
+                    processedBytes / Math.Max(watch.Elapsed.TotalSeconds, 0.001));
             }
 
             watch.Stop();
@@ -187,8 +177,7 @@ internal sealed class BackgroundVerificationWorker : IDisposable
         long processedBytes,
         int processedFiles,
         string currentFile,
-        double bytesPerSecond,
-        bool isPhaseActive)
+        double bytesPerSecond)
     {
         _progress.Report(new CopyProgressInfo(
             CopyPhase.Verifying,
@@ -203,8 +192,7 @@ internal sealed class BackgroundVerificationWorker : IDisposable
             SuccessfulBytes = _outcomes
                 .Where(result => result.Failure is null)
                 .Sum(result => result.WorkItem.Source.Length),
-            SuccessfulFiles = _outcomes.Count(result => result.Failure is null),
-            IsPhaseActive = isPhaseActive
+            SuccessfulFiles = _outcomes.Count(result => result.Failure is null)
         });
     }
 

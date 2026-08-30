@@ -39,9 +39,9 @@ $manifest = (Get-Content -LiteralPath $manifestTemplate -Raw -Encoding utf8).
 Set-Content -LiteralPath (Join-Path $registrationDirectory 'AppxManifest.xml') `
     -Value $manifest -Encoding utf8
 
-foreach ($assetName in @('StoreLogo.png', 'Square150x150Logo.png', 'Square44x44Logo.png')) {
-    Copy-Item -LiteralPath $iconPath -Destination (Join-Path $assetsDirectory $assetName)
-}
+& (Join-Path $PSScriptRoot 'new-shell-package-assets.ps1') `
+    -SourcePath $iconPath `
+    -DestinationDirectory $assetsDirectory
 
 # Loose-manifest registration is the Windows-supported development path for a
 # sparse package. The production installer installs the signed MSIX instead.

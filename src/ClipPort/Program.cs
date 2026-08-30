@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using ClipPort.Models;
+using ClipPort.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
@@ -11,8 +11,6 @@ namespace ClipPort;
 
 public static class Program
 {
-    private const string SingleInstanceKey = "ClipPort.MainInstance";
-
     [STAThread]
     public static int Main(string[] arguments)
     {
@@ -20,17 +18,20 @@ public static class Program
 
         AppActivationArguments activationArguments =
             AppInstance.GetCurrent().GetActivatedEventArgs();
-        AppInstance mainInstance = AppInstance.FindOrRegisterForKey(SingleInstanceKey);
-        if (!mainInstance.IsCurrent)
+        AppActivationRequest request = CreateActivationRequest(
+            arguments,
+            activationArguments);
+        using SingleInstanceCoordinator instanceCoordinator =
+            SingleInstanceCoordinator.Acquire();
+        if (!instanceCoordinator.IsPrimary)
         {
-            RedirectActivation(mainInstance, activationArguments);
-            return 0;
+            return instanceCoordinator.TryRedirect(request) ? 0 : 2;
         }
 
-        mainInstance.Activated += (_, redirectedArguments) =>
-            ActivationRouter.Enqueue(ParseActivation(redirectedArguments));
-        ActivationRouter.Enqueue(new AppActivationRequest(
-            QuickStartRequestParser.Parse(arguments)));
+        // Start the listener before XAML initialization. Early Explorer launches
+        // stay queued in ActivationRouter until the main window has loaded.
+        instanceCoordinator.StartListening(ActivationRouter.Enqueue);
+        ActivationRouter.Enqueue(request);
 
         Application.Start(_applicationInitializationCallbackParams =>
         {
@@ -40,6 +41,17 @@ public static class Program
             new App();
         });
         return 0;
+    }
+
+    private static AppActivationRequest CreateActivationRequest(
+        IReadOnlyList<string> commandLineArguments,
+        AppActivationArguments activationArguments)
+    {
+        QuickStartRequest? commandLineRequest =
+            QuickStartRequestParser.Parse(commandLineArguments);
+        return commandLineRequest is not null
+            ? new AppActivationRequest(commandLineRequest)
+            : ParseActivation(activationArguments);
     }
 
     private static AppActivationRequest ParseActivation(
@@ -52,32 +64,6 @@ public static class Program
         }
 
         return new AppActivationRequest(null);
-    }
-
-    private static void RedirectActivation(
-        AppInstance mainInstance,
-        AppActivationArguments activationArguments)
-    {
-        Task.Run(async () =>
-        {
-            await mainInstance.RedirectActivationToAsync(activationArguments);
-            try
-            {
-                using Process process = Process.GetProcessById(
-                    checked((int)mainInstance.ProcessId));
-                nint windowHandle = process.MainWindowHandle;
-                if (windowHandle != 0)
-                {
-                    ShowWindowAsync(windowHandle, ShowWindowRestore);
-                    SetForegroundWindow(windowHandle);
-                }
-            }
-            catch (Exception ex) when (
-                ex is ArgumentException or InvalidOperationException)
-            {
-                // The primary instance can close while activation is being redirected.
-            }
-        }).GetAwaiter().GetResult();
     }
 
     private static string[] SplitCommandLine(string commandLine)
@@ -111,8 +97,6 @@ public static class Program
         }
     }
 
-    private const int ShowWindowRestore = 9;
-
     [DllImport("shell32.dll", SetLastError = true)]
     private static extern nint CommandLineToArgvW(
         [MarshalAs(UnmanagedType.LPWStr)] string commandLine,
@@ -121,16 +105,7 @@ public static class Program
     [DllImport("kernel32.dll")]
     private static extern nint LocalFree(nint memory);
 
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ShowWindowAsync(nint windowHandle, int command);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetForegroundWindow(nint windowHandle);
 }
-
-internal sealed record AppActivationRequest(QuickStartRequest? QuickStartRequest);
 
 internal static class ActivationRouter
 {

@@ -542,4 +542,53 @@
   <data name="Report.VerificationExecutionMode" xml:space="preserve"><value>Verification mode: {0}</value></data>
   <data name="Report.VerificationDuringCopy" xml:space="preserve"><value>Background verification while copying</value></data>
   <data name="Report.VerificationAfterCopy" xml:space="preserve"><value>Verification after copying</value></data>
+  <data name="NotificationNavText.Text" xml:space="preserve"><value>Notifications</value></data>
+  <data name="NotificationTitle.Text" xml:space="preserve"><value>Notifications</value></data>
+  <data name="NotificationDesc.Text" xml:space="preserve"><value>Send task results through one or more external channels when a task ends.</value></data>
+  <data name="NotificationScenesTitle.Text" xml:space="preserve"><value>Send for</value></data>
+  <data name="NotifyOnCompletedToggle.Header" xml:space="preserve"><value>Task completed</value></data>
+  <data name="NotifyOnFailedToggle.Header" xml:space="preserve"><value>Task failed</value></data>
+  <data name="NotificationScenesHint.Text" xml:space="preserve"><value>Failure includes partial completion, verification failure, and execution failure. Cancellation and interruption do not send failure notifications.</value></data>
+  <data name="NotificationChannelsTitle.Text" xml:space="preserve"><value>Notification channels</value></data>
+  <data name="NotificationChannelsHint.Text" xml:space="preserve"><value>Feishu, WeCom, DingTalk, and Bark use HTTP/HTTPS push endpoints, not WebSockets. Channel secrets and SMTP passwords are encrypted with the current Windows user's credentials.</value></data>
+  <data name="AddNotificationChannelButton.Content" xml:space="preserve"><value>Add channel</value></data>
+  <data name="NotificationChannelsEmptyText.Text" xml:space="preserve"><value>No notification channels have been added.</value></data>
+  <data name="NotificationChannelNameBox.Header" xml:space="preserve"><value>Channel name</value></data>
+  <data name="NotificationChannelKindBox.Header" xml:space="preserve"><value>Channel type</value></data>
+  <data name="RemoveNotificationChannelButton.Content" xml:space="preserve"><value>Remove</value></data>
+  <data name="NotificationChannelEnabledToggle.Header" xml:space="preserve"><value>Enable this channel</value></data>
+  <data name="NotificationHttpHint.Text" xml:space="preserve"><value>Paste the bot webhook. For Bark, enter an address containing the device key, such as https://api.day.app/your-device-key.</value></data>
+  <data name="SmtpHostBox.Header" xml:space="preserve"><value>SMTP server</value></data>
+  <data name="SmtpPortBox.Header" xml:space="preserve"><value>Port</value></data>
+  <data name="SmtpUsernameBox.Header" xml:space="preserve"><value>Login account</value></data>
+  <data name="SmtpPasswordBox.Header" xml:space="preserve"><value>Password or app password</value></data>
+  <data name="SmtpFromBox.Header" xml:space="preserve"><value>From address or display name (optional)</value></data>
+  <data name="SmtpRecipientsBox.Header" xml:space="preserve"><value>Recipients</value></data>
+  <data name="SmtpSecurityHint.Text" xml:space="preserve"><value>The connection automatically selects SSL/TLS or STARTTLS. Prefer an app-specific password supplied by your mail provider.</value></data>
+  <data name="TestNotificationChannelButton.Content" xml:space="preserve"><value>Send test</value></data>
+  <data name="Notification.ChannelKind.WeCom" xml:space="preserve"><value>WeCom</value></data>
+  <data name="Notification.ChannelKind.DingTalk" xml:space="preserve"><value>DingTalk</value></data>
+  <data name="Notification.ChannelKind.Feishu" xml:space="preserve"><value>Feishu</value></data>
+  <data name="Notification.ChannelKind.Bark" xml:space="preserve"><value>Bark</value></data>
+  <data name="Notification.ChannelKind.Smtp" xml:space="preserve"><value>SMTP email</value></data>
+  <data name="Notification.WebhookAddress" xml:space="preserve"><value>Webhook address</value></data>
+  <data name="Notification.BarkAddress" xml:space="preserve"><value>Bark push address</value></data>
+  <data name="Notification.TestTitle" xml:space="preserve"><value>ClipPort test notification</value></data>
+  <data name="Notification.TestBody" xml:space="preserve"><value>This message was sent from ClipPort notification settings.&#xA;Channel: {0}&#xA;Time: {1}</value></data>
+  <data name="Notification.TestSending" xml:space="preserve"><value>Sending test notification…</value></data>
+  <data name="Notification.TestSucceeded" xml:space="preserve"><value>Test notification sent.</value></data>
+  <data name="Notification.TestFailed" xml:space="preserve"><value>Test notification failed: {0}</value></data>
+  <data name="Notification.SendSucceeded" xml:space="preserve"><value>Sent</value></data>
+  <data name="Notification.JobCompletedTitle" xml:space="preserve"><value>ClipPort: task completed</value></data>
+  <data name="Notification.JobFailedTitle" xml:space="preserve"><value>ClipPort: task failed</value></data>
+  <data name="Notification.JobBody" xml:space="preserve"><value>Task: {0}&#xA;Status: {1}&#xA;Files: {2}&#xA;Data: {3}&#xA;Duration: {4}&#xA;Details: {5}&#xA;Finished: {6}</value></data>
+  <data name="Notification.NoErrorDetail" xml:space="preserve"><value>None</value></data>
+  <data name="Notification.DeliveryFailures" xml:space="preserve"><value>The task result was saved, but some notifications failed: {0}</value></data>
+  <data name="Notification.Error.Timeout" xml:space="preserve"><value>Connection timed out</value></data>
+  <data name="Notification.Error.UnsupportedChannel" xml:space="preserve"><value>Unsupported notification channel</value></data>
+  <data name="Notification.Error.SmtpFieldsRequired" xml:space="preserve"><value>Enter the SMTP server, port, account, password or app password, and recipients.</value></data>
+  <data name="Notification.Error.HttpAddressRequired" xml:space="preserve"><value>This channel requires a valid HTTP or HTTPS address. ws:// and wss:// WebSocket addresses are not supported.</value></data>
+  <data name="Notification.Error.BarkKeyRequired" xml:space="preserve"><value>The Bark address does not contain a device key.</value></data>
+  <data name="Notification.Error.HttpStatus" xml:space="preserve"><value>HTTP {0}: {1}</value></data>
+  <data name="Notification.Error.ProviderCode" xml:space="preserve"><value>The provider returned error code {0}</value></data>
 </root>

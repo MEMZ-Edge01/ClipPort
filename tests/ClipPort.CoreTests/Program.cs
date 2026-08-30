@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Diagnostics;
+using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -14,8 +16,13 @@ using Microsoft.Win32;
 
 internal static class Program
 {
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] arguments)
     {
+        if (arguments is ["--single-instance-child", string instanceName, string directory])
+        {
+            return RunSingleInstanceChild(instanceName, directory);
+        }
+
         var tests = new (string Name, Func<Task> Run)[]
         {
             ("localization resource coverage", TestLocalizationResourceCoverageAsync),
@@ -40,6 +47,7 @@ internal static class Program
             ("ask mode supports per-file decisions", TestAskPerFileDecisionsAsync),
             ("path safety and root-folder naming", TestPathSafetyAsync),
             ("shared display formatting", TestDisplayFormattingAsync),
+            ("completed tasks show average speed immediately", TestCompletedAverageSpeedPresentationAsync),
             ("runtime clock refreshes without progress events", TestRuntimeClockRefreshAsync),
             ("copy throughput waveform sampling", TestCopyThroughputSamplingAsync),
             ("source scanning yields the caller thread", TestSourceScanningYieldsCallerAsync),
@@ -47,9 +55,16 @@ internal static class Program
             ("task modes show only their throughput charts", TestTaskModeThroughputChartsAsync),
             ("wide layouts keep stretching", TestWideLayoutsKeepStretchingAsync),
             ("quick-start requests preserve the opposite directory", TestQuickStartRequestsAsync),
+            ("cross-process activation redirects its payload", TestSingleInstanceCoordinatorAsync),
+            ("quick-start activation stays in one process", TestSingleInstanceActivationWiringAsync),
+            ("shell package icons match manifest dimensions", TestShellPackageAssetWiringAsync),
             ("traditional quick-start registration is certificate-free", TestLegacyExplorerContextMenuRegistrationAsync),
             ("traditional quick-start registry lifecycle is reversible", TestLegacyExplorerContextMenuRegistryLifecycleAsync),
             ("invalid settings enums recover safely", TestInvalidSettingsEnumsAsync),
+            ("notification settings persist multiple channels", TestNotificationSettingsPersistenceAsync),
+            ("notification channels use provider payloads", TestNotificationChannelsAsync),
+            ("notification scenes match terminal task states", TestNotificationScenarioPolicyAsync),
+            ("finalized tasks notify after persistence", TestNotificationLifecycleWiringAsync),
             ("failed settings save prevents package uninstall", TestPackageUninstallSaveFailureAsync),
             ("package uninstall saves disabled state first", TestPackageUninstallSaveOrderAsync),
             ("package uninstall preserves enabled sibling state", TestPackageUninstallPreservesSiblingSettingAsync),
@@ -801,6 +816,206 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task TestCompletedAverageSpeedPresentationAsync()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "ClipPort",
+            "MainWindow.ConcurrentJobs.cs"));
+        Match runtimePresentation = Regex.Match(
+            source,
+            @"private void ShowRuntimeJob\(CopyJobRuntime runtime\)(?<body>.*?)private static double GetJobPercent",
+            RegexOptions.Singleline);
+
+        Assert(runtimePresentation.Success &&
+               runtimePresentation.Groups["body"].Value.Contains(
+                   "GetCompletedAverageSpeed",
+                   StringComparison.Ordinal),
+            "A task that has just completed must replace its live rate with average speed before runtime cleanup finishes.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestSingleInstanceActivationWiringAsync()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "ClipPort",
+            "Program.cs"));
+
+        Assert(source.Contains("SingleInstanceCoordinator.Acquire", StringComparison.Ordinal) &&
+               source.Contains("TryRedirect", StringComparison.Ordinal) &&
+               !source.Contains("FindOrRegisterForKey", StringComparison.Ordinal),
+            "Quick-start activation must use one cross-identity process coordinator instead of package-scoped AppInstance registration.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task TestSingleInstanceCoordinatorAsync()
+    {
+        string instanceName = $"ClipPort.CoreTests.{Guid.NewGuid():N}";
+        Assert(SingleInstanceCoordinator.GetPipeName(instanceName) ==
+               $@"LOCAL\{instanceName}.Activation",
+            "Packaged desktop activation pipes must use the session-local LOCAL prefix.");
+        using SingleInstanceCoordinator primary =
+            SingleInstanceCoordinator.Acquire(instanceName);
+        Assert(primary.IsPrimary,
+            "The first process must own the application lifetime marker.");
+
+        var received = new TaskCompletionSource<AppActivationRequest>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        primary.StartListening(request => received.TrySetResult(request));
+        string directory = Path.GetFullPath(Path.GetTempPath());
+        var expected = new AppActivationRequest(
+            new QuickStartRequest(QuickStartDirectoryRole.Source, directory));
+
+        using Process child = Process.Start(CreateSingleInstanceChildStartInfo(
+            instanceName,
+            directory)) ?? throw new InvalidOperationException(
+                "The single-instance test child process did not start.");
+        string standardOutput = await child.StandardOutput.ReadToEndAsync();
+        string standardError = await child.StandardError.ReadToEndAsync();
+        await child.WaitForExitAsync();
+        Assert(child.ExitCode == 0,
+            $"The secondary process did not redirect to the primary: {standardOutput}{standardError}");
+        AppActivationRequest actual = await received.Task.WaitAsync(
+            TimeSpan.FromSeconds(2));
+        Assert(actual == expected,
+            "Cross-instance activation must preserve the quick-start role and directory.");
+    }
+
+    private static int RunSingleInstanceChild(
+        string instanceName,
+        string directory)
+    {
+        using SingleInstanceCoordinator coordinator =
+            SingleInstanceCoordinator.Acquire(instanceName);
+        if (coordinator.IsPrimary)
+        {
+            Console.Error.WriteLine(
+                "The child process unexpectedly became the primary instance.");
+            return 10;
+        }
+
+        var request = new AppActivationRequest(
+            new QuickStartRequest(
+                QuickStartDirectoryRole.Source,
+                Path.GetFullPath(directory)));
+        return coordinator.TryRedirect(request, TimeSpan.FromSeconds(2))
+            ? 0
+            : 11;
+    }
+
+    private static ProcessStartInfo CreateSingleInstanceChildStartInfo(
+        string instanceName,
+        string directory)
+    {
+        string processPath = Environment.ProcessPath ??
+            throw new InvalidOperationException(
+                "The current test process path is unavailable.");
+        var startInfo = new ProcessStartInfo(processPath)
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+        if (string.Equals(
+                Path.GetFileNameWithoutExtension(processPath),
+                "dotnet",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.ArgumentList.Add(typeof(Program).Assembly.Location);
+        }
+
+        startInfo.ArgumentList.Add("--single-instance-child");
+        startInfo.ArgumentList.Add(instanceName);
+        startInfo.ArgumentList.Add(directory);
+        return startInfo;
+    }
+
+    private static async Task TestShellPackageAssetWiringAsync()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string scriptsDirectory = Path.Combine(repositoryRoot, "scripts");
+        foreach (string scriptName in new[]
+                 {
+                     "build-shell-package.ps1",
+                     "register-shell-package-for-development.ps1"
+                 })
+        {
+            string source = File.ReadAllText(Path.Combine(scriptsDirectory, scriptName));
+            Assert(source.Contains("new-shell-package-assets.ps1", StringComparison.OrdinalIgnoreCase) &&
+                   !source.Contains("Copy-Item -LiteralPath $iconPath", StringComparison.Ordinal),
+                $"{scriptName} must generate manifest-sized PNG assets instead of renaming the 2000 px source image.");
+        }
+
+        string outputDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "ClipPort-ShellAssetTests",
+            Guid.NewGuid().ToString("N"));
+        try
+        {
+            string powershellPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                "WindowsPowerShell",
+                "v1.0",
+                "powershell.exe");
+            var startInfo = new ProcessStartInfo(powershellPath)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            foreach (string argument in new[]
+                     {
+                         "-NoProfile",
+                         "-NonInteractive",
+                         "-ExecutionPolicy",
+                         "Bypass",
+                         "-File",
+                         Path.Combine(scriptsDirectory, "new-shell-package-assets.ps1"),
+                         "-SourcePath",
+                         Path.Combine(repositoryRoot, "src", "ClipPort", "Assets", "Icons", "clipport-app-icon.png"),
+                         "-DestinationDirectory",
+                         outputDirectory
+                     })
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
+            using Process process = Process.Start(startInfo) ??
+                throw new InvalidOperationException(
+                    "Windows PowerShell did not start for the shell asset test.");
+            string standardOutput = await process.StandardOutput.ReadToEndAsync();
+            string standardError = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+            Assert(process.ExitCode == 0,
+                $"Shell asset generation failed: {standardOutput}{standardError}");
+
+            foreach ((string name, int size) in new[]
+                     {
+                         ("StoreLogo.png", 50),
+                         ("Square44x44Logo.png", 44),
+                         ("Square150x150Logo.png", 150)
+                     })
+            {
+                (int width, int height) = ReadPngDimensions(
+                    Path.Combine(outputDirectory, name));
+                Assert(width == size && height == size,
+                    $"{name} must be {size}x{size}, but was {width}x{height}.");
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(outputDirectory))
+            {
+                Directory.Delete(outputDirectory, recursive: true);
+            }
+        }
+    }
+
     private static Task TestApplicationAccentControlResourcesAsync()
     {
         XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
@@ -1061,12 +1276,16 @@ internal static class Program
                 "Background verification and its non-blocking backlog must verify every file.");
             Assert(events.Any(info => info.Phase == CopyPhase.Verifying),
                 "Opportunistic mode must publish independent verification progress.");
-            Assert(events.Any(info =>
-                    info.Phase == CopyPhase.Verifying &&
+            CopyProgressInfo[] verificationEvents = events
+                .Where(info => info.Phase == CopyPhase.Verifying)
+                .ToArray();
+            Assert(verificationEvents.Any(info => info.BytesPerSecond > 0),
+                "The fixture must observe a non-zero background verification rate.");
+            Assert(!verificationEvents.Any(info =>
                     !info.IsPhaseActive &&
                     info.BytesPerSecond == 0 &&
                     string.IsNullOrEmpty(info.CurrentFile)),
-                "Background verification must publish a zero-speed idle state instead of leaving the last rate visible.");
+                "Background verification must not insert zero-speed idle events between small files because they flicker both the rate and title.");
             Assert(verificationBeforeCommit == 0,
                 "A file must be atomically committed before background verification starts.");
             Assert(!Directory.EnumerateFiles(destination, "*.clipport-partial", SearchOption.AllDirectories).Any(),
@@ -1948,6 +2167,11 @@ internal static class Program
                    idleVerification,
                    idleVerification) == CopyPhase.Copying,
             "Idle background verification must not replace an active foreground copy status.");
+        Assert(Math.Abs(
+                   DisplayFormatting.GetAverageBytesPerSecond(1_024, 2) - 512) < 0.001,
+            "Completed task average speed must use processed bytes divided by active phase time.");
+        Assert(DisplayFormatting.GetAverageBytesPerSecond(1_024, 0) == 0,
+            "Completed task average speed must remain finite when no phase time was recorded.");
         return Task.CompletedTask;
     }
 
@@ -2084,6 +2308,214 @@ internal static class Program
 
         return Task.CompletedTask;
     }
+
+    private static Task TestNotificationSettingsPersistenceAsync()
+    {
+        string root = Path.Combine(
+            Path.GetTempPath(),
+            "ClipPort-NotificationSettingsTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var settings = new AppSettings
+            {
+                Notifications = new NotificationSettings
+                {
+                    NotifyOnTaskCompleted = false,
+                    NotifyOnTaskFailed = true,
+                    Channels =
+                    [
+                        new NotificationChannelSettings
+                        {
+                            DisplayName = "operations",
+                            Kind = NotificationChannelKind.Feishu,
+                            Endpoint = "https://example.test/feishu-token"
+                        },
+                        new NotificationChannelSettings
+                        {
+                            DisplayName = "mail",
+                            Kind = NotificationChannelKind.Smtp,
+                            SmtpHost = "smtp.example.test",
+                            SmtpPort = 587,
+                            SmtpUsername = "sender@example.test",
+                            SmtpPassword = "app-password",
+                            SmtpRecipients = "receiver@example.test"
+                        }
+                    ]
+                }
+            };
+            var service = new AppSettingsService(root);
+            service.Save(settings);
+
+            string storedJson = File.ReadAllText(Path.Combine(root, "settings.json"));
+            Assert(!storedJson.Contains("feishu-token", StringComparison.Ordinal) &&
+                   !storedJson.Contains("app-password", StringComparison.Ordinal) &&
+                   storedJson.Contains("dpapi:", StringComparison.Ordinal),
+                "Webhook tokens and SMTP passwords should be DPAPI-protected on disk.");
+
+            AppSettings loaded = service.Load();
+            Assert(!loaded.Notifications.NotifyOnTaskCompleted &&
+                   loaded.Notifications.NotifyOnTaskFailed,
+                "Notification completion and failure scenes should round-trip independently.");
+            Assert(loaded.Notifications.Channels.Count == 2 &&
+                   loaded.Notifications.Channels.Select(channel => channel.Kind).SequenceEqual(
+                       [NotificationChannelKind.Feishu, NotificationChannelKind.Smtp]),
+                "Multiple notification channel types should persist in insertion order.");
+            Assert(loaded.Notifications.Channels[1].SmtpPort == 587 &&
+                   loaded.Notifications.Channels[1].SmtpPassword == "app-password",
+                "SMTP connection settings should survive a settings round-trip.");
+            Assert(loaded.Notifications.Channels.Select(channel => channel.Id).Distinct().Count() == 2,
+                "Every persisted notification channel should retain a unique identity.");
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static async Task TestNotificationChannelsAsync()
+    {
+        var handler = new RecordingNotificationHttpHandler(request =>
+        {
+            string json = request.RequestUri?.Host switch
+            {
+                "feishu.example.test" => "{\"code\":0,\"msg\":\"success\"}",
+                "bark.example.test" => "{\"code\":200,\"message\":\"success\"}",
+                _ => "{\"errcode\":0,\"errmsg\":\"ok\"}"
+            };
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json)
+            };
+        });
+        var emailSender = new RecordingNotificationEmailSender();
+        var service = new NotificationService(new HttpClient(handler), emailSender);
+        var settings = new NotificationSettings
+        {
+            Channels =
+            [
+                CreateHttpChannel(NotificationChannelKind.WeCom, "https://wecom.example.test/hook"),
+                CreateHttpChannel(NotificationChannelKind.DingTalk, "https://dingtalk.example.test/hook"),
+                CreateHttpChannel(NotificationChannelKind.Feishu, "https://feishu.example.test/hook"),
+                CreateHttpChannel(NotificationChannelKind.Bark, "https://bark.example.test/device-key"),
+                new NotificationChannelSettings
+                {
+                    Kind = NotificationChannelKind.Smtp,
+                    SmtpHost = "smtp.example.test",
+                    SmtpPort = 465,
+                    SmtpUsername = "sender@example.test",
+                    SmtpPassword = "secret",
+                    SmtpRecipients = "receiver@example.test"
+                }
+            ]
+        };
+        var job = new JobHistoryItem
+        {
+            DisplayName = "Media delivery",
+            Status = JobStatus.Completed,
+            FileCount = 4,
+            TotalBytes = 4096,
+            FinishedAt = DateTimeOffset.Now
+        };
+
+        NotificationBatchResult result = await service.NotifyJobAsync(settings, job);
+        Assert(result.Deliveries.Count == 5 && result.SuccessCount == 5,
+            "Every enabled HTTP and SMTP channel should receive the same completed-task event.");
+        Assert(handler.Requests.Count == 4 && emailSender.SendCount == 1,
+            "HTTP providers and the SMTP adapter should each be invoked exactly once.");
+
+        RecordedNotificationRequest weCom = handler.Requests.Single(request =>
+            request.Uri.Host == "wecom.example.test");
+        using (JsonDocument document = JsonDocument.Parse(weCom.Body))
+        {
+            Assert(document.RootElement.GetProperty("msgtype").GetString() == "text" &&
+                   document.RootElement.GetProperty("text").GetProperty("content")
+                       .GetString()!.Contains("Media delivery", StringComparison.Ordinal),
+                "WeCom should receive the documented msgtype/text/content payload.");
+        }
+
+        RecordedNotificationRequest feishu = handler.Requests.Single(request =>
+            request.Uri.Host == "feishu.example.test");
+        using (JsonDocument document = JsonDocument.Parse(feishu.Body))
+        {
+            Assert(document.RootElement.GetProperty("msg_type").GetString() == "text" &&
+                   document.RootElement.GetProperty("content").GetProperty("text")
+                       .GetString()!.Contains("Media delivery", StringComparison.Ordinal),
+                "Feishu should receive the documented msg_type/content/text payload.");
+        }
+
+        RecordedNotificationRequest bark = handler.Requests.Single(request =>
+            request.Uri.Host == "bark.example.test");
+        using (JsonDocument document = JsonDocument.Parse(bark.Body))
+        {
+            Assert(bark.Uri.AbsolutePath == "/push" &&
+                   document.RootElement.GetProperty("device_key").GetString() == "device-key",
+                "Bark should convert its key URL into a /push JSON request.");
+        }
+
+        int requestCount = handler.Requests.Count;
+        NotificationDeliveryResult invalidWebSocket = await service.SendTestAsync(
+            CreateHttpChannel(NotificationChannelKind.Feishu, "wss://feishu.example.test/hook"));
+        Assert(!invalidWebSocket.Success && handler.Requests.Count == requestCount,
+            "Webhook providers should reject WebSocket URLs before making a request.");
+    }
+
+    private static Task TestNotificationScenarioPolicyAsync()
+    {
+        var both = new NotificationSettings
+        {
+            NotifyOnTaskCompleted = true,
+            NotifyOnTaskFailed = true
+        };
+        Assert(NotificationService.ShouldNotify(both, JobStatus.Completed),
+            "Completed tasks should use the completion scene.");
+        Assert(NotificationService.ShouldNotify(both, JobStatus.CompletedWithErrors) &&
+               NotificationService.ShouldNotify(both, JobStatus.VerificationFailed) &&
+               NotificationService.ShouldNotify(both, JobStatus.Failed),
+            "Partial completion, verification failure, and execution failure should use the failure scene.");
+        Assert(!NotificationService.ShouldNotify(both, JobStatus.Cancelled) &&
+               !NotificationService.ShouldNotify(both, JobStatus.Interrupted),
+            "Cancellation and interruption should not be mislabeled as task failures.");
+
+        both.NotifyOnTaskCompleted = false;
+        Assert(!NotificationService.ShouldNotify(both, JobStatus.Completed) &&
+               NotificationService.ShouldNotify(both, JobStatus.Failed),
+            "Completion and failure notification scenes should be independently selectable.");
+        return Task.CompletedTask;
+    }
+
+    private static Task TestNotificationLifecycleWiringAsync()
+    {
+        string source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "ClipPort",
+            "MainWindow.ConcurrentJobs.cs"));
+        Match finalization = Regex.Match(
+            source,
+            @"private async Task FinalizeJobAsync\((?<body>.*?)private async Task SendJobNotificationSafeAsync",
+            RegexOptions.Singleline);
+        int saveIndex = finalization.Groups["body"].Value.IndexOf(
+            "await SaveHistorySafeAsync()",
+            StringComparison.Ordinal);
+        int notifyIndex = finalization.Groups["body"].Value.IndexOf(
+            "await SendJobNotificationSafeAsync(job)",
+            StringComparison.Ordinal);
+        Assert(finalization.Success && saveIndex >= 0 && notifyIndex > saveIndex,
+            "A terminal task should persist its result before awaiting external notification delivery.");
+        return Task.CompletedTask;
+    }
+
+    private static NotificationChannelSettings CreateHttpChannel(
+        NotificationChannelKind kind,
+        string endpoint) => new()
+    {
+        Kind = kind,
+        Endpoint = endpoint
+    };
 
     private static Task TestQuickStartRequestsAsync()
     {
@@ -2795,6 +3227,38 @@ internal static class Program
         return Convert.ToHexString(await SHA256.HashDataAsync(stream));
     }
 
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "ClipPort.sln")))
+            {
+                return directory.FullName;
+            }
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException(
+            "Could not locate the ClipPort repository root from the test output directory.");
+    }
+
+    private static (int Width, int Height) ReadPngDimensions(string path)
+    {
+        byte[] header = new byte[24];
+        using FileStream stream = File.OpenRead(path);
+        stream.ReadExactly(header);
+        ReadOnlySpan<byte> pngSignature =
+        [
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+        ];
+        Assert(header.AsSpan(0, pngSignature.Length).SequenceEqual(pngSignature),
+            $"{path} is not a PNG file.");
+        return (
+            BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16, 4)),
+            BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20, 4)));
+    }
+
     private static void Assert(bool condition, string message)
     {
         if (!condition)
@@ -2816,6 +3280,40 @@ internal static class Program
         {
             Thread.Sleep(delay);
             return entries;
+        }
+    }
+
+    private sealed record RecordedNotificationRequest(Uri Uri, string Body);
+
+    private sealed class RecordingNotificationHttpHandler(
+        Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _respond = respond;
+        public ConcurrentQueue<RecordedNotificationRequest> Requests { get; } = new();
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            string body = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            Requests.Enqueue(new RecordedNotificationRequest(request.RequestUri!, body));
+            return _respond(request);
+        }
+    }
+
+    private sealed class RecordingNotificationEmailSender : INotificationEmailSender
+    {
+        public int SendCount { get; private set; }
+
+        public Task SendAsync(
+            NotificationChannelSettings channel,
+            NotificationMessage message,
+            CancellationToken cancellationToken)
+        {
+            SendCount++;
+            return Task.CompletedTask;
         }
     }
 }

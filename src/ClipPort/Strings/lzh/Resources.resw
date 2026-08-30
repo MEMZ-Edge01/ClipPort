@@ -542,4 +542,53 @@
   <data name="Report.VerificationExecutionMode" xml:space="preserve"><value>校驗行法：{0}</value></data>
   <data name="Report.VerificationDuringCopy" xml:space="preserve"><value>傳寫時後臺校驗</value></data>
   <data name="Report.VerificationAfterCopy" xml:space="preserve"><value>傳寫畢而校驗</value></data>
+  <data name="NotificationNavText.Text" xml:space="preserve"><value>告訊</value></data>
+  <data name="NotificationTitle.Text" xml:space="preserve"><value>告訊</value></data>
+  <data name="NotificationDesc.Text" xml:space="preserve"><value>事畢，以一渠或眾渠告其果。</value></data>
+  <data name="NotificationScenesTitle.Text" xml:space="preserve"><value>告訊之時</value></data>
+  <data name="NotifyOnCompletedToggle.Header" xml:space="preserve"><value>事成</value></data>
+  <data name="NotifyOnFailedToggle.Header" xml:space="preserve"><value>事敗</value></data>
+  <data name="NotificationScenesHint.Text" xml:space="preserve"><value>敗者含功未竟、校驗不合及運行失利；自止或程式中斷不作敗訊。</value></data>
+  <data name="NotificationChannelsTitle.Text" xml:space="preserve"><value>告訊之渠</value></data>
+  <data name="NotificationChannelsHint.Text" xml:space="preserve"><value>飛書、企業微信、釘釘與 Bark 皆用 HTTP/HTTPS 推送之址，非 WebSocket。渠鑰與 SMTP 密令以今 Windows 用戶之憑據加密而存。</value></data>
+  <data name="AddNotificationChannelButton.Content" xml:space="preserve"><value>添渠</value></data>
+  <data name="NotificationChannelsEmptyText.Text" xml:space="preserve"><value>未添告訊之渠。</value></data>
+  <data name="NotificationChannelNameBox.Header" xml:space="preserve"><value>渠名</value></data>
+  <data name="NotificationChannelKindBox.Header" xml:space="preserve"><value>渠類</value></data>
+  <data name="RemoveNotificationChannelButton.Content" xml:space="preserve"><value>移除</value></data>
+  <data name="NotificationChannelEnabledToggle.Header" xml:space="preserve"><value>啟此渠</value></data>
+  <data name="NotificationHttpHint.Text" xml:space="preserve"><value>貼機器人 Webhook；Bark 當填含器鑰之址，如 https://api.day.app/your-device-key。</value></data>
+  <data name="SmtpHostBox.Header" xml:space="preserve"><value>SMTP 主機</value></data>
+  <data name="SmtpPortBox.Header" xml:space="preserve"><value>埠</value></data>
+  <data name="SmtpUsernameBox.Header" xml:space="preserve"><value>登入之號</value></data>
+  <data name="SmtpPasswordBox.Header" xml:space="preserve"><value>密令或授權碼</value></data>
+  <data name="SmtpFromBox.Header" xml:space="preserve"><value>發信之址或名（可無）</value></data>
+  <data name="SmtpRecipientsBox.Header" xml:space="preserve"><value>受信者</value></data>
+  <data name="SmtpSecurityHint.Text" xml:space="preserve"><value>連接自擇 SSL/TLS 或 STARTTLS；宜用郵驛所授應用專用密令。</value></data>
+  <data name="TestNotificationChannelButton.Content" xml:space="preserve"><value>試推</value></data>
+  <data name="Notification.ChannelKind.WeCom" xml:space="preserve"><value>企業微信</value></data>
+  <data name="Notification.ChannelKind.DingTalk" xml:space="preserve"><value>釘釘</value></data>
+  <data name="Notification.ChannelKind.Feishu" xml:space="preserve"><value>飛書</value></data>
+  <data name="Notification.ChannelKind.Bark" xml:space="preserve"><value>Bark</value></data>
+  <data name="Notification.ChannelKind.Smtp" xml:space="preserve"><value>SMTP 郵書</value></data>
+  <data name="Notification.WebhookAddress" xml:space="preserve"><value>Webhook 之址</value></data>
+  <data name="Notification.BarkAddress" xml:space="preserve"><value>Bark 推送之址</value></data>
+  <data name="Notification.TestTitle" xml:space="preserve"><value>ClipPort 試訊</value></data>
+  <data name="Notification.TestBody" xml:space="preserve"><value>此訊發自 ClipPort 告訊設定。&#xA;渠：{0}&#xA;時：{1}</value></data>
+  <data name="Notification.TestSending" xml:space="preserve"><value>方送試訊…</value></data>
+  <data name="Notification.TestSucceeded" xml:space="preserve"><value>試推已成。</value></data>
+  <data name="Notification.TestFailed" xml:space="preserve"><value>試推未成：{0}</value></data>
+  <data name="Notification.SendSucceeded" xml:space="preserve"><value>已送</value></data>
+  <data name="Notification.JobCompletedTitle" xml:space="preserve"><value>ClipPort：事成</value></data>
+  <data name="Notification.JobFailedTitle" xml:space="preserve"><value>ClipPort：事敗</value></data>
+  <data name="Notification.JobBody" xml:space="preserve"><value>事：{0}&#xA;態：{1}&#xA;文卷：{2}&#xA;資料量：{3}&#xA;歷時：{4}&#xA;詳：{5}&#xA;畢於：{6}</value></data>
+  <data name="Notification.NoErrorDetail" xml:space="preserve"><value>無</value></data>
+  <data name="Notification.DeliveryFailures" xml:space="preserve"><value>事果已存，然有告訊未送：{0}</value></data>
+  <data name="Notification.Error.Timeout" xml:space="preserve"><value>連接逾時</value></data>
+  <data name="Notification.Error.UnsupportedChannel" xml:space="preserve"><value>此告訊之渠不受</value></data>
+  <data name="Notification.Error.SmtpFieldsRequired" xml:space="preserve"><value>請悉填 SMTP 主機、埠、帳號、密令或授權碼與受信者。</value></data>
+  <data name="Notification.Error.HttpAddressRequired" xml:space="preserve"><value>此渠須有效 HTTP 或 HTTPS 之址，不受 ws:// 或 wss:// WebSocket 之址。</value></data>
+  <data name="Notification.Error.BarkKeyRequired" xml:space="preserve"><value>Bark 之址無器鑰。</value></data>
+  <data name="Notification.Error.HttpStatus" xml:space="preserve"><value>HTTP {0}：{1}</value></data>
+  <data name="Notification.Error.ProviderCode" xml:space="preserve"><value>其服返錯碼 {0}</value></data>
 </root>

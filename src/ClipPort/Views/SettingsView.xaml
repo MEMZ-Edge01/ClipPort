@@ -83,6 +83,15 @@
                                 <TextBlock x:Name="QuickStartNavText" x:Uid="QuickStartNavText" Text="快速开启" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="NotificationNavButton" Style="{StaticResource SettingsNavButtonStyle}"
+                                Click="NotificationNavButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Border Width="24" Height="24" CornerRadius="5" Background="#FFFFFF">
+                                    <FontIcon Glyph="&#xE7F4;" FontSize="14" Foreground="#202020" />
+                                </Border>
+                                <TextBlock x:Name="NotificationNavText" x:Uid="NotificationNavText" Text="通知" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="AboutNavButton" Style="{StaticResource SettingsNavButtonStyle}"
                                 Click="AboutNavButton_Click">
                             <StackPanel Orientation="Horizontal" Spacing="11">
@@ -409,6 +418,171 @@
                                        Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
                     </Border>
+                </StackPanel>
+
+                <StackPanel x:Name="NotificationPanel" Spacing="24" Visibility="Collapsed">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="NotificationTitle" x:Uid="NotificationTitle"
+                                   Text="通知" FontSize="28" FontWeight="SemiBold" />
+                        <TextBlock x:Name="NotificationDesc" x:Uid="NotificationDesc"
+                                   Text="任务结束后，通过一个或多个外部渠道发送结果。"
+                                   FontSize="14" TextWrapping="Wrap"
+                                   Foreground="{StaticResource SecondaryTextBrush}" />
+                    </StackPanel>
+
+                    <Border Style="{StaticResource SettingsCardStyle}">
+                        <StackPanel Spacing="16">
+                            <TextBlock x:Name="NotificationScenesTitle" x:Uid="NotificationScenesTitle"
+                                       Text="发送场景" FontSize="18" FontWeight="SemiBold" />
+                            <ToggleSwitch x:Name="NotifyOnCompletedToggle"
+                                          x:Uid="NotifyOnCompletedToggle"
+                                          Header="任务完成"
+                                          Toggled="NotifyOnCompletedToggle_Toggled" />
+                            <ToggleSwitch x:Name="NotifyOnFailedToggle"
+                                          x:Uid="NotifyOnFailedToggle"
+                                          Header="任务失败"
+                                          Toggled="NotifyOnFailedToggle_Toggled" />
+                            <TextBlock x:Name="NotificationScenesHint" x:Uid="NotificationScenesHint"
+                                       Text="失败包括部分完成、校验失败和执行失败；主动取消或应用中断不会发送失败通知。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Spacing="14">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="NotificationChannelsTitle" x:Uid="NotificationChannelsTitle"
+                                           Text="通知渠道" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="NotificationChannelsHint" x:Uid="NotificationChannelsHint"
+                                           Text="飞书、企业微信、钉钉与 Bark 使用 HTTP/HTTPS 推送地址，并非 WebSocket。渠道密钥与 SMTP 密码会用当前 Windows 用户凭据加密后保存。"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource SecondaryTextBrush}" />
+                            </StackPanel>
+                            <Button x:Name="AddNotificationChannelButton"
+                                    x:Uid="AddNotificationChannelButton"
+                                    Grid.Column="1" Content="添加渠道"
+                                    Padding="16,0" Height="40"
+                                    Click="AddNotificationChannelButton_Click" />
+                        </Grid>
+
+                        <TextBlock x:Name="NotificationChannelsEmptyText"
+                                   x:Uid="NotificationChannelsEmptyText"
+                                   Text="尚未添加通知渠道。"
+                                   Margin="0,12,0,0"
+                                   Foreground="{StaticResource MutedTextBrush}" />
+
+                        <ItemsControl x:Name="NotificationChannelsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource SettingsCardStyle}" Margin="0,0,0,12">
+                                        <StackPanel Spacing="16">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="200" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="NotificationChannelNameBox"
+                                                         x:Uid="NotificationChannelNameBox"
+                                                         Header="渠道名称"
+                                                         Text="{Binding DisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <ComboBox x:Name="NotificationChannelKindBox"
+                                                          x:Uid="NotificationChannelKindBox"
+                                                          Grid.Column="1" Header="渠道类型"
+                                                          ItemsSource="{Binding KindOptions}"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectedItem="{Binding SelectedKind, Mode=TwoWay}" />
+                                                <Button x:Name="RemoveNotificationChannelButton"
+                                                        x:Uid="RemoveNotificationChannelButton"
+                                                        Grid.Column="2" Content="移除"
+                                                        Tag="{Binding}" Margin="0,24,0,0"
+                                                        Click="RemoveNotificationChannelButton_Click" />
+                                            </Grid>
+
+                                            <ToggleSwitch x:Name="NotificationChannelEnabledToggle"
+                                                          x:Uid="NotificationChannelEnabledToggle"
+                                                          Header="启用此渠道"
+                                                          IsOn="{Binding IsEnabled, Mode=TwoWay}" />
+
+                                            <StackPanel Spacing="8"
+                                                        Visibility="{Binding IsHttpChannel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <TextBox Header="{Binding EndpointHeader}"
+                                                         PlaceholderText="{Binding EndpointPlaceholder}"
+                                                         Text="{Binding Endpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBlock x:Name="NotificationHttpHint" x:Uid="NotificationHttpHint"
+                                                           Text="请粘贴机器人 Webhook；Bark 请填写包含设备 Key 的地址，例如 https://api.day.app/your-device-key。"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                            </StackPanel>
+
+                                            <StackPanel Spacing="12"
+                                                        Visibility="{Binding IsSmtpChannel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="160" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="SmtpHostBox" x:Uid="SmtpHostBox"
+                                                             Header="SMTP 服务器"
+                                                             PlaceholderText="smtp.example.com"
+                                                             Text="{Binding SmtpHost, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <NumberBox x:Name="SmtpPortBox" x:Uid="SmtpPortBox"
+                                                               Grid.Column="1" Header="端口"
+                                                               Minimum="1" Maximum="65535"
+                                                               SpinButtonPlacementMode="Compact"
+                                                               Value="{Binding SmtpPort, Mode=TwoWay}" />
+                                                </Grid>
+                                                <Grid ColumnSpacing="12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="SmtpUsernameBox" x:Uid="SmtpUsernameBox"
+                                                             Header="登录账号"
+                                                             Text="{Binding SmtpUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <PasswordBox x:Name="SmtpPasswordBox" x:Uid="SmtpPasswordBox"
+                                                                 Grid.Column="1" Header="密码或授权码"
+                                                                 Password="{Binding SmtpPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                </Grid>
+                                                <TextBox x:Name="SmtpFromBox" x:Uid="SmtpFromBox"
+                                                         Header="发件人地址或显示名（可选）"
+                                                         Text="{Binding SmtpFrom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBox x:Name="SmtpRecipientsBox" x:Uid="SmtpRecipientsBox"
+                                                         Header="收件人"
+                                                         PlaceholderText="name@example.com; other@example.com"
+                                                         Text="{Binding SmtpRecipients, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBlock x:Name="SmtpSecurityHint" x:Uid="SmtpSecurityHint"
+                                                           Text="连接会自动选择 SSL/TLS 或 STARTTLS；请优先使用邮箱服务商提供的应用专用密码。"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                            </StackPanel>
+
+                                            <Rectangle Height="1" Fill="{StaticResource BorderNeutralL1Brush}" />
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Button x:Name="TestNotificationChannelButton"
+                                                        x:Uid="TestNotificationChannelButton"
+                                                        Content="测试推送" Tag="{Binding}"
+                                                        Padding="16,0" Height="40"
+                                                        Click="TestNotificationChannelButton_Click" />
+                                                <TextBlock Grid.Column="1" Text="{Binding TestStatus}"
+                                                           VerticalAlignment="Center" TextWrapping="Wrap"
+                                                           Foreground="{StaticResource MutedTextBrush}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
 
                 <StackPanel x:Name="AboutPanel" Spacing="24" Visibility="Collapsed">

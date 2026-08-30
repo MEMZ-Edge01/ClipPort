@@ -63,11 +63,54 @@ public sealed class AppSettingsService
             {
                 settings.Language = AppLanguage.SimplifiedChinese;
             }
+            NormalizeNotificationSettings(settings);
+            UnprotectNotificationSecrets(settings);
             return settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             return new AppSettings();
+        }
+    }
+
+    private static void UnprotectNotificationSecrets(AppSettings settings)
+    {
+        foreach (NotificationChannelSettings channel in settings.Notifications.Channels)
+        {
+            channel.Endpoint = NotificationSecretProtector.Unprotect(channel.Endpoint);
+            channel.SmtpPassword = NotificationSecretProtector.Unprotect(channel.SmtpPassword);
+        }
+    }
+
+    private static void NormalizeNotificationSettings(AppSettings settings)
+    {
+        settings.Notifications ??= new NotificationSettings();
+        settings.Notifications.Channels ??= [];
+
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (NotificationChannelSettings channel in settings.Notifications.Channels)
+        {
+            if (!Enum.IsDefined(channel.Kind))
+            {
+                channel.Kind = NotificationChannelKind.Feishu;
+            }
+            if (string.IsNullOrWhiteSpace(channel.Id) || !seenIds.Add(channel.Id))
+            {
+                channel.Id = Guid.NewGuid().ToString("N");
+                seenIds.Add(channel.Id);
+            }
+            if (channel.SmtpPort is <= 0 or > 65535)
+            {
+                channel.SmtpPort = 465;
+            }
+
+            channel.DisplayName = channel.DisplayName?.Trim() ?? string.Empty;
+            channel.Endpoint = channel.Endpoint?.Trim() ?? string.Empty;
+            channel.SmtpHost = channel.SmtpHost?.Trim() ?? string.Empty;
+            channel.SmtpUsername = channel.SmtpUsername?.Trim() ?? string.Empty;
+            channel.SmtpPassword ??= string.Empty;
+            channel.SmtpFrom = channel.SmtpFrom?.Trim() ?? string.Empty;
+            channel.SmtpRecipients = channel.SmtpRecipients?.Trim() ?? string.Empty;
         }
     }
 
@@ -104,7 +147,8 @@ public sealed class AppSettingsService
         string temporaryPath = _settingsPath + ".tmp";
         try
         {
-            string json = JsonSerializer.Serialize(settings, _jsonOptions);
+            AppSettings storageSnapshot = CreateStorageSnapshot(settings);
+            string json = JsonSerializer.Serialize(storageSnapshot, _jsonOptions);
             File.WriteAllText(temporaryPath, json);
             File.Move(temporaryPath, _settingsPath, true);
         }
@@ -116,5 +160,21 @@ public sealed class AppSettingsService
             }
             throw;
         }
+    }
+
+    private AppSettings CreateStorageSnapshot(AppSettings settings)
+    {
+        // A serializer round-trip makes a deep copy without mutating live
+        // settings into encrypted strings while a task may be using them.
+        string json = JsonSerializer.Serialize(settings, _jsonOptions);
+        AppSettings snapshot = JsonSerializer.Deserialize<AppSettings>(json, _jsonOptions) ??
+            throw new InvalidOperationException("Could not create a settings snapshot.");
+        NormalizeNotificationSettings(snapshot);
+        foreach (NotificationChannelSettings channel in snapshot.Notifications.Channels)
+        {
+            channel.Endpoint = NotificationSecretProtector.Protect(channel.Endpoint);
+            channel.SmtpPassword = NotificationSecretProtector.Protect(channel.SmtpPassword);
+        }
+        return snapshot;
     }
 }
