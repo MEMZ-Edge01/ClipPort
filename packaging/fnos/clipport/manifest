@@ -1,0 +1,17 @@
+appname=clipport
+version=1.0.0-beta
+display_name=ClipPort
+desc=NAS file copy and integrity verification
+maintainer=MEMZ-Edge01
+maintainer_url=https://github.com/MEMZ-Edge01/ClipPort
+distributor=MEMZ-Edge01
+distributor_url=https://github.com/MEMZ-Edge01/ClipPort
+source=thirdparty
+platform=x86
+desktop_uidir=ui
+desktop_applaunchname=clipport.main
+os_min_version=1.2.0401
+micro_app=true
+disable_authorization_path=false
+ctl_stop=true
+checkport=false

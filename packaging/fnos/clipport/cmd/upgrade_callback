@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# No version-specific migration is currently required.
+exit 0

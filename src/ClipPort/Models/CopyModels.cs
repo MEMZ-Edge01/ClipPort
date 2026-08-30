@@ -167,7 +167,7 @@ public sealed record FileRetryResult(
     public long CopiedBytes { get; init; }
     public IReadOnlyList<FileVerificationResult> VerificationResults { get; init; } = [];
     public IReadOnlyDictionary<string, string> DestinationPaths { get; init; } =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        new Dictionary<string, string>(PathSemantics.Comparer);
     public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
@@ -188,7 +188,7 @@ public sealed record CopyResult(
     public int VerifiedFileCount { get; init; }
     public long VerifiedBytes { get; init; }
     public IReadOnlyDictionary<string, string> DestinationPaths { get; init; } =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        new Dictionary<string, string>(PathSemantics.Comparer);
     public IReadOnlyList<string> Warnings { get; init; } = [];
     public VerificationAlgorithmKind VerificationAlgorithm { get; init; } =
         VerificationAlgorithmKind.Sha256;

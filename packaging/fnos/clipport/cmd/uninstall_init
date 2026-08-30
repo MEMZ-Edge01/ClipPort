@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Never inspect or delete user-authorized source and destination folders.
+exit 0

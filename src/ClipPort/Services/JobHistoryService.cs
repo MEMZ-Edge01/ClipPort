@@ -34,6 +34,8 @@ public sealed class JobHistoryService
             ? _defaultReportsDirectory
             : reportsDirectory;
 
+    public string ReportsDirectory => _reportsDirectory;
+
     public async Task<List<JobHistoryItem>> LoadAsync(CancellationToken cancellationToken = default)
     {
         if (!File.Exists(_historyPath))
@@ -149,7 +151,7 @@ public sealed class JobHistoryService
         string reportsDirectory = _reportsDirectory;
         string path = Path.Combine(reportsDirectory, fileName);
         if (!File.Exists(path) && !string.Equals(
-                reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+                reportsDirectory, _defaultReportsDirectory, PathSemantics.Comparison))
         {
             path = Path.Combine(_defaultReportsDirectory, fileName);
         }
@@ -168,7 +170,7 @@ public sealed class JobHistoryService
             string fileName = Path.GetFileName(reportReference);
             string reportsDirectory = _reportsDirectory;
             TryDelete(Path.Combine(reportsDirectory, fileName));
-            if (!string.Equals(reportsDirectory, _defaultReportsDirectory, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(reportsDirectory, _defaultReportsDirectory, PathSemantics.Comparison))
             {
                 TryDelete(Path.Combine(_defaultReportsDirectory, fileName));
             }
@@ -195,9 +197,9 @@ public sealed class JobHistoryService
             .ToList();
         item.DuplicateFiles ??= [];
         item.DuplicateDecisions ??= new Dictionary<string, ExistingFilePolicy>(
-            StringComparer.OrdinalIgnoreCase);
+            PathSemantics.Comparer);
         item.DestinationFiles ??= new Dictionary<string, string>(
-            StringComparer.OrdinalIgnoreCase);
+            PathSemantics.Comparer);
         var copySamples = NormalizeThroughputSamples(
             item.CopyByteSpeedSamples,
             item.CopyItemSpeedSamples,

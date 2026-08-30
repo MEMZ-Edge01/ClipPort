@@ -12,6 +12,12 @@ Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "ClipPort.NativeCopy", "src\
 EndProject
 Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "ClipPort.ShellExtension", "src\ClipPort.ShellExtension\ClipPort.ShellExtension.vcxproj", "{5B42873C-E576-49C0-A473-387157D18F89}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipPort.Core", "src\ClipPort.Core\ClipPort.Core.csproj", "{8D04DCEA-3CE6-4C5D-A70A-9C22EF65AF5C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipPort.FnOS.Server", "src\ClipPort.FnOS.Server\ClipPort.FnOS.Server.csproj", "{C759D5C3-7821-4E14-A8B2-5B35662F6022}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClipPort.FnOS.Tests", "tests\ClipPort.FnOS.Tests\ClipPort.FnOS.Tests.csproj", "{0E8BF58D-D75A-4B19-82DE-FE92FC8E9CD1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -30,6 +36,18 @@ Global
 		{5B42873C-E576-49C0-A473-387157D18F89}.Debug|x64.Build.0 = Debug|x64
 		{5B42873C-E576-49C0-A473-387157D18F89}.Release|x64.ActiveCfg = Release|x64
 		{5B42873C-E576-49C0-A473-387157D18F89}.Release|x64.Build.0 = Release|x64
+		{8D04DCEA-3CE6-4C5D-A70A-9C22EF65AF5C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8D04DCEA-3CE6-4C5D-A70A-9C22EF65AF5C}.Debug|x64.Build.0 = Debug|Any CPU
+		{8D04DCEA-3CE6-4C5D-A70A-9C22EF65AF5C}.Release|x64.ActiveCfg = Release|Any CPU
+		{8D04DCEA-3CE6-4C5D-A70A-9C22EF65AF5C}.Release|x64.Build.0 = Release|Any CPU
+		{C759D5C3-7821-4E14-A8B2-5B35662F6022}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C759D5C3-7821-4E14-A8B2-5B35662F6022}.Debug|x64.Build.0 = Debug|Any CPU
+		{C759D5C3-7821-4E14-A8B2-5B35662F6022}.Release|x64.ActiveCfg = Release|Any CPU
+		{C759D5C3-7821-4E14-A8B2-5B35662F6022}.Release|x64.Build.0 = Release|Any CPU
+		{0E8BF58D-D75A-4B19-82DE-FE92FC8E9CD1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0E8BF58D-D75A-4B19-82DE-FE92FC8E9CD1}.Debug|x64.Build.0 = Debug|Any CPU
+		{0E8BF58D-D75A-4B19-82DE-FE92FC8E9CD1}.Release|x64.ActiveCfg = Release|Any CPU
+		{0E8BF58D-D75A-4B19-82DE-FE92FC8E9CD1}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

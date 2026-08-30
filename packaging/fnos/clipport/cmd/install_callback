@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Runtime data is created lazily under TRIM_PKGVAR by the package user.
+exit 0

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Task history remains in TRIM_PKGVAR across upgrades.
+exit 0

@@ -1,0 +1,121 @@
+#!/bin/bash
+
+set -u
+
+LOG_FILE="${TRIM_PKGVAR}/clipport.log"
+PID_FILE="${TRIM_PKGVAR}/clipport.pid"
+SOCKET_FILE="${TRIM_APPDEST}/app.sock"
+SERVER_FILE="${TRIM_APPDEST}/server/ClipPort.FnOS.Server"
+
+log_message() {
+  printf '%s - %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >> "$LOG_FILE"
+}
+
+read_pid() {
+  if [ ! -f "$PID_FILE" ]; then
+    return 1
+  fi
+  PID="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+  case "$PID" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  return 0
+}
+
+is_clipport_process() {
+  local pid="$1"
+  [ -d "/proc/$pid" ] || return 1
+  [ "$(readlink "/proc/$pid/exe" 2>/dev/null)" = "$SERVER_FILE" ]
+}
+
+is_process_alive() {
+  kill -0 "$1" 2>/dev/null
+}
+
+status_app() {
+  if read_pid && is_clipport_process "$PID"; then
+    return 0
+  fi
+  rm -f "$PID_FILE"
+  return 1
+}
+
+start_app() {
+  mkdir -p "$TRIM_PKGVAR"
+  touch "$LOG_FILE"
+  if status_app; then
+    return 0
+  fi
+  if [ ! -x "$SERVER_FILE" ]; then
+    printf '%s\n' "ClipPort server executable is missing." > "$TRIM_TEMP_LOGFILE"
+    return 1
+  fi
+
+  rm -f "$SOCKET_FILE"
+  log_message "Starting ClipPort."
+  chmod 750 "$SERVER_FILE"
+  cd "${TRIM_APPDEST}/server" || return 1
+  CLIPPORT_LISTEN_SOCKET="$SOCKET_FILE" \
+    TRIM_APPNAME="clipport" \
+    nohup "$SERVER_FILE" >> "$LOG_FILE" 2>&1 &
+  PID="$!"
+  printf '%s\n' "$PID" > "$PID_FILE"
+
+  count=0
+  while [ "$count" -lt 20 ]; do
+    if ! is_process_alive "$PID"; then
+      printf '%s\n' "ClipPort exited before its gateway socket became ready." > "$TRIM_TEMP_LOGFILE"
+      rm -f "$PID_FILE" "$SOCKET_FILE"
+      return 1
+    fi
+    if [ -S "$SOCKET_FILE" ] && is_clipport_process "$PID"; then
+      return 0
+    fi
+    sleep 1
+    count=$((count + 1))
+  done
+
+  printf '%s\n' "ClipPort gateway socket did not become ready in time." > "$TRIM_TEMP_LOGFILE"
+  kill -TERM "$PID" 2>/dev/null || true
+  rm -f "$PID_FILE" "$SOCKET_FILE"
+  return 1
+}
+
+stop_app() {
+  if ! status_app; then
+    rm -f "$SOCKET_FILE"
+    return 0
+  fi
+
+  log_message "Stopping ClipPort."
+  kill -TERM "$PID" 2>/dev/null || true
+  count=0
+  while is_clipport_process "$PID" && [ "$count" -lt 30 ]; do
+    sleep 1
+    count=$((count + 1))
+  done
+  if is_clipport_process "$PID"; then
+    log_message "Graceful stop timed out; terminating ClipPort."
+    kill -KILL "$PID" 2>/dev/null || true
+  fi
+  rm -f "$PID_FILE" "$SOCKET_FILE"
+}
+
+case "${1:-}" in
+  start)
+    start_app
+    ;;
+  stop)
+    stop_app
+    ;;
+  status)
+    if status_app; then
+      exit 0
+    fi
+    exit 3
+    ;;
+  *)
+    printf '%s\n' "Unknown command: ${1:-}" > "$TRIM_TEMP_LOGFILE"
+    exit 1
+    ;;
+esac

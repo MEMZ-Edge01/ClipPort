@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# There is no separate fnOS configuration wizard.
+exit 0

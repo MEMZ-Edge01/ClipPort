@@ -244,6 +244,19 @@ public sealed class CopyJobScheduler
     /// 调度器不会在仍可能存在 I/O 时提前移交执行权。
     /// </summary>
     public void SetPaused(CopyJobScheduleRegistration registration, bool isPaused)
+        => SetPausedCore(registration, isPaused, yieldExecution: false);
+
+    /// <summary>
+    /// 同步手动暂停状态，并让暂停任务在安全检查点释放串行执行权。
+    /// 恢复时该任务按普通队列重新排队，适用于 fnOS 后台任务。
+    /// </summary>
+    public void SetPausedAndYield(CopyJobScheduleRegistration registration, bool isPaused)
+        => SetPausedCore(registration, isPaused, yieldExecution: true);
+
+    private void SetPausedCore(
+        CopyJobScheduleRegistration registration,
+        bool isPaused,
+        bool yieldExecution)
     {
         lock (_sync)
         {
@@ -254,12 +267,18 @@ public sealed class CopyJobScheduler
             }
 
             waiter.IsPaused = isPaused;
+            waiter.YieldWhenPaused = isPaused && yieldExecution;
             if (isPaused && ReferenceEquals(_active, waiter))
             {
                 ResetGateLocked(waiter);
+                if (yieldExecution && waiter.ActiveExecutionLeaseCount == 0)
+                {
+                    YieldPausedToQueueLocked(waiter);
+                }
             }
             if (!isPaused)
             {
+                waiter.YieldWhenPaused = false;
                 if (ReferenceEquals(_active, waiter))
                 {
                     waiter.Gate.TrySetResult();
@@ -267,6 +286,19 @@ public sealed class CopyJobScheduler
                 PromoteNextLocked();
             }
         }
+    }
+
+    private void YieldPausedToQueueLocked(Waiter waiter)
+    {
+        ResetGateLocked(waiter);
+        waiter.IsActive = false;
+        _active = null;
+        if (!waiter.IsQueued)
+        {
+            waiter.IsQueued = true;
+            (waiter.IsPriority ? _priorityQueue : _ordinaryQueue).AddLast(waiter);
+        }
+        PromoteNextLocked();
     }
 
     /// <summary>
@@ -449,7 +481,11 @@ public sealed class CopyJobScheduler
                 return;
             }
 
-            if (!waiter.IsPriority &&
+            if (waiter.IsPaused && waiter.YieldWhenPaused)
+            {
+                YieldPausedToQueueLocked(waiter);
+            }
+            else if (!waiter.IsPriority &&
                 waiter.PreemptionRequested &&
                 FindFirstRunnableLocked(_priorityQueue) is not null)
             {
@@ -566,6 +602,7 @@ public sealed class CopyJobScheduler
         public bool IsPreempted { get; set; }
         public bool IsPaused { get; set; }
         public bool PreemptionRequested { get; set; }
+        public bool YieldWhenPaused { get; set; }
         public int ActiveExecutionLeaseCount { get; set; }
         public bool IsDone { get; set; }
         public TaskCompletionSource Gate { get; set; } = new(

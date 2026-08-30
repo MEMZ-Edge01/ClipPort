@@ -13,16 +13,25 @@ public sealed class FileCopyService
     private const int BufferSize = 4 * 1024 * 1024;
     private const int PipelineBufferCount = 4;
     private readonly SourceScanner _sourceScanner;
+    private readonly IPartialFileJournal _partialFileJournal;
     private static readonly IDisposable NoopExecutionLease = new NoopDisposable();
 
     public FileCopyService()
-        : this(new SourceScanner())
+        : this(new SourceScanner(), NullPartialFileJournal.Instance)
     {
     }
 
-    internal FileCopyService(SourceScanner sourceScanner)
+    public FileCopyService(IPartialFileJournal partialFileJournal)
+        : this(new SourceScanner(), partialFileJournal)
+    {
+    }
+
+    internal FileCopyService(
+        SourceScanner sourceScanner,
+        IPartialFileJournal? partialFileJournal = null)
     {
         _sourceScanner = sourceScanner;
+        _partialFileJournal = partialFileJournal ?? NullPartialFileJournal.Instance;
     }
 
     public Task<CopyResult> CopyAndVerifyAsync(
@@ -38,7 +47,7 @@ public sealed class FileCopyService
             progress,
             new Progress<DuplicateFileConflict>(_ => { }),
             (conflicts, _) => Task.FromResult<IReadOnlyDictionary<string, ExistingFilePolicy>>(
-                conflicts.ToDictionary(item => item.RelativePath, _ => ExistingFilePolicy.Skip, StringComparer.OrdinalIgnoreCase)),
+                conflicts.ToDictionary(item => item.RelativePath, _ => ExistingFilePolicy.Skip, PathSemantics.Comparer)),
             waitWhilePaused,
             cancellationToken);
 
@@ -56,7 +65,7 @@ public sealed class FileCopyService
             progress,
             new Progress<DuplicateFileConflict>(_ => { }),
             (conflicts, _) => Task.FromResult<IReadOnlyDictionary<string, ExistingFilePolicy>>(
-                conflicts.ToDictionary(item => item.RelativePath, _ => ExistingFilePolicy.Skip, StringComparer.OrdinalIgnoreCase)),
+                conflicts.ToDictionary(item => item.RelativePath, _ => ExistingFilePolicy.Skip, PathSemantics.Comparer)),
             waitWhilePaused,
             cancellationToken);
 
@@ -177,7 +186,7 @@ public sealed class FileCopyService
             }
         }
 
-        var destinationPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var destinationPaths = new Dictionary<string, string>(PathSemantics.Comparer);
         var verifications = new List<FileVerificationResult>(files.Count);
         var copyWatch = new Stopwatch();
         var verifyWatch = new Stopwatch();
@@ -681,7 +690,7 @@ public sealed class FileCopyService
             cancellationToken);
     }
 
-    private static async Task<FileRetryResult> RetryFailedFilesCoreAsync(
+    private async Task<FileRetryResult> RetryFailedFilesCoreAsync(
         IReadOnlyList<FileOperationFailure> failures,
         CopyOptions options,
         bool overwriteVerificationMismatches,
@@ -698,7 +707,7 @@ public sealed class FileCopyService
         var remaining = new List<FileOperationFailure>();
         var verificationResults = new List<FileVerificationResult>();
         var warnings = new List<string>();
-        var destinationPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var destinationPaths = new Dictionary<string, string>(PathSemantics.Comparer);
         long totalBytes = failures.Sum(item => item.Length);
         long processedCopyBytes = 0;
         int processedCopyFiles = 0;
@@ -722,7 +731,7 @@ public sealed class FileCopyService
                          .GroupBy(
                              failure => Path.GetPathRoot(Path.GetFullPath(failure.DestinationPath)) ??
                                         failure.DestinationPath,
-                             StringComparer.OrdinalIgnoreCase))
+                             PathSemantics.Comparer))
             {
                 // Retrying several files on one volume must not re-query free space for each file.
                 EnsureDestinationCapacity(
@@ -793,6 +802,7 @@ public sealed class FileCopyService
                     },
                     cancellationToken);
                 File.Move(partialPath, failure.DestinationPath, true);
+                _partialFileJournal.Untrack(partialPath);
                 TryPreserveLastWriteTime(
                     new SourceFile(failure.SourcePath, failure.RelativePath, failure.Length),
                     failure.DestinationPath,
@@ -982,9 +992,7 @@ public sealed class FileCopyService
         await using var source = new FileStream(
             sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
             BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        await using var destination = new FileStream(
-            destinationPath, FileMode.Create, FileAccess.Write, FileShare.None,
-            BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using FileStream destination = DestinationFileFactory.CreateNew(destinationPath);
         byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
         try
         {
@@ -1073,9 +1081,7 @@ public sealed class FileCopyService
         {
             try
             {
-                await using var destination = new FileStream(
-                    destinationPath, FileMode.Create, FileAccess.Write, FileShare.None,
-                    BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                await using FileStream destination = DestinationFileFactory.CreateNew(destinationPath);
                 await foreach (CopyBuffer block in channel.Reader.ReadAllAsync(pipelineToken))
                 {
                     try
@@ -1211,10 +1217,14 @@ public sealed class FileCopyService
         }
     }
 
-    private static string CreatePartialPath(string destinationPath) =>
-        $"{destinationPath}.{Guid.NewGuid():N}.clipport-partial";
+    private string CreatePartialPath(string destinationPath)
+    {
+        string partialPath = $"{destinationPath}.{Guid.NewGuid():N}.clipport-partial";
+        _partialFileJournal.Track(partialPath);
+        return partialPath;
+    }
 
-    private static string? CommitPartialFile(
+    private string? CommitPartialFile(
         string partialPath,
         string destinationPath,
         ExistingFilePolicy policy)
@@ -1222,6 +1232,7 @@ public sealed class FileCopyService
         if (policy == ExistingFilePolicy.Overwrite)
         {
             File.Move(partialPath, destinationPath, true);
+            _partialFileJournal.Untrack(partialPath);
             return destinationPath;
         }
 
@@ -1230,6 +1241,7 @@ public sealed class FileCopyService
             try
             {
                 File.Move(partialPath, destinationPath, false);
+                _partialFileJournal.Untrack(partialPath);
                 return destinationPath;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -1254,6 +1266,7 @@ public sealed class FileCopyService
             try
             {
                 File.Move(partialPath, candidate, false);
+                _partialFileJournal.Untrack(partialPath);
                 return candidate;
             }
             catch (IOException) when (File.Exists(candidate))
@@ -1315,7 +1328,7 @@ public sealed class FileCopyService
             path));
     }
 
-    private static void TryDeletePartialFile(string path)
+    private void TryDeletePartialFile(string path)
     {
         try
         {
@@ -1327,6 +1340,13 @@ public sealed class FileCopyService
         catch
         {
             // Keep the original copy error; an orphaned partial file is safe to remove later.
+        }
+        finally
+        {
+            if (!File.Exists(path))
+            {
+                _partialFileJournal.Untrack(path);
+            }
         }
     }
 

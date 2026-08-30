@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# ClipPort has no install-time mutation outside fnOS-managed directories.
+exit 0

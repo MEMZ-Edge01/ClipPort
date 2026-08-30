@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# ClipPort configuration is managed through the micro-app UI.
+exit 0

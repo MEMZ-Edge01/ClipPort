@@ -173,10 +173,7 @@ public sealed class UpdateService
     /// 比较远端版本是否比当前版本新（支持 v1.2.3-beta 这类语义化版本）。
     /// </summary>
     public static bool IsNewerVersion(string? currentVersion, string? latestVersion)
-    {
-        return TryCompareVersions(currentVersion, latestVersion, out int comparison) &&
-               comparison < 0;
-    }
+        => SemanticVersionComparer.IsNewer(currentVersion, latestVersion);
 
     public static string GetCurrentVersion()
     {
@@ -227,116 +224,4 @@ public sealed class UpdateService
         return Convert.ToHexString(hash);
     }
 
-    private static bool TryCompareVersions(
-        string? left,
-        string? right,
-        out int comparison)
-    {
-        comparison = 0;
-        if (!TryParseVersion(left, out VersionParts? leftParts) ||
-            !TryParseVersion(right, out VersionParts? rightParts))
-        {
-            return false;
-        }
-
-        comparison = leftParts!.CompareCore(rightParts!);
-        if (comparison == 0)
-        {
-            comparison = leftParts.ComparePrerelease(rightParts!);
-        }
-        return true;
-    }
-
-    private static bool TryParseVersion(string? value, out VersionParts? parts)
-    {
-        parts = null;
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        string text = value.Trim();
-        if (text.StartsWith('v') || text.StartsWith('V'))
-        {
-            text = text[1..];
-        }
-
-        int dashIndex = text.IndexOf('-');
-        string core = dashIndex >= 0 ? text[..dashIndex] : text;
-        string? prerelease = dashIndex >= 0 ? text[(dashIndex + 1)..] : null;
-
-        string[] segments = core.Split('.');
-        if (segments.Length is < 1 or > 3 ||
-            !int.TryParse(segments[0], out int major) ||
-            !int.TryParse(segments.Length > 1 ? segments[1] : "0", out int minor) ||
-            !int.TryParse(segments.Length > 2 ? segments[2] : "0", out int patch))
-        {
-            return false;
-        }
-
-        parts = new VersionParts(major, minor, patch, prerelease);
-        return true;
-    }
-
-    private sealed record VersionParts(int Major, int Minor, int Patch, string? Prerelease)
-    {
-        public int CompareCore(VersionParts other)
-        {
-            int result = Major.CompareTo(other.Major);
-            if (result != 0)
-            {
-                return result;
-            }
-            result = Minor.CompareTo(other.Minor);
-            if (result != 0)
-            {
-                return result;
-            }
-            return Patch.CompareTo(other.Patch);
-        }
-
-        public int ComparePrerelease(VersionParts other)
-        {
-            // 正式版优先于任何预发布版本。
-            bool leftHasPre = !string.IsNullOrEmpty(Prerelease);
-            bool rightHasPre = !string.IsNullOrEmpty(other.Prerelease);
-            if (leftHasPre != rightHasPre)
-            {
-                return leftHasPre ? -1 : 1;
-            }
-            if (!leftHasPre)
-            {
-                return 0;
-            }
-
-            string[] leftParts = Prerelease!.Split('.');
-            string[] rightParts = other.Prerelease!.Split('.');
-            int count = Math.Min(leftParts.Length, rightParts.Length);
-            for (int index = 0; index < count; index++)
-            {
-                int result = ComparePrereleaseSegment(leftParts[index], rightParts[index]);
-                if (result != 0)
-                {
-                    return result;
-                }
-            }
-            return leftParts.Length.CompareTo(rightParts.Length);
-        }
-
-        private static int ComparePrereleaseSegment(string left, string right)
-        {
-            bool leftIsNumber = int.TryParse(left, out int leftNumber);
-            bool rightIsNumber = int.TryParse(right, out int rightNumber);
-            if (leftIsNumber && rightIsNumber)
-            {
-                return leftNumber.CompareTo(rightNumber);
-            }
-            if (leftIsNumber != rightIsNumber)
-            {
-                // 语义化版本规范：数字标识符优先级低于字母标识符。
-                return leftIsNumber ? -1 : 1;
-            }
-            return string.CompareOrdinal(left, right);
-        }
-    }
 }

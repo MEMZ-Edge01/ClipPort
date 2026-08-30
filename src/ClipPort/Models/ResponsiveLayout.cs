@@ -1,6 +1,6 @@
 namespace ClipPort.Models;
 
-internal static class ResponsiveLayout
+public static class ResponsiveLayout
 {
     internal const double TaskContentHorizontalMargin = 92;
 

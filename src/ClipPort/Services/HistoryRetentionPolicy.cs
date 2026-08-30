@@ -2,7 +2,7 @@ using ClipPort.Models;
 
 namespace ClipPort.Services;
 
-internal static class HistoryRetentionPolicy
+public static class HistoryRetentionPolicy
 {
     public static int FindOldestRemovableIndex(
         IReadOnlyList<JobHistoryItem> history,

@@ -1,0 +1,17 @@
+{
+  ".url": {
+    "clipport.main": {
+      "title": "ClipPort",
+      "icon": "images/icon_{0}.png",
+      "type": "iframe",
+      "protocol": "",
+      "gatewayPrefix": "/app/clipport",
+      "gatewaySocket": "app.sock",
+      "url": "/app/clipport/",
+      "allUsers": false,
+      "control": {
+        "accessPerm": "readonly"
+      }
+    }
+  }
+}

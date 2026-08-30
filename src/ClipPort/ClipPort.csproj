@@ -22,7 +22,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.756" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250205002" />
     <PackageReference Include="System.IO.Hashing" Version="10.0.10" />
@@ -88,6 +87,32 @@
                             Condition="Exists('$(MSBuildThisFileDirectory)..\..\artifacts\ClipPort-1.0.0-beta-win-x64\ClipPort.ShellIntegration.cer')" />
     <ShellIntegrationAsset Include="$(MSBuildThisFileDirectory)..\..\artifacts\ClipPort-1.0.0-beta-win-x64\ClipPort.ShellIntegration.msix"
                             Condition="Exists('$(MSBuildThisFileDirectory)..\..\artifacts\ClipPort-1.0.0-beta-win-x64\ClipPort.ShellIntegration.msix')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClipPort.Core\ClipPort.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Models\AppSettings.cs" />
+    <Compile Remove="Models\CopyModels.cs" />
+    <Compile Remove="Models\CopyThroughputSampler.cs" />
+    <Compile Remove="Models\WaveformTimeline.cs" />
+    <Compile Remove="Models\ResponsiveLayout.cs" />
+    <Compile Remove="Models\DisplayFormatting.cs" />
+    <Compile Remove="Models\PhaseProgressObservation.cs" />
+    <Compile Remove="Models\JobHistoryItem.cs" />
+    <Compile Remove="Services\FileCopyService.cs" />
+    <Compile Remove="Services\BackgroundVerificationWorker.cs" />
+    <Compile Remove="Services\SourceScanner.cs" />
+    <Compile Remove="Services\HistoryRetentionPolicy.cs" />
+    <Compile Remove="Services\NativeCopyEngine.cs" />
+    <Compile Remove="Services\JobHistoryService.cs" />
+    <Compile Remove="Services\CopyJobScheduler.cs" />
+    <Compile Remove="Services\ResourceService.cs" />
+    <Compile Remove="Services\PathSafety.cs" />
+    <Compile Remove="Services\TaskReportBuilder.cs" />
+    <Compile Remove="Services\NotificationService.cs" />
   </ItemGroup>
   <Target Name="CopyShellIntegrationAssets" AfterTargets="Build">
     <Copy SourceFiles="@(ShellIntegrationAsset)"

@@ -3,6 +3,9 @@ bin/
 obj/
 artifacts/
 /build-and-run.cmd
+node_modules/
+dist/
+*.tsbuildinfo
 
 # IDE
 .vs/

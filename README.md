@@ -1,7 +1,7 @@
 <div align="center">
   <img src="src/ClipPort/Assets/Icons/clipport-app-icon.png" alt="ClipPort" width="160" />
   <h1>ClipPort</h1>
-  <p>面向摄影、视频与大批量文件场景的 Windows 拷卡、完整性校验和任务管理工具。</p>
+  <p>面向摄影、视频与大批量文件场景的 Windows / fnOS 拷卡、完整性校验和任务管理工具。</p>
   <p>
     <a href="#功能概览">功能概览</a> ·
     <a href="#校验算法">校验算法</a> ·
@@ -17,7 +17,7 @@
 
 ## 项目简介
 
-ClipPort 是一款使用 WinUI 3、C#、.NET 8 和 C++ 构建的 Windows x64 桌面应用。
+ClipPort 提供 Windows x64 桌面版和 x86_64 fnOS 原生版。Windows 界面使用 WinUI 3，fnOS 界面使用 React，两端共同引用 .NET 8 跨平台复制与校验核心。
 它可以把存储卡或普通目录中的文件安全复制到指定位置，并按需重新读取源文件与目标文件，使用所选算法逐文件比较摘要。
 
 应用不依赖账号、云服务或远程数据库。
@@ -135,6 +135,92 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 > 校验摘要用于发现复制错误或文件变化，不等同于数字签名。
 > 如果没有明确的兼容或吞吐量要求，建议保留默认的 SHA-256。
 
+## fnOS 原生版
+
+fnOS 版是自包含的 Linux x64 原生应用，不使用 Docker，也不要求设备另行安装 .NET 或 Node.js。应用通过统一网关 `/app/clipport/` 和应用目录中的 Unix Socket 提供页面、API 与 WebSocket，不开放独立网络端口。
+
+### 系统要求与安装
+
+- 设备架构：x86_64。
+- fnOS：`1.2.0401` 或更高版本。
+- fnOS App：`1.34.0` 或更高版本，以使用原生共享目录选择器。
+- 只有管理员可以看到和使用应用入口。
+
+本地构建后会生成：
+
+```text
+artifacts/ClipPort-1.0.0-beta-fnos-x86.fpk
+artifacts/ClipPort-1.0.0-beta-fnos-x86.fpk.sha256
+```
+
+可在 fnOS 应用中心的手动安装入口选择 `.fpk`，或在测试设备上执行：
+
+```bash
+appcenter-cli install-fpk ClipPort-1.0.0-beta-fnos-x86.fpk
+```
+
+### 目录授权与安全边界
+
+- 点击源目录或目标目录按钮时，fnOS 宿主内直接调用官方 `pickSharedFile`；源目录禁止新建文件夹，目标目录允许新建文件夹。
+- 关闭原生选择器视为取消，不显示错误。选择成功后页面先保留 fnOS 返回的真实路径，并根据源目录名生成安全的目标子目录；若授权列表暂时未同步，只提示“目录已选择，但授权列表同步失败”，不会丢掉本次选择。
+- 独立浏览器使用 `openAppAuth` 打开授权窗口，并通过同源 `callback.html`、随机 `state` 与 `postMessage` 返回结果；页面始终保留“刷新授权目录”按钮。
+- 每次创建、重新开始或再次校验任务时，后端都会重新查询应用共享授权根目录，并用当前管理员 UID 检查源目录可读、目标目录可读或可写。
+- “授权目录”页可通过原生选择器新增授权、刷新当前授权、撤销未被活动任务占用的授权，并在调用 `openFileManager` 前重新检查当前管理员 ACL。
+- fnOS Open API 客户端同时检查 HTTP 状态和业务 `code/msg/reqId`，并区分超时、传输失败和非法 JSON。日志只记录操作名、状态码、业务码和请求编号，不记录 Token 或授权路径内容。
+- 应用以专用 `clipport` 包用户运行。`TRIM_API_TOKEN` 只在调用 fnOS 系统 Unix Socket 时从当前进程环境读取，不写入历史、日志、报告或前端响应。
+- Linux 路径区分大小写；拒绝源目标重叠、`..` 穿越和符号链接。临时目标以 `O_NOFOLLOW`、排他创建和随机 `.clipport-partial` 名称写入，完整写入后原子提交。
+- 崩溃恢复只清理任务日志中逐项记录的 ClipPort 临时文件，不扫描或删除其他文件。卸载与删除历史也不会删除源文件和目标文件。
+
+### 与 Windows 版的功能映射
+
+| 能力 | Windows | fnOS |
+| --- | --- | --- |
+| 三种任务模式、五种算法、重复项与失败项处理 | 支持 | 支持 |
+| 单执行队列、优先任务、安全检查点让权、暂停、恢复、取消和重试 | 支持 | 支持 |
+| 运行任务、200 条历史、详情、批量删除与批量报告 | 支持 | 支持 |
+| 实时及历史复制/校验字节与文件速率波形 | 支持 | 支持 |
+| 网页关闭后继续后台任务 | 不适用 | 支持 |
+| 文件资源管理器右键菜单 | 支持 | 映射为 fnOS 授权目录管理 |
+| 路径定位 | 文件资源管理器 | fnOS `openFileManager` |
+| 阻止系统休眠 | 支持 | 不显示；NAS 后台服务不使用该开关 |
+| 快速复制实验开关 | 代码级实验 | 始终关闭 |
+| 企业微信、钉钉、飞书、Bark 与 SMTP 通知 | 支持 | 支持，网页关闭后仍由后台发送 |
+| 跟随系统/浅色/深色、强调色 | 支持 | 支持 |
+| 界面语言 | 简中、英文、文言 | 简中、英文、文言；共享文本由 Windows `.resw` 生成 |
+| 更新 | 下载并替换 Windows 包 | 检查对应 x86 FPK，下载后引导到应用中心升级 |
+
+fnOS 暂停任务会在安全检查点释放单任务 I/O 执行权；恢复时重新进入 FIFO 队列。服务重启后，未完成任务会标记为“已中断”，管理员可重新开始。
+
+### 设置、通知、报告与更新
+
+- 设置以带版本号的 `settings.json` 原子保存；升级只补默认值，不覆盖任务、报告或已有设置。
+- 通知的 Webhook/Bark 地址和 SMTP 密码使用 ASP.NET Core Data Protection 加密。密钥目录权限为应用专用用户 `0700`，设置文件为 `0600`；设置读取与保存 API 不回传已保存的密钥，只返回“已保存”标记。
+- 测试发送和任务完成/失败通知都使用同一套五类提供商校验。任务在后台运行时，即使网页已关闭也会发送；发送失败只记录不含密钥的任务警告，不改变文件操作结果。
+- 报告默认导出目录必须通过原生选择器授权。每次批量导出都会重新查询共享授权和当前管理员写权限，不信任历史保存的路径权限。
+- “关于与更新”只读取 GitHub Release 元数据并筛选 `fnos-x86_64` 或 `fnos-x86` 的 `.fpk`；应用不会绕过 fnOS 包管理器自行安装。
+
+### 构建 fnOS FPK
+
+需要 .NET 8 SDK、Node.js 22 和 PowerShell 7：
+
+```powershell
+pwsh -NoProfile -File ./scripts/build-fnos.ps1
+```
+
+脚本会执行前端 Lint、类型检查和测试，运行 Windows 核心及 fnOS 后端测试，构建 React 页面，发布 `linux-x64` 自包含单文件后端，生成各尺寸品牌图标，审计 FPK 暂存目录，并下载官方 `fnpack 1.2.3`。Windows 与 Linux 版本的 fnpack 都使用脚本内固定的 SHA-256 校验后才会执行。
+
+Ubuntu CI 会重复执行后端、Linux 路径、前端、生命周期和 FPK 内容审计，并上传 `.fpk` 与 `.sha256`；现有 Windows Release 流程不会自动发布 fnOS 工件到 GitHub Release。
+
+### fnOS 真机验收
+
+代码仓库内的模拟测试不能替代真实 fnOS 网关和 ACL。发布前应在 x86_64 测试设备上逐项检查：安装与启动、源与目标原生目录选择、取消选择、授权刷新失败提示、授权撤销、三种任务模式、优先任务让权、只读目标拒绝、复制校验、主动损坏检测、暂停与取消、逐项/批量重复文件处理、失败项重试或跳过、实时及历史波形、多选删除与批量报告、三种语言、五类通知测试、更新引导、关闭网页后继续执行、服务重启后的中断状态以及卸载不影响用户文件。
+
+升级真机前必须先确认没有活动任务，核对正在运行进程的可执行文件和包目录，备份应用数据目录后再安装新 FPK。存在活动任务时不要强制停止服务；等待任务完成或重新取得明确授权。
+
+验收结束后检查 API 响应、`clipport.log`、任务报告和静态前端文件，确认其中不含 `TRIM_API_TOKEN`、Webhook/Bark 密钥或 SMTP 密码。
+
+测试设备地址和凭据只在验收时临时提供，不得写入仓库、脚本、日志或 CI。
+
 ## 文件资源管理器快速开启
 
 ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
@@ -186,6 +272,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 | 日志 | `用户文档目录\ClipPort\ClipPort.log` |
 | 自动报告 | `用户文档目录\ClipPort` |
 | 更新缓存与更新器日志 | `%LOCALAPPDATA%\ClipPort\Updates` |
+| fnOS 任务历史、日志、临时文件清单和报告 | fnOS 管理的 `TRIM_PKGVAR` 应用数据目录 |
 
 日志和报告目录可以在设置中更改。
 日志达到 5 MiB 后会轮换为 `ClipPort.old.log`。
@@ -193,7 +280,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 
 ## 当前限制
 
-- 当前发布目标仅为 Windows x64。
+- 当前发布目标为 Windows x64 和 fnOS x86_64；fnOS ARM 尚未支持。
 - 主程序是自包含目录发布，不是单文件程序，也不是完整应用 MSIX 安装包。
 - Windows 11 右键菜单使用独立的稀疏 MSIX；测试版签名可能需要用户手动信任公开证书。
 - 自动更新依赖 GitHub 网络访问；更新过程中应用会自动重启。
@@ -206,12 +293,18 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 ClipPort
 ├── ClipPort.sln
 ├── packaging
+│   ├── fnos
 │   └── ShellIntegration
 ├── scripts
+│   ├── build-fnos.ps1
 │   ├── build-shell-package.ps1
 │   ├── publish-beta.ps1
-│   └── register-shell-package-for-development.ps1
+│   ├── register-shell-package-for-development.ps1
+│   └── test-fnos-lifecycle.sh
 ├── src
+│   ├── ClipPort.Core
+│   ├── ClipPort.FnOS.Server
+│   ├── ClipPort.FnOS.Web
 │   ├── ClipPort
 │   │   ├── Assets
 │   │   ├── Models
@@ -221,7 +314,8 @@ ClipPort
 │   ├── ClipPort.NativeCopy
 │   └── ClipPort.ShellExtension
 └── tests
-    └── ClipPort.CoreTests
+    ├── ClipPort.CoreTests
+    └── ClipPort.FnOS.Tests
 ```
 
 ## 构建与测试
@@ -249,7 +343,7 @@ cd ClipPort
 dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release
 ```
 
-当前核心测试共 47 项，覆盖：
+当前 Windows 核心回归共 60 项，另有 fnOS API、授权、安全文件与跨平台复制测试，覆盖：
 
 - 本地化资源完整性与语言查找。
 - Windows 系统强调色预览。
@@ -336,7 +430,7 @@ Copyright (C) 2026 MEMZ-Edge01
 
 ## English Summary
 
-ClipPort is a Windows x64 desktop application for reliable media-card and directory transfers.
+ClipPort provides a Windows x64 desktop application and a native x86_64 fnOS package for reliable media-card and directory transfers.
 It supports responsive streaming source scans, safe file copying, verification-only jobs, duplicate-file policies, a serial task queue with priority ordering, pause and cancellation, failure recovery, local history, localized reports, and real-time byte/item throughput charts.
 
 File verification can use SHA-256, SHA-512, SHA-1, MD5, or xxHash64.
@@ -351,7 +445,9 @@ Settings can hold multiple WeCom, DingTalk, Feishu, Bark, and SMTP notification 
 The native C++ copy engine is built and packaged for engineering validation, but its UI switch is currently hidden and disabled.
 The default user-facing copy path is the sequential asynchronous implementation.
 
-Run the 59 core tests:
+The fnOS edition is a self-contained .NET 8 Linux service with a React micro-app. It uses the fnOS shared-folder picker, administrator-only unified gateway authentication, Unix sockets, per-request authorization and ACL checks, and does not expose a standalone TCP port or use Docker. It requires fnOS 1.2.0401 and App 1.34.0 or later.
+
+Run the 60 Windows core regression tests:
 
 ```powershell
 dotnet run --project .\tests\ClipPort.CoreTests\ClipPort.CoreTests.csproj -c Release
@@ -361,6 +457,12 @@ Build the self-contained Release package:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-beta.ps1
+```
+
+Build and audit the native fnOS FPK:
+
+```powershell
+pwsh -NoProfile -File ./scripts/build-fnos.ps1
 ```
 
 ## License

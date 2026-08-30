@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# fnOS owns removal of the package data directory.
+exit 0

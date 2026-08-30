@@ -1,10 +1,13 @@
 namespace ClipPort.Services;
 
+using ClipPort.Models;
+
 public enum PathValidationError
 {
     None,
     SourceAndDestinationAreSame,
     DestinationIsInsideSource,
+    SourceIsInsideDestination,
     InvalidSubfolderName,
     DestinationContainsReparsePoint,
     InvalidPath
@@ -25,7 +28,7 @@ public static class PathSafety
             if (string.Equals(
                     normalizedSource,
                     normalizedDestination,
-                    StringComparison.OrdinalIgnoreCase))
+                    PathSemantics.Comparison))
             {
                 error = PathValidationError.SourceAndDestinationAreSame;
                 return false;
@@ -34,6 +37,12 @@ public static class PathSafety
             if (IsSameOrDescendant(normalizedDestination, normalizedSource))
             {
                 error = PathValidationError.DestinationIsInsideSource;
+                return false;
+            }
+
+            if (IsSameOrDescendant(normalizedSource, normalizedDestination))
+            {
+                error = PathValidationError.SourceIsInsideDestination;
                 return false;
             }
 
@@ -83,7 +92,7 @@ public static class PathSafety
 
             string resolved = NormalizeDirectoryPath(Path.Combine(normalizedParent, name));
             if (!IsSameOrDescendant(resolved, normalizedParent) ||
-                string.Equals(resolved, normalizedParent, StringComparison.OrdinalIgnoreCase))
+                string.Equals(resolved, normalizedParent, PathSemantics.Comparison))
             {
                 destination = normalizedParent;
                 return false;
@@ -228,7 +237,7 @@ public static class PathSafety
 
     private static bool IsSameOrDescendant(string candidate, string parent)
     {
-        if (string.Equals(candidate, parent, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(candidate, parent, PathSemantics.Comparison))
         {
             return true;
         }
@@ -237,7 +246,7 @@ public static class PathSafety
                                      parent.EndsWith(Path.AltDirectorySeparatorChar)
             ? parent
             : parent + Path.DirectorySeparatorChar;
-        return candidate.StartsWith(parentWithSeparator, StringComparison.OrdinalIgnoreCase);
+        return candidate.StartsWith(parentWithSeparator, PathSemantics.Comparison);
     }
 
     private static string NormalizeDirectoryPath(string path)
@@ -245,7 +254,7 @@ public static class PathSafety
         string fullPath = Path.GetFullPath(path);
         string? root = Path.GetPathRoot(fullPath);
         if (!string.IsNullOrEmpty(root) &&
-            string.Equals(fullPath, root, StringComparison.OrdinalIgnoreCase))
+            string.Equals(fullPath, root, PathSemantics.Comparison))
         {
             return root;
         }

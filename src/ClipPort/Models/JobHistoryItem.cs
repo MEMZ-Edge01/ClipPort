@@ -123,7 +123,7 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     }
     public List<FileOperationFailure> FailedFiles { get; set; } = [];
     public List<DuplicateFileConflict> DuplicateFiles { get; set; } = [];
-    public Dictionary<string, ExistingFilePolicy> DuplicateDecisions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, ExistingFilePolicy> DuplicateDecisions { get; set; } = new(PathSemantics.Comparer);
     public JobStatus Status
     {
         get => _status;
@@ -141,7 +141,7 @@ public sealed class JobHistoryItem : INotifyPropertyChanged
     public string? ReportFileName { get; set; }
     public string? ReportPath { get; set; }
     public Dictionary<string, string> DestinationFiles { get; set; } =
-        new(StringComparer.OrdinalIgnoreCase);
+        new(PathSemantics.Comparer);
 
     [JsonIgnore]
     public string MetaText => $"{DisplayFormatting.FormatBytes(TotalBytes)} · {StartedAt:MM/dd HH:mm:ss}";
