@@ -15,7 +15,9 @@ public sealed record AuthorizedFolderDto(
     string Path,
     string SemanticPath,
     bool Readable,
-    bool Writable);
+    bool Writable,
+    string PermissionState = "confirmed",
+    string SemanticPathState = "confirmed");
 
 public sealed record RevokeAuthorizedFolderRequest(string Path);
 public sealed record ValidateAuthorizedFolderRequest(string Path, bool RequireWrite = false);

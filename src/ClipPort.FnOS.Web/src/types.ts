@@ -18,6 +18,8 @@ export interface AuthorizedFolder {
   semanticPath: string;
   readable: boolean;
   writable: boolean;
+  permissionState?: 'confirmed' | 'unavailable';
+  semanticPathState?: 'confirmed' | 'fallback';
 }
 
 export type TaskMode = 'copyAndVerify' | 'copyOnly' | 'verifyOnly';

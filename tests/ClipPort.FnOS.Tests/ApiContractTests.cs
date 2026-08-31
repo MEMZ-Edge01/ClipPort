@@ -68,6 +68,35 @@ public sealed class ApiContractTests
         Assert.True(folders[0].Writable);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AuthorizedFolderListSurvivesOptionalEnrichmentFailure(bool failAcl)
+    {
+        using var factory = new ClipPortWebFactory();
+        using HttpClient client = factory.CreateClient();
+        factory.Api.FailAclLookup = failAcl;
+        factory.Api.FailSemanticPathLookup = !failAcl;
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/authorized-folders");
+        ClipPortWebFactory.AddAdminHeaders(request);
+
+        HttpResponseMessage response = await client.SendAsync(request);
+        AuthorizedFolderDto[]? folders = await response.Content.ReadFromJsonAsync<AuthorizedFolderDto[]>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AuthorizedFolderDto folder = Assert.Single(folders!);
+        Assert.Equal(Path.GetFullPath(Directory.GetParent(factory.SourcePath)!.FullName), folder.Path);
+        if (failAcl)
+        {
+            Assert.False(folder.Readable);
+            Assert.False(folder.Writable);
+        }
+        else
+        {
+            Assert.Equal(folder.Path, folder.SemanticPath);
+        }
+    }
+
     [Fact]
     public async Task RevokingAuthorizationRequiresCsrfAndOnlyAcceptsAnAuthorizedRoot()
     {

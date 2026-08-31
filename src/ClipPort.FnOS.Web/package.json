@@ -17,6 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fluentui/react-icons": "^2.0.334",
     "@trimjs/web-app": "0.4.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

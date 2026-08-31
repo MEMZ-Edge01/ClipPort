@@ -69,6 +69,7 @@ Invoke-Checked 'dotnet' @(
     '--self-contained', 'true',
     '-o', $publishDirectory,
     '-p:PublishSingleFile=true',
+    '-p:StaticWebAssetsEnabled=false',
     '-p:DebugType=None',
     '-p:DebugSymbols=false'
 ) $repoRoot

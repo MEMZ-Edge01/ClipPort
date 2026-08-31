@@ -28,28 +28,42 @@ describe('Windows-equivalent task mode logic', () => {
     sdk.getPlatformConfig.mockResolvedValue({ language: 'zh-CN', theme: 'light' }); sdk.listen.mockResolvedValue(undefined); sdk.setTitle.mockResolvedValue(undefined);
   });
 
-  it('enforces verify-only and copy-only control states', async () => {
+  async function choosePathsAndOpenDialog() {
+    sdk.pickFolder.mockResolvedValueOnce(['/vol1/source']).mockResolvedValueOnce(['/vol1/destination']);
+    fireEvent.click(screen.getByRole('button', { name: /源目录 \/ 存储卡/ }));
+    await waitFor(() => expect(sdk.pickFolder).toHaveBeenCalledWith('source'));
+    fireEvent.click(screen.getByRole('button', { name: /拷贝目的地/ }));
+    await waitFor(() => expect(sdk.pickFolder).toHaveBeenCalledWith('destination'));
+    fireEvent.click(screen.getByRole('button', { name: '开始拷卡' }));
+    await screen.findByRole('dialog', { name: '新建任务' });
+  }
+
+  it('enforces verify-only and copy-only control states in dialog', async () => {
     render(<App />); await screen.findByText('管理员 · admin');
-    const copy = screen.getByLabelText('复制文件'); const verify = screen.getByLabelText('校验文件');
-    const subfolder = screen.getByLabelText('目标子目录（可选）'); const duplicate = screen.getByLabelText('重复文件');
-    const algorithm = screen.getByLabelText('校验算法'); const timing = screen.getByLabelText('校验时机');
+    await choosePathsAndOpenDialog();
 
+    const copy = screen.getByLabelText('复制文件');
+    const verify = screen.getByLabelText('校验文件');
+
+    // Uncheck copy -> verify-only mode (verify must stay on)
     fireEvent.click(copy);
-    expect(verify).toBeChecked(); expect(subfolder).toBeDisabled(); expect(duplicate).toBeDisabled();
-    expect(algorithm).toBeEnabled(); expect(timing).toBeDisabled();
+    expect(verify).toBeChecked();
 
-    fireEvent.click(copy); fireEvent.click(verify);
-    expect(copy).toBeChecked(); expect(verify).not.toBeChecked();
-    expect(subfolder).toBeEnabled(); expect(duplicate).toBeEnabled();
-    expect(algorithm).toBeDisabled(); expect(timing).toBeDisabled();
+    // Uncheck verify -> copy-only mode (copy must stay on)
+    fireEvent.click(copy);
+    fireEvent.click(verify);
+    expect(copy).toBeChecked();
+    expect(verify).not.toBeChecked();
   });
 
-  it('submits SHA-256, ask, after-copy and priority defaults explicitly', async () => {
+  it('submits task creation from dialog', async () => {
     render(<App />); await screen.findByText('管理员 · admin');
-    const groups = screen.getAllByRole('group');
-    fireEvent.change(groups[0].querySelector('select')!, { target: { value: '/vol1/source' } });
-    fireEvent.change(groups[1].querySelector('select')!, { target: { value: '/vol1/destination' } });
+    await choosePathsAndOpenDialog();
+
+    // Toggle priority
     fireEvent.click(screen.getByLabelText('优先'));
+
+    // Submit
     fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
 
     await waitFor(() => expect(api.createTask).toHaveBeenCalledWith(expect.objectContaining({

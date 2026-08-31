@@ -23,7 +23,9 @@ public sealed class AccessValidationException(
 /// requested operation; the module owns system queries, path normalization,
 /// authorization-root containment, ACL checks and overlap validation.
 /// </summary>
-public sealed class AuthorizedFolderModule(IFnOsOpenApi openApi)
+public sealed class AuthorizedFolderModule(
+    IFnOsOpenApi openApi,
+    ILogger<AuthorizedFolderModule> logger)
 {
     public async Task RevokeAsync(string path, CancellationToken cancellationToken)
     {
@@ -97,14 +99,20 @@ public sealed class AuthorizedFolderModule(IFnOsOpenApi openApi)
             return [];
         }
 
-        Task<IReadOnlyList<FnOsAclResult>> aclTask = openApi.CheckUserAclAsync(
-            userId,
-            paths,
-            cancellationToken);
-        Task<IReadOnlyDictionary<string, string>> semanticTask = openApi.ConvertPathsAsync(
-            paths,
-            NormalizeLanguage(language),
-            cancellationToken);
+        // The authorized roots are the source of truth. ACL and semantic paths
+        // enrich the list for presentation, so a temporary fnOS failure in one
+        // of them must not hide every root that the administrator just selected.
+        Task<IReadOnlyList<FnOsAclResult>> aclTask = GetOptionalAsync(
+            () => openApi.CheckUserAclAsync(userId, paths, cancellationToken),
+            Array.Empty<FnOsAclResult>(),
+            "permissions");
+        Task<IReadOnlyDictionary<string, string>> semanticTask = GetOptionalAsync(
+            () => openApi.ConvertPathsAsync(
+                paths,
+                NormalizeLanguage(language),
+                cancellationToken),
+            new Dictionary<string, string>(PathSemantics.Comparer),
+            "semantic-paths");
         await Task.WhenAll(aclTask, semanticTask);
 
         var aclByPath = aclTask.Result
@@ -137,8 +145,32 @@ public sealed class AuthorizedFolderModule(IFnOsOpenApi openApi)
                 path,
                 string.IsNullOrWhiteSpace(semanticPath) ? path : semanticPath,
                 acl?.Readable == true,
-                acl?.Writable == true);
+                acl?.Writable == true,
+                acl is null ? "unavailable" : "confirmed",
+                string.IsNullOrWhiteSpace(semanticPath) ? "fallback" : "confirmed");
         }).ToArray();
+    }
+
+    private async Task<T> GetOptionalAsync<T>(
+        Func<Task<T>> operation,
+        T fallback,
+        string enrichment)
+    {
+        try
+        {
+            return await operation();
+        }
+        catch (FnOsOpenApiException ex)
+        {
+            logger.LogWarning(
+                "Optional authorized-folder enrichment {Enrichment} failed: operation={Operation}, code={Code}, status={Status}, reqId={RequestId}",
+                enrichment,
+                ex.Operation,
+                ex.Code,
+                ex.HttpStatusCode,
+                ex.RequestId);
+            return fallback;
+        }
     }
 
     public async Task<ValidatedTaskRequest> ValidateTaskAsync(

@@ -7,6 +7,8 @@ internal sealed class FakeFnOsOpenApi(string root) : IFnOsOpenApi
     public bool Readable { get; set; } = true;
     public bool Writable { get; set; } = true;
     public bool DuplicateAclRows { get; set; }
+    public bool FailAclLookup { get; set; }
+    public bool FailSemanticPathLookup { get; set; }
     public string TokenCanary { get; } = "must-never-reach-http";
     public List<string> RevokedPaths { get; } = [];
 
@@ -17,20 +19,44 @@ internal sealed class FakeFnOsOpenApi(string root) : IFnOsOpenApi
     public Task<IReadOnlyList<FnOsAclResult>> CheckUserAclAsync(
         int userId,
         IReadOnlyList<string> paths,
-        CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<FnOsAclResult>>(
+        CancellationToken cancellationToken)
+    {
+        if (FailAclLookup)
+        {
+            throw new FnOsOpenApiException(
+                "fnos_api_200003",
+                "ACL lookup rejected by the fixture.",
+                "trim.file.checkUserACL",
+                403,
+                "fixture-acl");
+        }
+
+        return Task.FromResult<IReadOnlyList<FnOsAclResult>>(
             paths.SelectMany(path => Enumerable.Repeat(new FnOsAclResult(
                 path,
                 Readable,
                 Writable,
                 Writable), DuplicateAclRows ? 2 : 1)).ToArray());
+    }
 
     public Task<IReadOnlyDictionary<string, string>> ConvertPathsAsync(
         IReadOnlyList<string> paths,
         string language,
-        CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyDictionary<string, string>>(
+        CancellationToken cancellationToken)
+    {
+        if (FailSemanticPathLookup)
+        {
+            throw new FnOsOpenApiException(
+                "fnos_api_200006",
+                "Semantic path lookup failed in the fixture.",
+                "trim.file.convertPath",
+                500,
+                "fixture-semantic");
+        }
+
+        return Task.FromResult<IReadOnlyDictionary<string, string>>(
             paths.ToDictionary(path => path, _ => "共享文件/测试", StringComparer.Ordinal));
+    }
 
     public Task DeleteSharedAccessibleFolderAsync(
         string path,

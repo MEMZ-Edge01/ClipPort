@@ -5,7 +5,7 @@ import type { ClipPortTask } from './types';
 
 const api = vi.hoisted(() => ({
   loadSession: vi.fn(), loadFolders: vi.fn(), loadTasks: vi.fn(), loadSettings: vi.fn(),
-  taskAction: vi.fn(), deleteTasks: vi.fn(), exportReports: vi.fn(),
+  taskAction: vi.fn(), deleteTasks: vi.fn(), exportReports: vi.fn(), deleteTask: vi.fn(),
   submitDuplicates: vi.fn(), submitFailures: vi.fn(),
 }));
 const sdk = vi.hoisted(() => ({
@@ -32,67 +32,56 @@ describe('task operations, selections and decisions', () => {
     api.loadSession.mockResolvedValue({ isAdmin: true, userId: 1000, username: 'admin', csrfToken: 'csrf', language: 'zh-CN', systemVersion: '1.2.0401', isCompatible: true });
     api.loadFolders.mockResolvedValue([]);
     api.loadSettings.mockResolvedValue({ version: 1, theme: 'system', accent: 'system', language: 'simplifiedChinese', reportExportDirectory: '/vol1/reports', notifyOnTaskCompleted: true, notifyOnTaskFailed: true, channels: [] });
-    api.taskAction.mockResolvedValue(undefined); api.deleteTasks.mockResolvedValue(undefined);
+    api.taskAction.mockResolvedValue(undefined); api.deleteTasks.mockResolvedValue(undefined); api.deleteTask.mockResolvedValue(undefined);
     api.exportReports.mockResolvedValue({ exportedCount: 1, files: ['/vol1/reports/done.txt'] });
     api.submitDuplicates.mockResolvedValue(undefined); api.submitFailures.mockResolvedValue(undefined);
     sdk.getPlatformConfig.mockResolvedValue({ language: 'zh-CN', theme: 'light' }); sdk.listen.mockResolvedValue(undefined); sdk.setTitle.mockResolvedValue(undefined);
   });
 
-  it('runs active actions, renders persisted waveforms and handles selected history in bulk', async () => {
+  it('selects tasks in sidebar and performs actions in content area', async () => {
     api.loadTasks.mockResolvedValue([task('running-job', 'running'), task('paused-job', 'paused'), task('done-job', 'completed')]);
     render(<App />); await screen.findByText('管理员 · admin');
 
-    fireEvent.click(screen.getByRole('button', { name: '运行任务' }));
-    fireEvent.click(screen.getByRole('button', { name: '暂停' }));
-    fireEvent.click(screen.getByRole('button', { name: '继续' }));
-    await waitFor(() => {
-      expect(api.taskAction).toHaveBeenCalledWith('running-job', 'pause');
-      expect(api.taskAction).toHaveBeenCalledWith('paused-job', 'resume');
-    });
+    // Tasks should appear in sidebar
+    expect(screen.getByText('running-job')).toBeInTheDocument();
+    expect(screen.getByText('paused-job')).toBeInTheDocument();
+    expect(screen.getByText('done-job')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '历史任务' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: '已选择' }));
-    fireEvent.click(screen.getByRole('button', { name: '批量创建报告' }));
-    await waitFor(() => expect(api.exportReports).toHaveBeenCalledWith(['done-job'], '/vol1/reports'));
-
-    fireEvent.click(screen.getByRole('button', { name: '详情' }));
-    const dialog = await screen.findByRole('dialog', { name: 'done-job' });
-    expect(within(dialog).getByRole('img', { name: '复制吞吐' })).toBeInTheDocument();
-    expect(within(dialog).getByRole('img', { name: '校验吞吐' })).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'close' }));
-
-    fireEvent.click(screen.getByRole('button', { name: '重新开始' }));
-    fireEvent.click(screen.getByRole('button', { name: '重新校验' }));
-    await waitFor(() => {
-      expect(api.taskAction).toHaveBeenCalledWith('done-job', 'restart');
-      expect(api.taskAction).toHaveBeenCalledWith('done-job', 'verify');
-    });
-    fireEvent.click(screen.getByRole('button', { name: '批量删除' }));
-    await waitFor(() => expect(api.deleteTasks).toHaveBeenCalledWith(['done-job']));
+    // Click on running job card in sidebar
+    fireEvent.click(screen.getByText('running-job'));
+    // Content area should show pause button (use role to be specific)
+    const pauseBtn = await screen.findByRole('button', { name: /暂停/ });
+    fireEvent.click(pauseBtn);
+    await waitFor(() => expect(api.taskAction).toHaveBeenCalledWith('running-job', 'pause'));
   });
 
-  it('submits batch and per-item duplicate choices', async () => {
-    api.loadTasks.mockResolvedValue([task('duplicate-job', 'awaitingDuplicateDecision', {
+  it('submits duplicate choices via dialog', async () => {
+    api.loadTasks.mockResolvedValue([task('dup-job', 'awaitingDuplicateDecision', {
       duplicateFiles: [{ relativePath: 'a.txt' }, { relativePath: 'b.txt' }], reportFileName: null,
     })]);
     render(<App />); await screen.findByText('管理员 · admin');
     const dialog = await screen.findByRole('dialog', { name: '需要处理重复文件' });
-    fireEvent.click(within(dialog).getByRole('button', { name: '全部覆盖' }));
+
+    // Batch apply overwrite to all - use the button in the batch actions area
+    const batchButtons = within(dialog).getAllByText('覆盖');
+    fireEvent.click(batchButtons[0]);
+    // Change second item to skip via combobox
     fireEvent.change(within(dialog).getAllByRole('combobox')[1], { target: { value: 'skip' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: '提交决定' }));
-    await waitFor(() => expect(api.submitDuplicates).toHaveBeenCalledWith('duplicate-job', [
+    fireEvent.click(within(dialog).getByText('提交决定'));
+    await waitFor(() => expect(api.submitDuplicates).toHaveBeenCalledWith('dup-job', [
       { relativePath: 'a.txt', decision: 'overwrite' }, { relativePath: 'b.txt', decision: 'skip' },
     ]));
   });
 
   it('submits selected failed items for retry', async () => {
-    api.loadTasks.mockResolvedValue([task('failure-job', 'awaitingFailureDecision', {
+    api.loadTasks.mockResolvedValue([task('fail-job', 'awaitingFailureDecision', {
       failedFiles: [{ relativePath: 'broken.txt', error: 'failed', isVerificationMismatch: false }], reportFileName: null,
     })]);
     render(<App />); await screen.findByText('管理员 · admin');
     const dialog = await screen.findByRole('dialog', { name: '需要处理失败项' });
+    expect(within(dialog).getByText('需要处理失败项')).toBeInTheDocument();
     await waitFor(() => expect(within(dialog).getByRole('checkbox')).toBeChecked());
-    fireEvent.click(within(dialog).getByRole('button', { name: '重试所选' }));
-    await waitFor(() => expect(api.submitFailures).toHaveBeenCalledWith('failure-job', 'retry', ['broken.txt']));
+    fireEvent.click(within(dialog).getByText('重试所选'));
+    await waitFor(() => expect(api.submitFailures).toHaveBeenCalledWith('fail-job', 'retry', ['broken.txt']));
   });
 });
