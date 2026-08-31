@@ -1,4 +1,4 @@
-import { windowsResources } from './generatedTranslations';
+import { sharedWindowsResourceKeys, windowsResources } from './generatedTranslations';
 import type { Language } from './types';
 
 const zh = {
@@ -12,15 +12,20 @@ const zh = {
   refreshAuth: '刷新授权目录', noAuthorizedFolders: '尚未授权任何共享目录', folderSelectedSyncFailed: '目录已选择，授权状态仍在同步。', retryAuthorizationSync: '重新同步', folderAuthorizationReady: '目录授权已同步。', nativePickerFailed: '原生目录选择失败',
   mode: '任务模式', copyAndVerify: '复制并校验', copyOnly: '仅复制', verifyOnly: '仅校验', enableCopy: '开启', verifyFiles: '开启', copyFilesAccessible: '复制文件', verifyFilesAccessible: '校验文件', priorityAccessible: '优先', on: '开启', off: '关闭',
   subfolder: '拷贝目的地文件夹名', subfolderHint: '留空则不创建子文件夹', duplicate: '重复项处理', duplicateHint: '询问模式会先继续处理其他文件，再逐个处理检测到的重复文件。', ask: '询问', overwrite: '覆盖', skip: '跳过', createCopy: '创建副本', fileVerification: '文件校验',
-  algorithm: '校验算法', verifyTiming: '校验时机', afterCopy: '复制后校验', opportunisticDuringCopy: '拷贝时校验（可用时）', priority: '优先任务',
+  algorithm: '校验算法', verifyTiming: '校验时机', afterCopy: '复制后校验', opportunisticDuringCopy: '拷贝时校验', priority: '优先任务',
+  opportunisticHint: '复制优先；仅在系统资源有余量时后台校验已完整写入的文件，积压项目会在拷贝结束后补完。',
+  algorithmHintSha256: '默认选择，兼顾速度与抗碰撞能力，适合重要素材交付与长期归档。', algorithmHintSha512: '摘要更长、抗碰撞能力更高，适合需长期保存的高要求归档；计算开销通常更高。', algorithmHintSha1: '兼容旧有校验清单和系统；不适合安全性或防篡改证明。', algorithmHintMd5: '兼容性高且开销较低，适合旧系统或非安全场景；不适合作为防篡改证明。', algorithmHintXxHash64: '吞吐量优先，适合本机大批量快速完整性检查；不适合作为防篡改证明。',
+  dataSource: '数据源', copySection: '拷贝', dialogSourcePlaceholder: '请选择源目录或存储卡', dialogDestinationPlaceholder: '请选择文件拷贝目的地', foldersNotConfigured: '请选择数据源和拷贝目的地。',
   create: '创建任务', startTaskOptions: '开始拷卡', tasks: '任务与历史', emptyTasks: '还没有任务', pause: '暂停', resume: '恢复', cancel: '取消', restart: '重新开始', verifyAgain: '再次校验',
   report: '下载报告', remove: '删除历史', details: '详情', progress: '进度', files: '个文件', waitingDuplicate: '需要处理重复文件', waitingFailure: '需要处理失败项',
   retry: '重试', markOverwrite: '覆盖后重新校验', confirmDecisions: '提交决定', close: '关闭', compatibleError: 'fnOS 版本过低，需要 1.2.0401 或更高版本',
   browserAuthHint: '独立浏览器会打开 fnOS 授权窗口，返回后请刷新授权目录', status: '状态', signedInAs: '管理员', language: '语言', theme: '主题',
-  system: '跟随系统', light: '浅色', dark: '深色', operationFailed: '操作失败', selected: '已选择', selectAll: '全选', batchDelete: '批量删除', batchReports: '批量导出报告',
+  system: '跟随系统', light: '浅色', dark: '深色', operationFailed: '操作失败', selected: '已选择', multiSelect: '多选', selectAll: '全选', batchDelete: '批量删除', batchReports: '批量导出报告',
   locate: '在文件管理器中定位', addAuthorization: '新增授权', revokeAuthorization: '撤销授权', authorizationHint: '仅显示 fnOS 已授予 ClipPort 且当前管理员可访问的目录。',
   readable: '可读', writable: '可写', notWritable: '只读', activeTasksEmpty: '当前没有运行中的任务', historyEmpty: '当前没有历史任务',
   copyWaveform: '复制吞吐', verifyWaveform: '校验吞吐', byteRate: '字节速率', itemRate: '文件速率', noWaveform: '暂无波形样本',
+  statusQueued: '等待开始', statusRunning: '正在拷贝', statusPaused: '已暂停', statusAwaitingDuplicate: '等待处理重复文件', statusAwaitingFailure: '等待处理失败文件',
+  statusCompleted: '任务完成', statusCompletedWithErrors: '部分完成', statusVerificationFailed: '校验失败', statusFailed: '任务失败', statusCancelled: '任务已取消；已完成文件保留', statusInterrupted: '应用在任务完成前退出',
   appearance: '外观', accent: '强调色', seafoam: '海沫', brightRose: '亮玫瑰', gold: '金色', mint: '薄荷', purpleShadow: '紫影',
   simplifiedChinese: '简体中文', english: 'English', classicalChinese: '文言', general: '常规', saveSettings: '保存设置', settingsSaved: '设置已保存',
   reportExportDirectory: '报告默认导出目录', chooseReportDirectory: '选择报告导出目录', notification: '通知', notifyCompleted: '任务完成时通知', notifyFailed: '任务失败时通知',
@@ -29,7 +34,7 @@ const zh = {
   weCom: '企业微信', dingTalk: '钉钉', feishu: '飞书', bark: 'Bark', smtp: 'SMTP', version: '版本', repository: '项目仓库', checkUpdate: '检查更新',
   latestVersion: '最新版本', updateAvailable: '发现 fnOS FPK 更新', noUpdate: '当前已是最新版本', downloadFpk: '下载 FPK', openAppCenter: '打开应用设置', updateGuide: '下载对应 x86 FPK 后，请在 fnOS 应用中心完成升级。',
   exportSucceeded: '报告已导出', applyAllOverwrite: '全部覆盖', applyAllSkip: '全部跳过', applyAllCopy: '全部创建副本', chooseFailedItems: '选择要处理的失败项',
-  returnTasks: '返回任务', permissionUnavailable: '权限状态暂不可用', semanticPathFallback: '使用原始路径',
+  returnTasks: '返回任务', permissionUnavailable: '权限状态暂不可用', semanticPathFallback: '使用原始路径', authorizationUnavailable: '授权目录暂不可用，其他功能仍可继续使用。', retryAuthorization: '重试', requestUnavailable: 'ClipPort 暂时无法完成此请求，请稍后重试。',
 } as const;
 
 const platformOverrides: Record<Language, Partial<Record<keyof typeof zh, string>>> = {
@@ -38,39 +43,49 @@ const platformOverrides: Record<Language, Partial<Record<keyof typeof zh, string
     appSubtitle: 'NAS file copy and integrity verification', newTask: 'New task', newTaskDialog: 'Create card-copy task', startTaskOptions: 'Start task', runningTasks: 'Running', history: 'History', authorization: 'Authorized folders', settings: 'Settings', about: 'About',
     source: 'Source folder', destination: 'Destination folder', chooseSource: 'Select and authorize source', chooseDestination: 'Select and authorize destination', refreshAuth: 'Refresh authorized folders', noAuthorizedFolders: 'No shared folder has been authorized', prepareTask: 'Prepare new task', choosePathsHint: 'Select a source and destination folder', sourceStorageCard: 'Source folder / storage card', destinationCard: 'Copy destination', notSelected: 'Not selected', fileSize: 'File size', fileCount: 'File count', createdAt: 'Created', finishedAt: 'Finished', elapsed: 'Elapsed', taskProgress: 'Task progress', waitingStart: 'Waiting to start', copyPhase: 'Copy', verifyPhase: 'File verification', readyHint: 'Ready. Select folders to begin.', copySpeed: 'Copy speed', verifySpeed: 'Verification speed', copyByteRate: 'File copy byte rate', verifyByteRate: 'File verification byte rate', itemRateTitle: 'Item rate', stackedWaveform: 'Show waveforms side by side', verticalWaveform: 'Show waveforms vertically', completedLabel: 'Completed', appearanceDescription: 'Choose the light/dark appearance and accent color.', colorModeAndAccent: 'Color mode and accent', colorMode: 'Color mode', themeColor: 'Accent color', systemColor: 'System color', applicationInfo: 'Application information', update: 'Updates', aboutDescription: 'View version information and visit the ClipPort repository.', updateDescription: 'Get and install the latest version from GitHub Releases.', githubOpen: 'Open in GitHub', notificationChannels: 'Notification channels', priorityHint: 'Tasks are queued one at a time; priority tasks are placed at the front.', waitingSetup: 'Waiting for setup', generalDescription: 'Configure the interface language and default log/report locations.', languageAndFiles: 'Language and files', notificationDescription: 'Send results through one or more channels when a task ends.', sendScenarios: 'Notification scenarios',
     folderSelectedSyncFailed: 'The folder is selected and its authorization status is still syncing.', retryAuthorizationSync: 'Sync again', folderAuthorizationReady: 'Folder authorization is ready.', nativePickerFailed: 'Native folder selection failed', enableCopy: 'On', verifyFiles: 'On', copyFilesAccessible: 'Copy files', verifyFilesAccessible: 'Verify files', priorityAccessible: 'Priority', on: 'On', off: 'Off', subfolder: 'Destination folder name', subfolderHint: 'Leave blank to avoid creating a subfolder.', duplicate: 'Duplicate handling', duplicateHint: 'Ask mode continues with other files, then handles each detected duplicate.', fileVerification: 'File verification',
-    priority: 'Priority task', tasks: 'Tasks and history', emptyTasks: 'No tasks yet', browserAuthHint: 'A fnOS authorization window will open; refresh folders after returning', signedInAs: 'Administrator',
+    priority: 'Priority task', tasks: 'Tasks and history', emptyTasks: 'No tasks yet', browserAuthHint: 'A fnOS authorization window will open; refresh folders after returning', signedInAs: 'Administrator', compatibleError: 'fnOS 1.2.0401 or later is required.',
     system: 'Use system', light: 'Light', dark: 'Dark', operationFailed: 'Operation failed', authorizationHint: 'Only folders granted to ClipPort and accessible to the current administrator are shown.', addAuthorization: 'Add authorization', revokeAuthorization: 'Revoke', locate: 'Show in File Manager',
     readable: 'Readable', writable: 'Writable', notWritable: 'Read only', activeTasksEmpty: 'No active tasks', historyEmpty: 'No task history', copyWaveform: 'Copy throughput', verifyWaveform: 'Verification throughput', byteRate: 'Byte rate', itemRate: 'File rate', noWaveform: 'No waveform samples',
     appearance: 'Appearance', accent: 'Accent', general: 'General', saveSettings: 'Save settings', settingsSaved: 'Settings saved', reportExportDirectory: 'Default report export folder', chooseReportDirectory: 'Choose report folder', notification: 'Notifications', notifyCompleted: 'Notify when a task completes', notifyFailed: 'Notify when a task fails',
     addChannel: 'Add channel', channelName: 'Name', channelKind: 'Type', enabled: 'Enabled', endpoint: 'Webhook / Bark URL', smtpHost: 'SMTP host', smtpPort: 'Port', smtpUsername: 'Username', smtpPassword: 'Password', smtpFrom: 'Sender', smtpRecipients: 'Recipients', savedSecret: 'Saved securely; leave blank to keep it', testSend: 'Send test', testSucceeded: 'Test sent', deleteChannel: 'Delete channel',
-    version: 'Version', repository: 'Repository', checkUpdate: 'Check for updates', latestVersion: 'Latest version', updateAvailable: 'A fnOS FPK update is available', noUpdate: 'You are up to date', downloadFpk: 'Download FPK', openAppCenter: 'Open app settings', updateGuide: 'Download the matching x86 FPK, then finish the upgrade in fnOS App Center.', exportSucceeded: 'Reports exported', returnTasks: 'Back to tasks', permissionUnavailable: 'Permission status temporarily unavailable', semanticPathFallback: 'Showing raw path',
+    version: 'Version', repository: 'Repository', checkUpdate: 'Check for updates', latestVersion: 'Latest version', updateAvailable: 'A fnOS FPK update is available', noUpdate: 'You are up to date', downloadFpk: 'Download FPK', openAppCenter: 'Open app settings', updateGuide: 'Download the matching x86 FPK, then finish the upgrade in fnOS App Center.', exportSucceeded: 'Reports exported', returnTasks: 'Back to tasks', permissionUnavailable: 'Permission status temporarily unavailable', semanticPathFallback: 'Showing raw path', authorizationUnavailable: 'Authorized folders are temporarily unavailable. Other features remain usable.', retryAuthorization: 'Retry', requestUnavailable: 'ClipPort cannot complete this request right now. Please try again later.',
   },
   lzh: {
     appSubtitle: 'NAS 檔案徙置與驗真', newTask: '立新事', newTaskDialog: '立抄卡之事', startTaskOptions: '始其事', runningTasks: '行中', history: '往事', authorization: '所許之目', settings: '設置', about: '關於',
     source: '所出之目', destination: '所至之目', chooseSource: '擇並許所出', chooseDestination: '擇並許所至', refreshAuth: '刷新所許', noAuthorizedFolders: '尚無所許共享之目', prepareTask: '預備新事', choosePathsHint: '請擇所出與所至之目', sourceStorageCard: '所出之目／儲卡', destinationCard: '抄錄所至', notSelected: '尚未擇定', fileSize: '檔案大小', fileCount: '檔案數', createdAt: '立於', finishedAt: '終於', elapsed: '累時', taskProgress: '事之進度', waitingStart: '候始', copyPhase: '抄錄', verifyPhase: '驗檔', readyHint: '已備。擇目即可始。', copySpeed: '抄錄速', verifySpeed: '驗檔速', copyByteRate: '檔案抄錄量速', verifyByteRate: '檔案驗證量速', itemRateTitle: '項目速', stackedWaveform: '波形並列', verticalWaveform: '波形縱列', completedLabel: '已成', appearanceDescription: '擇明暗之貌與主色。', colorModeAndAccent: '色式與主色', colorMode: '色式', themeColor: '主色', systemColor: '系統色', applicationInfo: '應用之訊', update: '更新', aboutDescription: '觀版本並訪 ClipPort 之庫。', updateDescription: '自 GitHub Releases 取最新版。', githubOpen: '於 GitHub 開之', notificationChannels: '告知之道', priorityHint: '事逐一候行，勾先行者列於隊首。', waitingSetup: '候設定', generalDescription: '設介面語與誌、報告之預設位置。', languageAndFiles: '語與檔', notificationDescription: '事終以一道或數道外部管道告知。', sendScenarios: '告知之境', folderSelectedSyncFailed: '目已擇，所許之狀尚待同步。', retryAuthorizationSync: '復同步', folderAuthorizationReady: '所許已同步。', nativePickerFailed: '原生擇目失敗', enableCopy: '開', verifyFiles: '開', copyFilesAccessible: '抄錄檔案', verifyFilesAccessible: '驗其完整', priorityAccessible: '先行', subfolder: '所至子目之名', subfolderHint: '空則不立子目。', duplicate: '重檔之處', duplicateHint: '詢則先行餘檔，後逐一處重檔。', fileVerification: '檔案驗證', priority: '先行之事',
-    operationFailed: '行之未成', signedInAs: '掌理者', system: '從系統', light: '明', dark: '暗', on: '開', off: '閉', addAuthorization: '增所許', revokeAuthorization: '撤所許', locate: '於檔案司中示之', authorizationHint: '惟列 fnOS 已許 ClipPort 且掌理者可至之目。',
-    activeTasksEmpty: '今無行中之事', historyEmpty: '尚無往事', settingsSaved: '設置已存', notification: '告知', checkUpdate: '察更新', updateAvailable: '有 fnOS FPK 新版', noUpdate: '今已最新', updateGuide: '取其 x86 FPK，於 fnOS 應用中心升之。', returnTasks: '返事', permissionUnavailable: '權狀暫不可得', semanticPathFallback: '示原徑',
+    operationFailed: '行之未成', signedInAs: '掌理者', compatibleError: '須 fnOS 1.2.0401 或更新之版。', browserAuthHint: '將啟 fnOS 授權之窗，返後請刷新所許之目。', system: '從系統', light: '明', dark: '暗', on: '開', off: '閉', addAuthorization: '增所許', revokeAuthorization: '撤所許', locate: '於檔案司中示之', authorizationHint: '惟列 fnOS 已許 ClipPort 且掌理者可至之目。',
+    activeTasksEmpty: '今無行中之事', historyEmpty: '尚無往事', settingsSaved: '設置已存', notification: '告知', checkUpdate: '察更新', updateAvailable: '有 fnOS FPK 新版', noUpdate: '今已最新', downloadFpk: '取 FPK', openAppCenter: '啟應用設置', updateGuide: '取其 x86 FPK，於 fnOS 應用中心升之。', returnTasks: '返事', permissionUnavailable: '權狀暫不可得', semanticPathFallback: '示原徑', authorizationUnavailable: '所許之目暫不可得，餘用仍可行。', retryAuthorization: '復試', requestUnavailable: 'ClipPort 此請暫不可成，請稍後復試。',
   },
-};
-
-const sharedResourceKeys: Partial<Record<keyof typeof zh, string>> = {
-  pause: 'Button.Pause', resume: 'Button.Resume', restart: 'Button.Restart', verifyAgain: 'Button.Reverify',
-  report: 'Button.ExportReport', remove: 'Button.DeleteRecord', selectAll: 'Button.SelectAll', batchDelete: 'Button.BatchDelete', batchReports: 'Button.BatchCreateReports',
-  priority: 'Common.Priority', retry: 'Button.RetrySelected', overwrite: 'DuplicateAction.Overwrite', skip: 'DuplicateAction.Skip', createCopy: 'DuplicateAction.Copy',
-  settings: 'Settings.Title', appearance: 'Settings.Appearance', language: 'Settings.Language', notification: 'Settings.Notifications',
 };
 
 export type TranslationKey = keyof typeof zh;
 
+export const platformOnlyTranslationKeys = [
+  'authorization', 'chooseSource', 'chooseDestination', 'refreshAuth', 'noAuthorizedFolders',
+  'folderSelectedSyncFailed', 'retryAuthorizationSync', 'folderAuthorizationReady', 'nativePickerFailed',
+  'compatibleError', 'browserAuthHint', 'signedInAs', 'locate', 'addAuthorization',
+  'revokeAuthorization', 'authorizationHint', 'permissionUnavailable', 'semanticPathFallback',
+  'authorizationUnavailable', 'retryAuthorization', 'requestUnavailable', 'updateAvailable',
+  'noUpdate', 'downloadFpk', 'openAppCenter', 'updateGuide',
+] as const satisfies readonly TranslationKey[];
+
+for (const language of ['en-US', 'lzh'] as const) {
+  for (const key of platformOnlyTranslationKeys) {
+    if (!platformOverrides[language][key]) {
+      throw new Error(`Missing fnOS platform translation for ${language}: ${key}`);
+    }
+  }
+}
+
 export function translator(language: Language) {
   return (key: TranslationKey): string => {
-    const platform = platformOverrides[language][key];
-    if (platform) return platform;
-    const resourceKey = sharedResourceKeys[key];
+    const resourceKey = (sharedWindowsResourceKeys as Partial<Record<TranslationKey, string>>)[key];
     if (resourceKey) {
       const localized = (windowsResources[language] as Record<string, string>)[resourceKey];
       if (localized) return localized;
     }
+    const platform = platformOverrides[language][key];
+    if (platform) return platform;
     return zh[key];
   };
 }

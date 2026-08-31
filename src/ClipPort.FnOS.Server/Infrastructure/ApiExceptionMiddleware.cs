@@ -64,7 +64,9 @@ public sealed class ApiExceptionMiddleware(
         {
             logger.LogError(ex, "Unhandled fnOS API request failure.");
             await WriteAsync(context, StatusCodes.Status500InternalServerError,
-                new ErrorResponse("internal_error", "The request could not be completed."));
+                new ErrorResponse(
+                    "internal_error",
+                    "ClipPort 暂时无法完成此请求，请稍后重试并检查 fnOS 应用日志。"));
         }
     }
 

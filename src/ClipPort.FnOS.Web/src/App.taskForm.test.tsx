@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { translator } from './i18n';
+
+const t = translator('zh-CN');
 
 const api = vi.hoisted(() => ({
   loadSession: vi.fn(), loadFolders: vi.fn(), loadTasks: vi.fn(), loadSettings: vi.fn(), createTask: vi.fn(),
@@ -30,20 +33,41 @@ describe('Windows-equivalent task mode logic', () => {
 
   async function choosePathsAndOpenDialog() {
     sdk.pickFolder.mockResolvedValueOnce(['/vol1/source']).mockResolvedValueOnce(['/vol1/destination']);
-    fireEvent.click(screen.getByRole('button', { name: /源目录 \/ 存储卡/ }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('sourceStorageCard')) }));
     await waitFor(() => expect(sdk.pickFolder).toHaveBeenCalledWith('source'));
-    fireEvent.click(screen.getByRole('button', { name: /拷贝目的地/ }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('destinationCard')) }));
     await waitFor(() => expect(sdk.pickFolder).toHaveBeenCalledWith('destination'));
     fireEvent.click(screen.getByRole('button', { name: '开始拷卡' }));
-    await screen.findByRole('dialog', { name: '新建任务' });
+    await screen.findByRole('dialog', { name: t('newTask') });
   }
+
+  it('opens a reset dialog from New task and keeps draft paths from Start card copy', async () => {
+    render(<App />); await screen.findByText('管理员 · admin');
+
+    fireEvent.click(screen.getByRole('button', { name: t('newTask') }));
+    let dialog = await screen.findByRole('dialog', { name: t('newTask') });
+    expect(dialog).toHaveTextContent(t('dialogSourcePlaceholder'));
+    expect(dialog).toHaveTextContent(t('dialogDestinationPlaceholder'));
+    fireEvent.click(screen.getByRole('button', { name: t('cancel') }));
+
+    sdk.pickFolder.mockResolvedValueOnce(['/vol1/source']).mockResolvedValueOnce(['/vol1/destination']);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('sourceStorageCard')) }));
+    await waitFor(() => expect(sdk.pickFolder).toHaveBeenCalledWith('source'));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('destinationCard')) }));
+    await waitFor(() => expect(sdk.pickFolder).toHaveBeenCalledWith('destination'));
+    fireEvent.click(screen.getByRole('button', { name: '开始拷卡' }));
+
+    dialog = await screen.findByRole('dialog', { name: t('newTask') });
+    expect(dialog).toHaveTextContent('/vol1/source');
+    expect(dialog).toHaveTextContent('/vol1/destination');
+  });
 
   it('enforces verify-only and copy-only control states in dialog', async () => {
     render(<App />); await screen.findByText('管理员 · admin');
     await choosePathsAndOpenDialog();
 
-    const copy = screen.getByLabelText('复制文件');
-    const verify = screen.getByLabelText('校验文件');
+    const copy = screen.getByLabelText(t('copyFilesAccessible'));
+    const verify = screen.getByLabelText(t('verifyFilesAccessible'));
 
     // Uncheck copy -> verify-only mode (verify must stay on)
     fireEvent.click(copy);
@@ -60,15 +84,16 @@ describe('Windows-equivalent task mode logic', () => {
     render(<App />); await screen.findByText('管理员 · admin');
     await choosePathsAndOpenDialog();
 
-    // Toggle priority
-    fireEvent.click(screen.getByLabelText('优先'));
+    // Toggle Windows-equivalent task options.
+    fireEvent.click(screen.getByLabelText(t('opportunisticDuringCopy')));
+    fireEvent.click(screen.getByLabelText(t('priorityAccessible')));
 
     // Submit
-    fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
+    fireEvent.click(screen.getByRole('button', { name: t('create') }));
 
     await waitFor(() => expect(api.createTask).toHaveBeenCalledWith(expect.objectContaining({
       mode: 'copyAndVerify', existingFilePolicy: 'ask', verificationAlgorithm: 'sha256',
-      verificationExecutionMode: 'afterCopy', isPriority: true,
+      verificationExecutionMode: 'opportunisticDuringCopy', isPriority: true,
     })));
   });
 });

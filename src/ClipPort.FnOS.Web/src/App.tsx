@@ -16,6 +16,7 @@ import {
 } from './api';
 import { fnosSdk } from './fnosSdk';
 import { translator } from './i18n';
+import type { TranslationKey } from './i18n';
 import { ThroughputChart } from './Waveform';
 import type {
   AppSettings, AuthorizedFolder, ClipPortTask, ExistingPolicy, HashAlgorithm,
@@ -58,19 +59,23 @@ export function App() {
   const [folders, setFolders] = useState<AuthorizedFolder[]>([]);
   const [tasks, setTasks] = useState<ClipPortTask[]>([]);
   const [settings, setSettings] = useState<AppSettings>();
-const [form, setForm] = useState<TaskForm>(() => previewDialog
+  const [form, setForm] = useState<TaskForm>(() => previewDialog
     ? { ...initialForm, sourcePath: '/vol1/source', destinationPath: '/vol1/destination' }
     : initialForm);
+  const [dialogForm, setDialogForm] = useState<TaskForm | undefined>(() => previewDialog
+    ? { ...initialForm, sourcePath: '/vol1/source', destinationPath: '/vol1/destination' }
+    : undefined);
   const [language, setLanguage] = useState<Language>('zh-CN');
   const [systemTheme, setSystemTheme] = useState<Theme>('light');
   const [contentView, setContentView] = useState<ContentView>('task');
   const [selectedTaskId, setSelectedTaskId] = useState<string>();
-  const [showNewTaskDialog, setShowNewTaskDialog] = useState(previewDialog);
   const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [pendingAuthorizationPath, setPendingAuthorizationPath] = useState<string>();
+  const [authorizationUnavailable, setAuthorizationUnavailable] = useState(false);
+  const [dialogError, setDialogError] = useState('');
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [duplicateDecisions, setDuplicateDecisions] = useState<Record<string, ExistingPolicy>>({});
   const [failureSelection, setFailureSelection] = useState<Set<string>>(new Set());
@@ -78,15 +83,21 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
   const t = useMemo(() => translator(language), [language]);
 
   const refreshFolders = useCallback(async () => {
-    const next = await loadFolders();
-    setFolders(next);
-    return next;
+    try {
+      const next = await loadFolders();
+      setFolders(next);
+      setAuthorizationUnavailable(false);
+      return next;
+    } catch (caught) {
+      setAuthorizationUnavailable(true);
+      throw caught;
+    }
   }, []);
   const perform = useCallback(async (operation: () => Promise<unknown>) => {
     setBusy(true); setError(''); setNotice('');
     try { await operation(); }
     catch (caught) {
-      setError(caught instanceof ApiError || caught instanceof Error ? caught.message : t('operationFailed'));
+      setError(friendlyErrorMessage(caught, t));
     } finally { setBusy(false); }
   }, [t]);
 
@@ -106,11 +117,13 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
     const platformPromise = fnosSdk.getPlatformConfig()
       .catch(() => ({ language: 'zh-CN' as Language, theme: fallbackTheme }));
     const reportStartupError = (caught: unknown) => {
-      if (!cancelled) setError(caught instanceof Error ? caught.message : 'ClipPort startup failed.');
+      if (!cancelled) setError(friendlyErrorMessage(caught, translator('zh-CN')));
     };
 
     void loadSession().then(value => { if (!cancelled) setSession(value); }).catch(reportStartupError);
-    void refreshFolders().catch(reportStartupError);
+    // Authorization is an optional startup surface. Keep tasks and settings usable
+    // while the fnOS gateway is temporarily unavailable and expose a focused retry.
+    void refreshFolders().catch(() => undefined);
     void loadTasks().then(value => { if (!cancelled) setTasks(value); }).catch(reportStartupError);
     void Promise.all([loadSettings(), platformPromise])
       .then(([loadedSettings, platform]) => {
@@ -196,20 +209,25 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
     return false;
   };
 
-  const chooseFolder = async (kind: 'source' | 'destination') => {
+  const chooseFolder = async (kind: 'source' | 'destination', target: 'draft' | 'dialog' = 'draft') => {
     setBusy(true); setError(''); setNotice('');
     try {
       const selected = (await fnosSdk.pickFolder(kind)).at(-1);
       if (!selected) return;
-      setForm(current => ({
-        ...current,
-        [kind === 'source' ? 'sourcePath' : 'destinationPath']: selected,
-        destinationSubfolder: kind === 'source' && current.enableCopy && !current.destinationSubfolder
-          ? safeSubfolderName(selected) : current.destinationSubfolder,
-      }));
+      const updateSelectedPath = (current: TaskForm) => ({
+          ...current,
+          [kind === 'source' ? 'sourcePath' : 'destinationPath']: selected,
+          destinationSubfolder: kind === 'source' && current.enableCopy && !current.destinationSubfolder
+            ? safeSubfolderName(selected) : current.destinationSubfolder,
+        });
+      if (target === 'dialog') {
+        setDialogForm(current => current ? updateSelectedPath(current) : current);
+      } else {
+        setForm(updateSelectedPath);
+      }
       await syncSelectedFolder(selected);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : t('operationFailed');
+      const message = friendlyErrorMessage(caught, t);
       setError(`${t('nativePickerFailed')}：${message}`);
     } finally { setBusy(false); }
   };
@@ -223,6 +241,27 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
     });
   };
 
+  const retryAuthorizationStartup = () => {
+    setBusy(true);
+    void refreshFolders().catch(() => undefined).finally(() => setBusy(false));
+  };
+
+  const openNewTaskDialog = (reset: boolean) => {
+    const next = reset ? { ...initialForm } : { ...form };
+    if (reset) {
+      setForm(next);
+      setSelectedTaskId(undefined);
+      setMultiSelectMode(false);
+    }
+    setDialogError('');
+    setDialogForm(next);
+  };
+
+  const closeNewTaskDialog = () => {
+    setDialogError('');
+    setDialogForm(undefined);
+  };
+
   const addAuthorization = () => void perform(async () => {
     const selected = (await fnosSdk.pickFolder('source')).at(-1);
     if (selected) await syncSelectedFolder(selected);
@@ -230,21 +269,26 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!dialogForm) return;
+    if (!dialogForm.sourcePath || !dialogForm.destinationPath) {
+      setDialogError(t('foldersNotConfigured'));
+      return;
+    }
     await perform(async () => {
-      const mode = !form.enableCopy ? 'verifyOnly' : form.verifyFiles ? 'copyAndVerify' : 'copyOnly';
+      const mode = !dialogForm.enableCopy ? 'verifyOnly' : dialogForm.verifyFiles ? 'copyAndVerify' : 'copyOnly';
       const task = await createTask({
-        mode, sourcePath: form.sourcePath, destinationPath: form.destinationPath,
-        destinationSubfolder: form.enableCopy ? form.destinationSubfolder : '',
-        existingFilePolicy: form.enableCopy ? form.existingFilePolicy : 'overwrite',
-        verificationAlgorithm: form.verificationAlgorithm,
-        verificationExecutionMode: form.enableCopy && form.verifyFiles
-          ? form.verificationExecutionMode : 'afterCopy',
-        isPriority: form.isPriority,
+        mode, sourcePath: dialogForm.sourcePath, destinationPath: dialogForm.destinationPath,
+        destinationSubfolder: dialogForm.enableCopy ? dialogForm.destinationSubfolder : '',
+        existingFilePolicy: dialogForm.enableCopy ? dialogForm.existingFilePolicy : 'overwrite',
+        verificationAlgorithm: dialogForm.verificationAlgorithm,
+        verificationExecutionMode: dialogForm.enableCopy && dialogForm.verifyFiles
+          ? dialogForm.verificationExecutionMode : 'afterCopy',
+        isPriority: dialogForm.isPriority,
       });
       setTasks(current => [task, ...current.filter(item => item.id !== task.id)]);
-      setForm(current => ({ ...current, destinationSubfolder: '' }));
+      setForm({ ...dialogForm, destinationSubfolder: '' });
       setSelectedTaskId(task.id);
-      setShowNewTaskDialog(false);
+      closeNewTaskDialog();
     });
   };
 
@@ -303,6 +347,10 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
       {pendingAuthorizationPath && <button className="banner-action" onClick={retryPendingAuthorization}>{t('retryAuthorizationSync')}</button>}
       <button className="banner-close" aria-label={t('close')} onClick={() => { setNotice(''); setPendingAuthorizationPath(undefined); }}><Dismiss24Regular /></button>
     </div>}
+    {authorizationUnavailable && <div className="banner banner-warning">
+      <span>{t('authorizationUnavailable')}</span>
+      <button className="banner-action" disabled={busy} onClick={retryAuthorizationStartup}>{t('retryAuthorization')}</button>
+    </div>}
     {error && <div className="banner banner-danger"><strong>{t('operationFailed')}：</strong>{error}<button className="banner-close" aria-label={t('close')} onClick={() => setError('')}><Dismiss24Regular /></button></div>}
 
     {/* Main Workspace */}
@@ -317,7 +365,7 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
             const saved = await saveSettings(next);
             applySettings(saved, systemTheme);
           } catch (caught) {
-            setError(caught instanceof Error ? caught.message : t('operationFailed'));
+            setError(friendlyErrorMessage(caught, t));
           }
         }}
         onRefresh={() => void perform(refreshFolders)}
@@ -334,11 +382,11 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
         <aside className="sidebar">
           <div className="sidebar-toolbar">
             <div className="sidebar-toolbar-row">
-              <button className="btn btn-accent" onClick={() => setSelectedTaskId(undefined)}>
+              <button className="btn btn-accent" onClick={() => openNewTaskDialog(true)}>
                 <Add24Regular />{t('newTask')}
               </button>
               <button className="btn" onClick={() => setMultiSelectMode(current => !current)}>
-                <CheckboxChecked24Regular />{t('selectAll')}
+                <CheckboxChecked24Regular />{t('multiSelect')}
               </button>
               <button className="btn btn-icon" aria-label={t('settings')} onClick={() => setContentView('settings')}><Settings24Regular /></button>
             </div>
@@ -391,31 +439,44 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
             {selectedTask ? <TaskDetailView task={selectedTask} language={language} t={t as (key: string) => string}
               onAction={act} onDelete={handleDeleteTask}
               onLocate={locate} /> : <DraftTaskView form={form} t={t as (key: string) => string}
-                onChoose={kind => void chooseFolder(kind)} onConfigure={() => setShowNewTaskDialog(true)} />}
+                onChoose={kind => void chooseFolder(kind)} onConfigure={() => openNewTaskDialog(false)} />}
           </div>
         </div>
       </div>
     )}
 
     {/* New Task Dialog */}
-    {showNewTaskDialog && <div className="modal-backdrop" onClick={event => { if (event.target === event.currentTarget) setShowNewTaskDialog(false); }}>
+    {dialogForm && <div className="modal-backdrop" onClick={event => { if (event.target === event.currentTarget) closeNewTaskDialog(); }}>
       <div className="dialog" role="dialog" aria-label={t('newTask')}>
         <div className="dialog-header">
           <h2 className="dialog-title">{t('newTaskDialog')}</h2>
         </div>
         <form className="dialog-body" onSubmit={event => void onCreate(event)}>
           <div className="new-task-form">
+            <section className="dialog-path-section">
+              <h3><Folder24Regular />{t('dataSource')}</h3>
+              <button type="button" className="dialog-path-button" aria-label={t('chooseSource')} onClick={() => void chooseFolder('source', 'dialog')}>
+                <FolderOpen24Regular /><span>{dialogForm.sourcePath || t('dialogSourcePlaceholder')}</span>
+              </button>
+            </section>
+            <section className="dialog-path-section">
+              <h3><FolderArrowRight24Regular />{t('copySection')}</h3>
+              <span className="form-combo-label">{t('destinationCard')}</span>
+              <button type="button" className="dialog-path-button" aria-label={t('chooseDestination')} onClick={() => void chooseFolder('destination', 'dialog')}>
+                <FolderOpen24Regular /><span>{dialogForm.destinationPath || t('dialogDestinationPlaceholder')}</span>
+              </button>
+            </section>
             <label className="toggle-switch">
-                <input aria-label={t('copyFilesAccessible')} type="checkbox" checked={form.enableCopy} onChange={event => setForm(current => event.target.checked
+                <input aria-label={t('copyFilesAccessible')} type="checkbox" checked={dialogForm.enableCopy} onChange={event => setDialogForm(current => current && (event.target.checked
                   ? { ...current, enableCopy: true }
-                  : { ...current, enableCopy: false, verifyFiles: true, destinationSubfolder: '', existingFilePolicy: 'ask', verificationExecutionMode: 'afterCopy' })} />
+                  : { ...current, enableCopy: false, verifyFiles: true, destinationSubfolder: '', existingFilePolicy: 'ask', verificationExecutionMode: 'afterCopy' }))} />
                 <span className="toggle-track" />
-                <span className="toggle-label">{form.enableCopy ? t('on') : t('off')}</span>
+                <span className="toggle-label">{dialogForm.enableCopy ? t('on') : t('off')}</span>
             </label>
             <div className="form-combo-group">
               <span className="form-combo-label">{t('subfolder')}</span>
-              <input className="form-input" disabled={!form.enableCopy} value={form.destinationSubfolder}
-                onChange={event => setForm(current => ({ ...current, destinationSubfolder: event.target.value }))} />
+              <input className="form-input" disabled={!dialogForm.enableCopy} value={dialogForm.destinationSubfolder}
+                onChange={event => setDialogForm(current => current && ({ ...current, destinationSubfolder: event.target.value }))} />
               <span className="form-field-hint">{t('subfolderHint')}</span>
             </div>
             <div className="form-combo-group">
@@ -423,9 +484,9 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
               <div className="form-radio-group">
                 {([['ask', t('ask')], ['overwrite', t('overwrite')], ['skip', t('skip')], ['createCopy', t('createCopy')]] as const).map(([value, label]) =>
                   <label key={value} className="form-radio">
-                    <input type="radio" name="duplicatePolicy" disabled={!form.enableCopy}
-                      checked={form.existingFilePolicy === value}
-                      onChange={() => setForm(current => ({ ...current, existingFilePolicy: value }))} />
+                    <input type="radio" name="duplicatePolicy" disabled={!dialogForm.enableCopy}
+                      checked={dialogForm.existingFilePolicy === value}
+                      onChange={() => setDialogForm(current => current && ({ ...current, existingFilePolicy: value }))} />
                     {label}
                   </label>)}
               </div>
@@ -433,34 +494,41 @@ const [form, setForm] = useState<TaskForm>(() => previewDialog
             </div>
             <span className="dialog-subsection-heading">{t('fileVerification')}</span>
             <label className="toggle-switch">
-              <input aria-label={t('verifyFilesAccessible')} type="checkbox" checked={form.verifyFiles} onChange={event => setForm(current => event.target.checked
+              <input aria-label={t('verifyFilesAccessible')} type="checkbox" checked={dialogForm.verifyFiles} onChange={event => setDialogForm(current => current && (event.target.checked
                 ? { ...current, verifyFiles: true }
-                : { ...current, enableCopy: true, verifyFiles: false, verificationExecutionMode: 'afterCopy' })} />
+                : { ...current, enableCopy: true, verifyFiles: false, verificationExecutionMode: 'afterCopy' }))} />
               <span className="toggle-track" />
-              <span className="toggle-label">{form.verifyFiles ? t('on') : t('off')}</span>
+              <span className="toggle-label">{dialogForm.verifyFiles ? t('on') : t('off')}</span>
             </label>
             <div className="form-combo-group">
-              <span className="form-combo-label">{t('algorithm')}</span>
-              <SelectMenu label={t('algorithm')} value={form.verificationAlgorithm} disabled={!form.verifyFiles}
-                options={[['sha256', 'SHA-256'], ['sha512', 'SHA-512'], ['sha1', 'SHA-1'], ['md5', 'MD5'], ['xxHash64', 'xxHash64']].map(([value, label]) => ({ value, label }))}
-                onChange={value => setForm(current => ({ ...current, verificationAlgorithm: value as HashAlgorithm }))} />
+              <label className="toggle-switch">
+                <input aria-label={t('opportunisticDuringCopy')} type="checkbox" disabled={!(dialogForm.enableCopy && dialogForm.verifyFiles)}
+                  checked={dialogForm.verificationExecutionMode === 'opportunisticDuringCopy'}
+                  onChange={event => setDialogForm(current => current && ({ ...current,
+                    verificationExecutionMode: event.target.checked ? 'opportunisticDuringCopy' : 'afterCopy' }))} />
+                <span className="toggle-track" />
+                <span className="toggle-label">{dialogForm.verificationExecutionMode === 'opportunisticDuringCopy' ? t('on') : t('off')}</span>
+              </label>
+              <span className="form-field-hint">{t('opportunisticHint')}</span>
             </div>
             <div className="form-combo-group">
-              <span className="form-combo-label">{t('verifyTiming')}</span>
-              <SelectMenu label={t('verifyTiming')} value={form.verificationExecutionMode} disabled={!(form.enableCopy && form.verifyFiles)}
-                options={[{ value: 'afterCopy', label: t('afterCopy') }, { value: 'opportunisticDuringCopy', label: t('opportunisticDuringCopy') }]}
-                onChange={value => setForm(current => ({ ...current, verificationExecutionMode: value as TaskForm['verificationExecutionMode'] }))} />
+              <span className="form-combo-label">{t('algorithm')}</span>
+              <SelectMenu label={t('algorithm')} value={dialogForm.verificationAlgorithm} disabled={!dialogForm.verifyFiles}
+                options={[['sha256', 'SHA-256'], ['sha512', 'SHA-512'], ['sha1', 'SHA-1'], ['md5', 'MD5'], ['xxHash64', 'xxHash64']].map(([value, label]) => ({ value, label }))}
+                onChange={value => setDialogForm(current => current && ({ ...current, verificationAlgorithm: value as HashAlgorithm }))} />
+              <span className="form-field-hint">{t(verificationAlgorithmHintKey(dialogForm.verificationAlgorithm))}</span>
             </div>
             <label className="toggle-switch priority-toggle">
-              <input aria-label={t('priorityAccessible')} type="checkbox" checked={form.isPriority} onChange={event => setForm(current => ({ ...current, isPriority: event.target.checked }))} />
+              <input aria-label={t('priorityAccessible')} type="checkbox" checked={dialogForm.isPriority} onChange={event => setDialogForm(current => current && ({ ...current, isPriority: event.target.checked }))} />
               <span className="toggle-track" />
-              <span className="toggle-label">{form.isPriority ? t('on') : t('off')}</span>
+              <span className="toggle-label">{dialogForm.isPriority ? t('on') : t('off')}</span>
             </label>
             <p className="form-field-hint">{t('priorityHint')}</p>
           </div>
+          {dialogError && <div className="dialog-validation-error" role="alert">{dialogError}</div>}
           <div className="dialog-actions" style={{ marginTop: 16 }}>
-            <button type="submit" className="btn btn-accent btn-lg" disabled={busy || !session?.isCompatible || !form.sourcePath || !form.destinationPath}>{t('create')}</button>
-            <button type="button" className="btn btn-lg" onClick={() => setShowNewTaskDialog(false)}>{t('cancel')}</button>
+            <button type="submit" className="btn btn-accent btn-lg" disabled={busy || !session?.isCompatible}>{t('create')}</button>
+            <button type="button" className="btn btn-lg" onClick={closeNewTaskDialog}>{t('cancel')}</button>
           </div>
         </form>
       </div>
@@ -1037,6 +1105,24 @@ function samePath(left: string, right: string) {
   return normalize(left) === normalize(right);
 }
 
+function verificationAlgorithmHintKey(algorithm: HashAlgorithm) {
+  return ({
+    sha256: 'algorithmHintSha256',
+    sha512: 'algorithmHintSha512',
+    sha1: 'algorithmHintSha1',
+    md5: 'algorithmHintMd5',
+    xxHash64: 'algorithmHintXxHash64',
+  } as const)[algorithm];
+}
+
+function friendlyErrorMessage(caught: unknown, t: (key: TranslationKey) => string) {
+  const message = caught instanceof ApiError || caught instanceof Error ? caught.message.trim() : '';
+  if (!message || /^(The request could not be completed\.?|Internal Server Error)$/i.test(message)) {
+    return t('requestUnavailable');
+  }
+  return message;
+}
+
 function toggleSet(current: Set<string>, value: string) {
   const next = new Set(current); if (next.has(value)) next.delete(value); else next.add(value); return next;
 }
@@ -1046,13 +1132,14 @@ function settingLanguage(language: AppSettings['language']): Language {
 }
 
 function statusLabel(status: ClipPortTask['status'], language: Language) {
-  const labels: Record<ClipPortTask['status'], [string, string, string]> = {
-    queued: ['排队中', 'Queued', '候行'], running: ['运行中', 'Running', '行中'], paused: ['已暂停', 'Paused', '已止'],
-    awaitingDuplicateDecision: ['等待重复项决定', 'Duplicate decision', '候決重檔'], awaitingFailureDecision: ['等待失败项处理', 'Failure action', '候處敗項'],
-    completed: ['已完成', 'Completed', '已成'], completedWithErrors: ['完成但有错误', 'Completed with errors', '成而有誤'], verificationFailed: ['校验失败', 'Verification failed', '驗之未合'],
-    failed: ['失败', 'Failed', '未成'], cancelled: ['已取消', 'Cancelled', '已罷'], interrupted: ['已中断', 'Interrupted', '已中斷'],
+  const keys: Record<ClipPortTask['status'], TranslationKey> = {
+    queued: 'statusQueued', running: 'statusRunning', paused: 'statusPaused',
+    awaitingDuplicateDecision: 'statusAwaitingDuplicate', awaitingFailureDecision: 'statusAwaitingFailure',
+    completed: 'statusCompleted', completedWithErrors: 'statusCompletedWithErrors',
+    verificationFailed: 'statusVerificationFailed', failed: 'statusFailed',
+    cancelled: 'statusCancelled', interrupted: 'statusInterrupted',
   };
-  return labels[status][language === 'en-US' ? 1 : language === 'lzh' ? 2 : 0];
+  return translator(language)(keys[status]);
 }
 
 function StatusIcon({ status }: { status: ClipPortTask['status'] }) {

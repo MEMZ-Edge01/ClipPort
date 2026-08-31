@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { translator } from './i18n';
+
+const t = translator('zh-CN');
 
 const api = vi.hoisted(() => ({
   loadSession: vi.fn(),
@@ -51,6 +54,27 @@ describe('folder selection flow', () => {
     sdk.getPlatformConfig.mockResolvedValue({ language: 'zh-CN', theme: 'light' });
     sdk.listen.mockResolvedValue(undefined);
     sdk.setTitle.mockResolvedValue(undefined);
+  });
+
+  it('keeps the workspace usable when the initial authorization list is unavailable', async () => {
+    api.loadFolders.mockReset();
+    api.loadFolders.mockRejectedValueOnce(new Error('The request could not be completed.'));
+    render(<App />);
+
+    expect(await screen.findByText('管理员 · admin')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('newTask') })).toBeEnabled();
+    expect(screen.queryByText(/The request could not be completed/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/授权目录暂不可用/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('retryAuthorization') })).toBeInTheDocument();
+  });
+
+  it('localizes an unstructured startup gateway failure without hiding the workspace', async () => {
+    api.loadTasks.mockRejectedValueOnce(new Error('Internal Server Error'));
+    render(<App />);
+
+    expect(await screen.findByText(t('requestUnavailable'))).toBeInTheDocument();
+    expect(screen.queryByText(/Internal Server Error/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('newTask') })).toBeEnabled();
   });
 
   it('keeps a selected source and retries authorization propagation without showing an operation failure', async () => {
