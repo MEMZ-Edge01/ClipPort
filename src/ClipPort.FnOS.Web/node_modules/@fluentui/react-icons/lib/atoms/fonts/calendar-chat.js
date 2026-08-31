@@ -1,0 +1,16 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const CalendarChatFilled = ( /*#__PURE__*/createFluentFontIcon("CalendarChatFilled", "", 2, undefined));
+export const CalendarChatRegular = ( /*#__PURE__*/createFluentFontIcon("CalendarChatRegular", "", 2, undefined));
+export const CalendarChat16Regular = ( /*#__PURE__*/createFluentFontIcon("CalendarChat16Regular", "󰰺", 1, 16));
+export const CalendarChat16Filled = ( /*#__PURE__*/createFluentFontIcon("CalendarChat16Filled", "󰲷", 0, 16));
+export const CalendarChat20Regular = ( /*#__PURE__*/createFluentFontIcon("CalendarChat20Regular", "", 1, 20));
+export const CalendarChat20Filled = ( /*#__PURE__*/createFluentFontIcon("CalendarChat20Filled", "", 0, 20));
+export const CalendarChat24Regular = ( /*#__PURE__*/createFluentFontIcon("CalendarChat24Regular", "", 1, 24));
+export const CalendarChat24Filled = ( /*#__PURE__*/createFluentFontIcon("CalendarChat24Filled", "", 0, 24));
+export const CalendarChat28Regular = ( /*#__PURE__*/createFluentFontIcon("CalendarChat28Regular", "󰰻", 1, 28));
+export const CalendarChat28Filled = ( /*#__PURE__*/createFluentFontIcon("CalendarChat28Filled", "󰲸", 0, 28));
+export const CalendarChat32Regular = ( /*#__PURE__*/createFluentFontIcon("CalendarChat32Regular", "󰰼", 1, 32));
+export const CalendarChat32Filled = ( /*#__PURE__*/createFluentFontIcon("CalendarChat32Filled", "󰲹", 0, 32));
+export const CalendarChat48Regular = ( /*#__PURE__*/createFluentFontIcon("CalendarChat48Regular", "󰰽", 1, 48));
+export const CalendarChat48Filled = ( /*#__PURE__*/createFluentFontIcon("CalendarChat48Filled", "󰲺", 0, 48));

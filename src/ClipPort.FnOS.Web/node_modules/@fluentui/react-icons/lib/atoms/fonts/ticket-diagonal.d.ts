@@ -1,0 +1,16 @@
+import type { FluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export declare const TicketDiagonalFilled: FluentFontIcon;
+export declare const TicketDiagonalRegular: FluentFontIcon;
+export declare const TicketDiagonal16Regular: FluentFontIcon;
+export declare const TicketDiagonal16Filled: FluentFontIcon;
+export declare const TicketDiagonal20Regular: FluentFontIcon;
+export declare const TicketDiagonal20Filled: FluentFontIcon;
+export declare const TicketDiagonal24Regular: FluentFontIcon;
+export declare const TicketDiagonal24Filled: FluentFontIcon;
+export declare const TicketDiagonal28Regular: FluentFontIcon;
+export declare const TicketDiagonal28Filled: FluentFontIcon;
+export declare const TicketDiagonal32Regular: FluentFontIcon;
+export declare const TicketDiagonal32Filled: FluentFontIcon;
+export declare const TicketDiagonal32Light: FluentFontIcon;
+export declare const TicketDiagonal48Regular: FluentFontIcon;
+export declare const TicketDiagonal48Filled: FluentFontIcon;

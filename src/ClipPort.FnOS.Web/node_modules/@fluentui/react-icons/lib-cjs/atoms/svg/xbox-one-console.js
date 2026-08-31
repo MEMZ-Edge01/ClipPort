@@ -1,0 +1,9 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.XboxOneConsole20Filled = exports.XboxOneConsole20Regular = exports.XboxOneConsoleRegular = exports.XboxOneConsoleFilled = void 0;
+const createFluentIcon_1 = require("../../utils/createFluentIcon");
+exports.XboxOneConsoleFilled = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('XboxOneConsoleFilled', "1em", ["M18 13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h14v1Zm-1-7a1 1 0 0 1 1 1v4H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h14Zm-1.75 2a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"]));
+exports.XboxOneConsoleRegular = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('XboxOneConsoleRegular', "1em", ["M17 6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h14ZM5 13h12v-1H5v1Zm-2-2h14V7H3v4Zm12.25-3a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z"]));
+exports.XboxOneConsole20Regular = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('XboxOneConsole20Regular', "20", ["M17 6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h14ZM5 13h12v-1H5v1Zm-2-2h14V7H3v4Zm12.25-3a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z"]));
+exports.XboxOneConsole20Filled = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('XboxOneConsole20Filled', "20", ["M18 13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h14v1Zm-1-7a1 1 0 0 1 1 1v4H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h14Zm-1.75 2a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"]));

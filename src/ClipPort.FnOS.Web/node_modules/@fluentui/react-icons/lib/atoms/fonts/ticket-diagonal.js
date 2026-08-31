@@ -1,0 +1,17 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const TicketDiagonalFilled = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonalFilled", "", 2, undefined));
+export const TicketDiagonalRegular = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonalRegular", "", 2, undefined));
+export const TicketDiagonal16Regular = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal16Regular", "", 1, 16));
+export const TicketDiagonal16Filled = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal16Filled", "", 0, 16));
+export const TicketDiagonal20Regular = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal20Regular", "", 1, 20));
+export const TicketDiagonal20Filled = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal20Filled", "", 0, 20));
+export const TicketDiagonal24Regular = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal24Regular", "", 1, 24));
+export const TicketDiagonal24Filled = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal24Filled", "", 0, 24));
+export const TicketDiagonal28Regular = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal28Regular", "", 1, 28));
+export const TicketDiagonal28Filled = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal28Filled", "", 0, 28));
+export const TicketDiagonal32Regular = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal32Regular", "󰱨", 1, 32));
+export const TicketDiagonal32Filled = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal32Filled", "󰳥", 0, 32));
+export const TicketDiagonal32Light = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal32Light", "", 3, 32));
+export const TicketDiagonal48Regular = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal48Regular", "󰱩", 1, 48));
+export const TicketDiagonal48Filled = ( /*#__PURE__*/createFluentFontIcon("TicketDiagonal48Filled", "󰳦", 0, 48));

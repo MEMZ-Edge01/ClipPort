@@ -1,0 +1,9 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MapPin20Filled = exports.MapPin20Regular = exports.MapPinRegular = exports.MapPinFilled = void 0;
+const createFluentIcon_1 = require("../../utils/createFluentIcon");
+exports.MapPinFilled = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('MapPinFilled', "1em", ["M8.5 13.5a1.5 1.5 0 0 0 3 0V9h2.3c.63 0 1.2.39 1.41.97l2.25 6a1.5 1.5 0 0 1-1.4 2.03H3.94a1.5 1.5 0 0 1-1.4-2.03l2.25-6A1.5 1.5 0 0 1 6.19 9H8.5v4.5ZM10 2a2.5 2.5 0 0 1 .5 4.95v6.55a.5.5 0 0 1-1 0V6.95A2.5 2.5 0 0 1 10 2Z"]));
+exports.MapPinRegular = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('MapPinRegular', "1em", ["M10 2a2.5 2.5 0 0 1 .5 4.95V9h3.3c.63 0 1.2.39 1.41.97l2.25 6a1.5 1.5 0 0 1-1.4 2.03H3.94a1.5 1.5 0 0 1-1.4-2.03l2.25-6A1.5 1.5 0 0 1 6.19 9H9.5V6.95A2.5 2.5 0 0 1 10 2Zm-3.8 8a.5.5 0 0 0-.47.32l-2.25 6a.5.5 0 0 0 .46.68h12.12a.5.5 0 0 0 .47-.68l-2.25-6a.5.5 0 0 0-.47-.32H10.5v3.5a.5.5 0 0 1-1 0V10H6.2ZM10 3a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"]));
+exports.MapPin20Regular = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('MapPin20Regular', "20", ["M10 2a2.5 2.5 0 0 1 .5 4.95V9h3.3c.63 0 1.2.39 1.41.97l2.25 6a1.5 1.5 0 0 1-1.4 2.03H3.94a1.5 1.5 0 0 1-1.4-2.03l2.25-6A1.5 1.5 0 0 1 6.19 9H9.5V6.95A2.5 2.5 0 0 1 10 2Zm-3.8 8a.5.5 0 0 0-.47.32l-2.25 6a.5.5 0 0 0 .46.68h12.12a.5.5 0 0 0 .47-.68l-2.25-6a.5.5 0 0 0-.47-.32H10.5v3.5a.5.5 0 0 1-1 0V10H6.2ZM10 3a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"]));
+exports.MapPin20Filled = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('MapPin20Filled', "20", ["M8.5 13.5a1.5 1.5 0 0 0 3 0V9h2.3c.63 0 1.2.39 1.41.97l2.25 6a1.5 1.5 0 0 1-1.4 2.03H3.94a1.5 1.5 0 0 1-1.4-2.03l2.25-6A1.5 1.5 0 0 1 6.19 9H8.5v4.5ZM10 2a2.5 2.5 0 0 1 .5 4.95v6.55a.5.5 0 0 1-1 0V6.95A2.5 2.5 0 0 1 10 2Z"]));

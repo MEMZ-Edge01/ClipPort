@@ -1,0 +1,18 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const SparkleOffFilled = ( /*#__PURE__*/createFluentFontIcon("SparkleOffFilled", "", 2, undefined));
+export const SparkleOffRegular = ( /*#__PURE__*/createFluentFontIcon("SparkleOffRegular", "", 2, undefined));
+export const SparkleOff12Regular = ( /*#__PURE__*/createFluentFontIcon("SparkleOff12Regular", "󰲑", 1, 12));
+export const SparkleOff12Filled = ( /*#__PURE__*/createFluentFontIcon("SparkleOff12Filled", "󰴎", 0, 12));
+export const SparkleOff16Regular = ( /*#__PURE__*/createFluentFontIcon("SparkleOff16Regular", "󰰳", 1, 16));
+export const SparkleOff16Filled = ( /*#__PURE__*/createFluentFontIcon("SparkleOff16Filled", "󰲰", 0, 16));
+export const SparkleOff20Regular = ( /*#__PURE__*/createFluentFontIcon("SparkleOff20Regular", "󰭟", 1, 20));
+export const SparkleOff20Filled = ( /*#__PURE__*/createFluentFontIcon("SparkleOff20Filled", "󰯝", 0, 20));
+export const SparkleOff24Regular = ( /*#__PURE__*/createFluentFontIcon("SparkleOff24Regular", "󰭠", 1, 24));
+export const SparkleOff24Filled = ( /*#__PURE__*/createFluentFontIcon("SparkleOff24Filled", "󰯞", 0, 24));
+export const SparkleOff28Regular = ( /*#__PURE__*/createFluentFontIcon("SparkleOff28Regular", "󰱋", 1, 28));
+export const SparkleOff28Filled = ( /*#__PURE__*/createFluentFontIcon("SparkleOff28Filled", "󰳈", 0, 28));
+export const SparkleOff32Regular = ( /*#__PURE__*/createFluentFontIcon("SparkleOff32Regular", "󰱌", 1, 32));
+export const SparkleOff32Filled = ( /*#__PURE__*/createFluentFontIcon("SparkleOff32Filled", "󰳉", 0, 32));
+export const SparkleOff48Regular = ( /*#__PURE__*/createFluentFontIcon("SparkleOff48Regular", "󰱍", 1, 48));
+export const SparkleOff48Filled = ( /*#__PURE__*/createFluentFontIcon("SparkleOff48Filled", "󰳊", 0, 48));

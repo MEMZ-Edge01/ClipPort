@@ -1,0 +1,17 @@
+import type { FluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export declare const WeatherHumidityFilled: FluentFontIcon;
+export declare const WeatherHumidityRegular: FluentFontIcon;
+export declare const WeatherHumidity12Regular: FluentFontIcon;
+export declare const WeatherHumidity12Filled: FluentFontIcon;
+export declare const WeatherHumidity16Regular: FluentFontIcon;
+export declare const WeatherHumidity16Filled: FluentFontIcon;
+export declare const WeatherHumidity20Regular: FluentFontIcon;
+export declare const WeatherHumidity20Filled: FluentFontIcon;
+export declare const WeatherHumidity24Regular: FluentFontIcon;
+export declare const WeatherHumidity24Filled: FluentFontIcon;
+export declare const WeatherHumidity28Regular: FluentFontIcon;
+export declare const WeatherHumidity28Filled: FluentFontIcon;
+export declare const WeatherHumidity32Regular: FluentFontIcon;
+export declare const WeatherHumidity32Filled: FluentFontIcon;
+export declare const WeatherHumidity48Regular: FluentFontIcon;
+export declare const WeatherHumidity48Filled: FluentFontIcon;

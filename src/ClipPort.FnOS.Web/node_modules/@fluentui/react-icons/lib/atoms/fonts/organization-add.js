@@ -1,0 +1,10 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const OrganizationAddFilled = ( /*#__PURE__*/createFluentFontIcon("OrganizationAddFilled", "", 2, undefined));
+export const OrganizationAddRegular = ( /*#__PURE__*/createFluentFontIcon("OrganizationAddRegular", "", 2, undefined));
+export const OrganizationAdd16Regular = ( /*#__PURE__*/createFluentFontIcon("OrganizationAdd16Regular", "󰱂", 1, 16));
+export const OrganizationAdd16Filled = ( /*#__PURE__*/createFluentFontIcon("OrganizationAdd16Filled", "󰲿", 0, 16));
+export const OrganizationAdd20Regular = ( /*#__PURE__*/createFluentFontIcon("OrganizationAdd20Regular", "󰱃", 1, 20));
+export const OrganizationAdd20Filled = ( /*#__PURE__*/createFluentFontIcon("OrganizationAdd20Filled", "󰳀", 0, 20));
+export const OrganizationAdd24Regular = ( /*#__PURE__*/createFluentFontIcon("OrganizationAdd24Regular", "󰱄", 1, 24));
+export const OrganizationAdd24Filled = ( /*#__PURE__*/createFluentFontIcon("OrganizationAdd24Filled", "󰳁", 0, 24));

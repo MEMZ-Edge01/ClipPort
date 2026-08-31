@@ -1,0 +1,18 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const IncognitoFilled = ( /*#__PURE__*/createFluentFontIcon("IncognitoFilled", "", 2, undefined));
+export const IncognitoRegular = ( /*#__PURE__*/createFluentFontIcon("IncognitoRegular", "", 2, undefined));
+export const Incognito12Regular = ( /*#__PURE__*/createFluentFontIcon("Incognito12Regular", "󰲆", 1, 12));
+export const Incognito12Filled = ( /*#__PURE__*/createFluentFontIcon("Incognito12Filled", "󰴃", 0, 12));
+export const Incognito16Regular = ( /*#__PURE__*/createFluentFontIcon("Incognito16Regular", "󰱤", 1, 16));
+export const Incognito16Filled = ( /*#__PURE__*/createFluentFontIcon("Incognito16Filled", "󰳡", 0, 16));
+export const Incognito20Regular = ( /*#__PURE__*/createFluentFontIcon("Incognito20Regular", "", 1, 20));
+export const Incognito20Filled = ( /*#__PURE__*/createFluentFontIcon("Incognito20Filled", "", 0, 20));
+export const Incognito24Regular = ( /*#__PURE__*/createFluentFontIcon("Incognito24Regular", "", 1, 24));
+export const Incognito24Filled = ( /*#__PURE__*/createFluentFontIcon("Incognito24Filled", "", 0, 24));
+export const Incognito28Regular = ( /*#__PURE__*/createFluentFontIcon("Incognito28Regular", "󰱥", 1, 28));
+export const Incognito28Filled = ( /*#__PURE__*/createFluentFontIcon("Incognito28Filled", "󰳢", 0, 28));
+export const Incognito32Regular = ( /*#__PURE__*/createFluentFontIcon("Incognito32Regular", "󰦖", 1, 32));
+export const Incognito32Filled = ( /*#__PURE__*/createFluentFontIcon("Incognito32Filled", "󰨓", 0, 32));
+export const Incognito48Regular = ( /*#__PURE__*/createFluentFontIcon("Incognito48Regular", "󰦗", 1, 48));
+export const Incognito48Filled = ( /*#__PURE__*/createFluentFontIcon("Incognito48Filled", "󰨔", 0, 48));

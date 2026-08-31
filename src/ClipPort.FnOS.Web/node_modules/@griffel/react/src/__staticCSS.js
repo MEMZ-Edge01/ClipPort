@@ -1,0 +1,14 @@
+'use client';
+import { __staticCSS as vanillaStaticCSS } from '@griffel/core';
+/**
+ * A version of makeStaticStyles() that accepts build output as an input and skips all runtime transforms & DOM insertion.
+ *
+ * @private
+ */
+export function __staticCSS() {
+    const getStyles = vanillaStaticCSS();
+    return function useStaticStyles() {
+        return getStyles();
+    };
+}
+//# sourceMappingURL=__staticCSS.js.map

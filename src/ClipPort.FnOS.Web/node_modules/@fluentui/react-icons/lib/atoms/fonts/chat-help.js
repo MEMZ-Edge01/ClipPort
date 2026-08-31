@@ -1,0 +1,10 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const ChatHelpFilled = ( /*#__PURE__*/createFluentFontIcon("ChatHelpFilled", "", 2, undefined));
+export const ChatHelpRegular = ( /*#__PURE__*/createFluentFontIcon("ChatHelpRegular", "", 2, undefined));
+export const ChatHelp16Regular = ( /*#__PURE__*/createFluentFontIcon("ChatHelp16Regular", "󰱟", 1, 16));
+export const ChatHelp16Filled = ( /*#__PURE__*/createFluentFontIcon("ChatHelp16Filled", "󰳜", 0, 16));
+export const ChatHelp20Regular = ( /*#__PURE__*/createFluentFontIcon("ChatHelp20Regular", "", 1, 20));
+export const ChatHelp20Filled = ( /*#__PURE__*/createFluentFontIcon("ChatHelp20Filled", "", 0, 20));
+export const ChatHelp24Regular = ( /*#__PURE__*/createFluentFontIcon("ChatHelp24Regular", "", 1, 24));
+export const ChatHelp24Filled = ( /*#__PURE__*/createFluentFontIcon("ChatHelp24Filled", "", 0, 24));

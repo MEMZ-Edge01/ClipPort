@@ -1,0 +1,15 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SparkleCircleOff28Filled = exports.SparkleCircleOff28Regular = exports.SparkleCircleOff24Filled = exports.SparkleCircleOff24Regular = exports.SparkleCircleOff20Filled = exports.SparkleCircleOff20Regular = exports.SparkleCircleOff16Filled = exports.SparkleCircleOff16Regular = exports.SparkleCircleOffRegular = exports.SparkleCircleOffFilled = void 0;
+const createFluentFontIcon_1 = require("../../utils/fonts/createFluentFontIcon");
+exports.SparkleCircleOffFilled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOffFilled", "", 2, undefined));
+exports.SparkleCircleOffRegular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOffRegular", "", 2, undefined));
+exports.SparkleCircleOff16Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff16Regular", "󰱇", 1, 16));
+exports.SparkleCircleOff16Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff16Filled", "󰳄", 0, 16));
+exports.SparkleCircleOff20Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff20Regular", "󰱈", 1, 20));
+exports.SparkleCircleOff20Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff20Filled", "󰳅", 0, 20));
+exports.SparkleCircleOff24Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff24Regular", "󰱉", 1, 24));
+exports.SparkleCircleOff24Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff24Filled", "󰳆", 0, 24));
+exports.SparkleCircleOff28Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff28Regular", "󰱊", 1, 28));
+exports.SparkleCircleOff28Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("SparkleCircleOff28Filled", "󰳇", 0, 28));

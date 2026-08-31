@@ -1,0 +1,14 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const ArrowTrendingLinesFilled = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLinesFilled", "", 2, undefined, { flipInRtl: true }));
+export const ArrowTrendingLinesRegular = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLinesRegular", "", 2, undefined, { flipInRtl: true }));
+export const ArrowTrendingLines20Regular = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines20Regular", "", 1, 20, { flipInRtl: true }));
+export const ArrowTrendingLines20Filled = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines20Filled", "", 0, 20, { flipInRtl: true }));
+export const ArrowTrendingLines24Regular = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines24Regular", "", 1, 24, { flipInRtl: true }));
+export const ArrowTrendingLines24Filled = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines24Filled", "", 0, 24, { flipInRtl: true }));
+export const ArrowTrendingLines28Regular = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines28Regular", "󰱜", 1, 28));
+export const ArrowTrendingLines28Filled = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines28Filled", "󰳙", 0, 28));
+export const ArrowTrendingLines32Regular = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines32Regular", "󰱝", 1, 32));
+export const ArrowTrendingLines32Filled = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines32Filled", "󰳚", 0, 32));
+export const ArrowTrendingLines48Regular = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines48Regular", "󰱞", 1, 48));
+export const ArrowTrendingLines48Filled = ( /*#__PURE__*/createFluentFontIcon("ArrowTrendingLines48Filled", "󰳛", 0, 48));

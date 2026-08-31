@@ -1,0 +1,18 @@
+"use client";
+import { createFluentFontIcon } from '../../utils/fonts/createFluentFontIcon';
+export const WeatherHumidityFilled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidityFilled", "", 2, undefined));
+export const WeatherHumidityRegular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidityRegular", "", 2, undefined));
+export const WeatherHumidity12Regular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity12Regular", "󰱎", 1, 12));
+export const WeatherHumidity12Filled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity12Filled", "󰳋", 0, 12));
+export const WeatherHumidity16Regular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity16Regular", "󰱏", 1, 16));
+export const WeatherHumidity16Filled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity16Filled", "󰳌", 0, 16));
+export const WeatherHumidity20Regular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity20Regular", "󰱐", 1, 20));
+export const WeatherHumidity20Filled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity20Filled", "󰳍", 0, 20));
+export const WeatherHumidity24Regular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity24Regular", "󰱑", 1, 24));
+export const WeatherHumidity24Filled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity24Filled", "󰳎", 0, 24));
+export const WeatherHumidity28Regular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity28Regular", "󰱒", 1, 28));
+export const WeatherHumidity28Filled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity28Filled", "󰳏", 0, 28));
+export const WeatherHumidity32Regular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity32Regular", "󰱓", 1, 32));
+export const WeatherHumidity32Filled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity32Filled", "󰳐", 0, 32));
+export const WeatherHumidity48Regular = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity48Regular", "󰱔", 1, 48));
+export const WeatherHumidity48Filled = ( /*#__PURE__*/createFluentFontIcon("WeatherHumidity48Filled", "󰳑", 0, 48));

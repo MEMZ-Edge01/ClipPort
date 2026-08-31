@@ -1,0 +1,9 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RectangleLandscapeClock20Filled = exports.RectangleLandscapeClock20Regular = exports.RectangleLandscapeClockRegular = exports.RectangleLandscapeClockFilled = void 0;
+const createFluentIcon_1 = require("../../utils/createFluentIcon");
+exports.RectangleLandscapeClockFilled = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('RectangleLandscapeClockFilled', "1em", ["M14.5 10a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm.5-6a3 3 0 0 1 3 3v3.26A5.5 5.5 0 0 0 9.2 16H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h10Zm-.5 8a.5.5 0 0 0-.5.5v2c0 .28.22.5.5.5H16a.5.5 0 0 0 0-1h-1v-1.5a.5.5 0 0 0-.5-.5Z"]));
+exports.RectangleLandscapeClockRegular = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('RectangleLandscapeClockRegular', "1em", ["M14.5 10a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm.5-6a3 3 0 0 1 3 3v3.26a5.5 5.5 0 0 0-1-.66V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h4.02c.03.34.1.68.19 1H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h10Zm-.5 8a.5.5 0 0 0-.5.5v2c0 .28.22.5.5.5H16a.5.5 0 0 0 0-1h-1v-1.5a.5.5 0 0 0-.5-.5Z"]));
+exports.RectangleLandscapeClock20Regular = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('RectangleLandscapeClock20Regular', "20", ["M14.5 10a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm.5-6a3 3 0 0 1 3 3v3.26a5.5 5.5 0 0 0-1-.66V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h4.02c.03.34.1.68.19 1H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h10Zm-.5 8a.5.5 0 0 0-.5.5v2c0 .28.22.5.5.5H16a.5.5 0 0 0 0-1h-1v-1.5a.5.5 0 0 0-.5-.5Z"]));
+exports.RectangleLandscapeClock20Filled = ( /*#__PURE__*/createFluentIcon_1.createFluentIcon('RectangleLandscapeClock20Filled', "20", ["M14.5 10a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm.5-6a3 3 0 0 1 3 3v3.26A5.5 5.5 0 0 0 9.2 16H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h10Zm-.5 8a.5.5 0 0 0-.5.5v2c0 .28.22.5.5.5H16a.5.5 0 0 0 0-1h-1v-1.5a.5.5 0 0 0-.5-.5Z"]));

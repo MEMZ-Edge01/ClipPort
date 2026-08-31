@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+Object.defineProperty(exports, "logError", {
+    enumerable: true,
+    get: function() {
+        return logError;
+    }
+});
+function logError(...args) {
+    if (process.env.NODE_ENV !== 'production' && typeof document !== 'undefined') {
+        // eslint-disable-next-line no-console
+        console.error(...args);
+    }
+} //# sourceMappingURL=logError.js.map

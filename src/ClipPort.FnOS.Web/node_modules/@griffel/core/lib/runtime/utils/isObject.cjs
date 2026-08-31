@@ -1,0 +1,15 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+"use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+Object.defineProperty(exports, "isObject", {
+    enumerable: true,
+    get: function() {
+        return isObject;
+    }
+});
+function isObject(val) {
+    // eslint-disable-next-line eqeqeq
+    return val != null && typeof val === 'object' && Array.isArray(val) === false;
+} //# sourceMappingURL=isObject.js.map

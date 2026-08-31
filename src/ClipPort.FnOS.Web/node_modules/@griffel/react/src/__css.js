@@ -1,0 +1,16 @@
+'use client';
+import { __css as vanillaCSS } from '@griffel/core';
+import { useTextDirection } from './TextDirectionContext.js';
+/**
+ * A version of makeStyles() that accepts build output as an input and skips all runtime transforms & DOM insertion.
+ *
+ * @private
+ */
+export function __css(classesMapBySlot) {
+    const getStyles = vanillaCSS(classesMapBySlot);
+    return function useClasses() {
+        const dir = useTextDirection();
+        return getStyles({ dir });
+    };
+}
+//# sourceMappingURL=__css.js.map

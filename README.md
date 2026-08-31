@@ -1,9 +1,10 @@
 <div align="center">
   <img src="src/ClipPort/Assets/Icons/clipport-app-icon.png" alt="ClipPort" width="160" />
-  <h1>ClipPort</h1>
+  <h1>📦 ClipPort</h1>
   <p>面向摄影、视频与大批量文件场景的 Windows 拷卡、完整性校验和任务管理工具。</p>
   <p>
     <a href="#功能概览">功能概览</a> ·
+    <a href="#演示">演示</a> ·
     <a href="#校验算法">校验算法</a> ·
     <a href="#windows-11-快速开启">快速开启</a> ·
     <a href="#构建与测试">构建与测试</a> ·
@@ -15,7 +16,7 @@
   </p>
 </div>
 
-## 项目简介
+## 📝 项目简介
 
 ClipPort 是一款使用 WinUI 3、C#、.NET 8 和 C++ 构建的 Windows x64 桌面应用。
 它可以把存储卡或普通目录中的文件安全复制到指定位置，并按需重新读取源文件与目标文件，使用所选算法逐文件比较摘要。
@@ -23,7 +24,25 @@ ClipPort 是一款使用 WinUI 3、C#、.NET 8 和 C++ 构建的 Windows x64 桌
 应用不依赖账号、云服务或远程数据库。
 设置、任务历史、日志和报告均保存在本机。
 
-## 功能概览
+## 🖼️ 演示
+
+<p align="center">
+  <img src="docs/images/demo-task-complete-light.png" alt="浅色主题下的任务完成界面" width="49%" />
+  <img src="docs/images/demo-task-complete-dark.png" alt="深色主题下的任务完成界面" width="49%" />
+</p>
+<p align="center"><em>浅色与深色主题下的任务完成、复制与文件校验进度。</em></p>
+
+<p align="center">
+  <img src="docs/images/demo-throughput.png" alt="校验速度与项目数速度图表" width="100%" />
+</p>
+<p align="center"><em>文件校验大小速度与项目数速度实时图表。</em></p>
+
+<p align="center">
+  <img src="docs/images/demo-explorer-context-menu.png" alt="文件资源管理器中的 ClipPort 快速开启菜单" width="100%" />
+</p>
+<p align="center"><em>通过文件资源管理器右键菜单快速新建 ClipPort 任务。</em></p>
+
+## ✨ 功能概览
 
 ### 安全复制与三种任务模式
 
@@ -122,7 +141,7 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 - 发现新版本后可以查看发布说明；确认后自动下载并校验 SHA-256，再重启应用完成更新。
 - 更新采用便携目录整体替换，不覆盖设置、任务历史、日志和报告。
 
-## 校验算法
+## 🔐 校验算法
 
 | 算法 | 速度与摘要 | 兼容性与抗碰撞能力 | 建议用途 |
 | --- | --- | --- | --- |
@@ -135,7 +154,7 @@ ClipPort 现在支持 `SHA-256`、`SHA-512`、`SHA-1`、`MD5` 和 `xxHash64`。
 > 校验摘要用于发现复制错误或文件变化，不等同于数字签名。
 > 如果没有明确的兼容或吞吐量要求，建议保留默认的 SHA-256。
 
-## 文件资源管理器快速开启
+## 🖱️ 文件资源管理器快速开启
 
 ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 
@@ -167,7 +186,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 安装右键菜单组件后不要移动或拆分发布目录，因为稀疏包会引用该目录中的主程序和扩展 DLL。
 构建与开发注册脚本会从应用原图生成清单规定的 50×50、44×44 和 150×150 PNG，避免包身份启动时任务栏退回占位图标。
 
-## 使用方法
+## 🚀 使用方法
 
 1. 点击“创建任务”，或通过文件资源管理器右键菜单预填源目录或目标目录。
 2. 选择源目录或存储卡。
@@ -177,7 +196,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 6. 如果出现重复文件或失败文件，按界面提示逐项或批量处理。
 7. 任务结束后可以导出报告、重新开始或启动只校验任务。
 
-## 本地数据
+## 💾 本地数据
 
 | 内容 | 默认位置 |
 | --- | --- |
@@ -191,7 +210,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 日志达到 5 MiB 后会轮换为 `ClipPort.old.log`。
 通知渠道的非敏感字段保存在设置文件中；Webhook/Bark 地址与 SMTP 密码以当前 Windows 用户可解密的 DPAPI 密文保存。
 
-## 当前限制
+## ⚠️ 当前限制
 
 - 当前发布目标仅为 Windows x64。
 - 主程序是自包含目录发布，不是单文件程序，也不是完整应用 MSIX 安装包。
@@ -200,7 +219,7 @@ ClipPort 可以通过文件资源管理器右键菜单快速创建任务。
 - C++ 原生复制引擎会随 Release 包构建和发布，但对应开关目前在界面中隐藏并禁用。
 - 普通用户当前使用默认顺序复制路径；原生引擎和托管流水线仅用于代码级实验与回归测试，不应视为稳定的公开功能。
 
-## 项目结构
+## 🗂️ 项目结构
 
 ```text
 ClipPort
@@ -224,7 +243,7 @@ ClipPort
     └── ClipPort.CoreTests
 ```
 
-## 构建与测试
+## 🛠️ 构建与测试
 
 ### 环境要求
 
@@ -310,7 +329,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -ExternalContentDirectory .\artifacts\ClipPort-1.0.0-beta-win-x64
 ```
 
-## 技术栈
+## 🧰 技术栈
 
 - .NET 8 / C# 12
 - WinUI 3 / Windows App SDK
@@ -318,7 +337,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 - `System.Security.Cryptography` 与 `System.IO.Hashing`
 - JSON 本地持久化
 
-## 许可证
+## 📄 许可证
 
 Copyright (C) 2026 MEMZ-Edge01
 
@@ -326,7 +345,7 @@ Copyright (C) 2026 MEMZ-Edge01
 你可以依照 GPL-3.0 使用、研究、修改和重新分发本项目；分发修改版或衍生作品时，需要继续采用 GPL-3.0、保留相应版权与许可证声明，并按许可证要求提供对应源代码。
 本项目不提供任何明示或默示担保，完整条款请参阅 [LICENSE](LICENSE)。
 
-## 参与贡献与安全
+## 🤝 参与贡献与安全
 
 - 提交代码或文档前，请阅读 [贡献指南](CONTRIBUTING.md) 和 [行为准则](CODE_OF_CONDUCT.md)。
 - 普通缺陷和功能建议请使用仓库的 Issue 模板。
@@ -334,7 +353,7 @@ Copyright (C) 2026 MEMZ-Edge01
 
 ---
 
-## English Summary
+## 🌍 English Summary
 
 ClipPort is a Windows x64 desktop application for reliable media-card and directory transfers.
 It supports responsive streaming source scans, safe file copying, verification-only jobs, duplicate-file policies, a serial task queue with priority ordering, pause and cancellation, failure recovery, local history, localized reports, and real-time byte/item throughput charts.
@@ -363,7 +382,7 @@ Build the self-contained Release package:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish-beta.ps1
 ```
 
-## License
+## 📄 License
 
 Copyright (C) 2026 MEMZ-Edge01
 

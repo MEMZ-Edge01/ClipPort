@@ -1,0 +1,16 @@
+import type { FluentIcon } from '../../utils/createFluentIcon';
+export declare const TicketDiagonalFilled: FluentIcon;
+export declare const TicketDiagonalRegular: FluentIcon;
+export declare const TicketDiagonal16Regular: FluentIcon;
+export declare const TicketDiagonal16Filled: FluentIcon;
+export declare const TicketDiagonal20Regular: FluentIcon;
+export declare const TicketDiagonal20Filled: FluentIcon;
+export declare const TicketDiagonal24Regular: FluentIcon;
+export declare const TicketDiagonal24Filled: FluentIcon;
+export declare const TicketDiagonal28Regular: FluentIcon;
+export declare const TicketDiagonal28Filled: FluentIcon;
+export declare const TicketDiagonal32Regular: FluentIcon;
+export declare const TicketDiagonal32Filled: FluentIcon;
+export declare const TicketDiagonal32Light: FluentIcon;
+export declare const TicketDiagonal48Regular: FluentIcon;
+export declare const TicketDiagonal48Filled: FluentIcon;

@@ -1,0 +1,11 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LinkSettings24Filled = exports.LinkSettings24Regular = exports.LinkSettings20Filled = exports.LinkSettings20Regular = exports.LinkSettingsRegular = exports.LinkSettingsFilled = void 0;
+const createFluentFontIcon_1 = require("../../utils/fonts/createFluentFontIcon");
+exports.LinkSettingsFilled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("LinkSettingsFilled", "", 2, undefined));
+exports.LinkSettingsRegular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("LinkSettingsRegular", "", 2, undefined));
+exports.LinkSettings20Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("LinkSettings20Regular", "󰱦", 1, 20));
+exports.LinkSettings20Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("LinkSettings20Filled", "󰳣", 0, 20));
+exports.LinkSettings24Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("LinkSettings24Regular", "󰈞", 1, 24));
+exports.LinkSettings24Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("LinkSettings24Filled", "󰈱", 0, 24));

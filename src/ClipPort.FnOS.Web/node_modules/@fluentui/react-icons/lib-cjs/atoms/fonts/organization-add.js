@@ -1,0 +1,13 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OrganizationAdd24Filled = exports.OrganizationAdd24Regular = exports.OrganizationAdd20Filled = exports.OrganizationAdd20Regular = exports.OrganizationAdd16Filled = exports.OrganizationAdd16Regular = exports.OrganizationAddRegular = exports.OrganizationAddFilled = void 0;
+const createFluentFontIcon_1 = require("../../utils/fonts/createFluentFontIcon");
+exports.OrganizationAddFilled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAddFilled", "", 2, undefined));
+exports.OrganizationAddRegular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAddRegular", "", 2, undefined));
+exports.OrganizationAdd16Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAdd16Regular", "󰱂", 1, 16));
+exports.OrganizationAdd16Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAdd16Filled", "󰲿", 0, 16));
+exports.OrganizationAdd20Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAdd20Regular", "󰱃", 1, 20));
+exports.OrganizationAdd20Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAdd20Filled", "󰳀", 0, 20));
+exports.OrganizationAdd24Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAdd24Regular", "󰱄", 1, 24));
+exports.OrganizationAdd24Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("OrganizationAdd24Filled", "󰳁", 0, 24));

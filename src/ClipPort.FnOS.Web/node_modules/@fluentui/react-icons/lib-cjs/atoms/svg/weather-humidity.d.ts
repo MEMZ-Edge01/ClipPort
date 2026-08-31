@@ -1,0 +1,17 @@
+import type { FluentIcon } from '../../utils/createFluentIcon';
+export declare const WeatherHumidityFilled: FluentIcon;
+export declare const WeatherHumidityRegular: FluentIcon;
+export declare const WeatherHumidity12Regular: FluentIcon;
+export declare const WeatherHumidity12Filled: FluentIcon;
+export declare const WeatherHumidity16Regular: FluentIcon;
+export declare const WeatherHumidity16Filled: FluentIcon;
+export declare const WeatherHumidity20Regular: FluentIcon;
+export declare const WeatherHumidity20Filled: FluentIcon;
+export declare const WeatherHumidity24Regular: FluentIcon;
+export declare const WeatherHumidity24Filled: FluentIcon;
+export declare const WeatherHumidity28Regular: FluentIcon;
+export declare const WeatherHumidity28Filled: FluentIcon;
+export declare const WeatherHumidity32Regular: FluentIcon;
+export declare const WeatherHumidity32Filled: FluentIcon;
+export declare const WeatherHumidity48Regular: FluentIcon;
+export declare const WeatherHumidity48Filled: FluentIcon;

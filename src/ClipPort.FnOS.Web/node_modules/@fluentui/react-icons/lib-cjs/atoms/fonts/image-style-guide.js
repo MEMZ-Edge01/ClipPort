@@ -1,0 +1,11 @@
+"use client";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ImageStyleGuide20Filled = exports.ImageStyleGuide20Regular = exports.ImageStyleGuide16Filled = exports.ImageStyleGuide16Regular = exports.ImageStyleGuideRegular = exports.ImageStyleGuideFilled = void 0;
+const createFluentFontIcon_1 = require("../../utils/fonts/createFluentFontIcon");
+exports.ImageStyleGuideFilled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("ImageStyleGuideFilled", "", 2, undefined));
+exports.ImageStyleGuideRegular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("ImageStyleGuideRegular", "", 2, undefined));
+exports.ImageStyleGuide16Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("ImageStyleGuide16Regular", "󰱢", 1, 16));
+exports.ImageStyleGuide16Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("ImageStyleGuide16Filled", "󰳟", 0, 16));
+exports.ImageStyleGuide20Regular = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("ImageStyleGuide20Regular", "󰱣", 1, 20));
+exports.ImageStyleGuide20Filled = ( /*#__PURE__*/createFluentFontIcon_1.createFluentFontIcon("ImageStyleGuide20Filled", "󰳠", 0, 20));
